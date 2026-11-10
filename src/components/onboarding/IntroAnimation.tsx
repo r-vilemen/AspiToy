@@ -1,21 +1,36 @@
 import { useEffect, useState } from 'react';
-import { Sparkles, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { useOnboardingStore } from '@/store/onboardingStore';
 
 export function IntroAnimation() {
   const finishIntro = useOnboardingStore((s) => s.finishIntro);
   const [animStage, setAnimStage] = useState<number>(0);
   const [eyeState, setEyeState] = useState<'closed' | 'open' | 'blink'>('closed');
+  const [readingProgress, setReadingProgress] = useState(0);
 
   useEffect(() => {
-    // Linha do tempo da animação da Logo e Nome do Projeto
-    const t1 = setTimeout(() => setAnimStage(1), 80); // Logo entra com bounce
-    const t2 = setTimeout(() => setEyeState('open'), 450); // Olhos abrem
-    const t3 = setTimeout(() => setAnimStage(2), 700); // Nome "AspiToy" entra
-    const t4 = setTimeout(() => setEyeState('blink'), 1200); // Piscada amigável
-    const t5 = setTimeout(() => setEyeState('open'), 1350);
-    const t6 = setTimeout(() => setAnimStage(3), 1300); // Subtítulo e badge revelam
-    const t7 = setTimeout(() => finishIntro(), 2800); // Conclusão e entrada no jogo
+    // Sequência animada fluida e coreografada da tela de introdução:
+    const t0 = setTimeout(() => setAnimStage(1), 120); // Logo surge com bounce orgânico
+    const t1 = setTimeout(() => setEyeState('open'), 550); // Olhos abrem com brilho esmeralda
+    const t2 = setTimeout(() => setAnimStage(2), 900); // Nome "AspiToy" entra com slide suave
+    const t3 = setTimeout(() => setEyeState('blink'), 1450); // Piscada amigável
+    const t4 = setTimeout(() => setEyeState('open'), 1650);
+    const t5 = setTimeout(() => setAnimStage(3), 1550); // Subtítulo e badge revelam
+    const t6 = setTimeout(() => setAnimStage(4), 2100); // Rodapé e barra de leitura revelam
+
+    // Duração confortável de leitura: 8.5 segundos no total antes de auto-avanço
+    const startTime = Date.now();
+    const readingDuration = 8500;
+
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(100, (elapsed / readingDuration) * 100);
+      setReadingProgress(progress);
+      if (elapsed >= readingDuration) {
+        clearInterval(interval);
+        finishIntro();
+      }
+    }, 50);
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
@@ -27,13 +42,14 @@ export function IntroAnimation() {
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
+      clearTimeout(t0);
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
       clearTimeout(t4);
       clearTimeout(t5);
       clearTimeout(t6);
-      clearTimeout(t7);
+      clearInterval(interval);
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [finishIntro]);
@@ -89,10 +105,12 @@ export function IntroAnimation() {
             }`}
           />
 
-          {/* O Emblema / Rosto da Logo */}
+          {/* O Emblema / Rosto da Logo com animação fluida de escala e entrada */}
           <div
             className={`relative h-36 w-36 drop-shadow-2xl transition-all duration-700 ease-out transform ${
-              animStage >= 1 ? 'scale-100 translate-y-0 opacity-100' : 'scale-40 -translate-y-8 opacity-0'
+              animStage >= 1
+                ? 'scale-100 translate-y-0 opacity-100'
+                : 'scale-50 -translate-y-8 opacity-0'
             }`}
           >
             <svg viewBox="0 0 64 64" className="h-full w-full" fill="none">
@@ -166,15 +184,10 @@ export function IntroAnimation() {
                 </g>
               )}
 
-              {/* Antena no Topo com Estrela Dourada */}
-              <rect x="30.5" y="2.5" width="3" height="6.5" rx="1.5" fill="#78350F" />
-              <path
-                d="M32 0.5 L33.6 4.2 L37.5 4.6 L34.6 7.2 L35.5 11 L32 9.1 L28.5 11 L29.4 7.2 L26.5 4.6 L30.4 4.2 Z"
-                fill="#FBBF24"
-                stroke="#B45309"
-                strokeWidth="0.8"
-              />
-              <circle cx="31.4" cy="4.2" r="1" fill="#FEF08A" />
+              {/* Antena no Topo com Sensor Esférico (sem estrelas) */}
+              <rect x="30.5" y="3.5" width="3" height="5.5" rx="1.5" fill="#4A2810" />
+              <circle cx="32" cy="3.5" r="3.2" fill="#E05A36" stroke="#9A3412" strokeWidth="0.8" />
+              <circle cx="30.8" cy="2.2" r="1.1" fill="#FFFFFF" opacity="0.8" />
             </svg>
           </div>
         </div>
@@ -194,27 +207,45 @@ export function IntroAnimation() {
             </h1>
           </div>
 
-          {/* 3. TAGLINE E BADGE DE IDENTIDADE DO PROJETO */}
+          {/* 3. TAGLINE E BADGE DE IDENTIDADE DO PROJETO (sem estrelas) */}
           <div
-            className={`space-y-2 transition-all duration-700 ease-out delay-150 transform ${
+            className={`space-y-3 transition-all duration-700 ease-out transform ${
               animStage >= 3 ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
             }`}
           >
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-[#E05A36]/15 px-3.5 py-1 text-xs font-semibold tracking-wider uppercase text-[#C2410C]">
-              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#E05A36]/15 px-4 py-1.5 text-xs font-semibold tracking-wider uppercase text-[#C2410C] border border-[#E05A36]/25 shadow-xs">
+              <span className="h-2 w-2 rounded-full bg-[#E05A36] animate-pulse" aria-hidden="true" />
               <span>Agente Inteligente de Limpeza 3D</span>
             </div>
 
-            <p className="text-sm font-medium text-[#6E5D4F] max-w-sm mx-auto">
+            <p className="text-base font-medium text-[#6E5D4F] max-w-md mx-auto leading-relaxed">
               Exploração robótica autônoma em escala de brinquedo.
             </p>
           </div>
         </div>
       </div>
 
-      {/* DICA DE RODAPÉ / CALL TO ACTION */}
-      <footer className="text-center text-xs text-[#8C6D4F]">
-        <span>Clique em qualquer lugar ou pressione <kbd className="rounded border border-[#8C6D4F]/30 bg-[#FFFDF8] px-1.5 py-0.5 font-mono text-[11px] text-[#2A211B] shadow-xs">ENTER</kbd> para entrar</span>
+      {/* DICA DE RODAPÉ / CALL TO ACTION COM TEMPO DE LEITURA SUAVE */}
+      <footer
+        className={`text-center space-y-3 transition-all duration-700 ${
+          animStage >= 4 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
+        }`}
+      >
+        <p className="text-xs font-medium text-[#8C6D4F]">
+          Clique em qualquer lugar ou pressione{' '}
+          <kbd className="rounded border border-[#8C6D4F]/30 bg-[#FFFDF8] px-2 py-0.5 font-mono text-[11px] font-bold text-[#2A211B] shadow-xs">
+            ENTER
+          </kbd>{' '}
+          para entrar
+        </p>
+
+        {/* Barra sutil de tempo de leitura */}
+        <div className="w-48 h-1 mx-auto bg-[#8C6D4F]/15 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-[#E05A36]/75 rounded-full transition-all duration-75 ease-linear"
+            style={{ width: `${readingProgress}%` }}
+          />
+        </div>
       </footer>
     </div>
   );
