@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { RobotModel } from './RobotModel';
@@ -62,88 +62,6 @@ export function Robot() {
   );
 
   const priorityManager = useMemo(() => new PriorityManager(), []);
-
-  // Suporte a controle direto pelo teclado (WASD e Setas direcionais)
-  useEffect(() => {
-    const pressedKeys = new Set<string>();
-
-    const syncKeyboardBridge = () => {
-      let forward = 0;
-      let turn = 0;
-      if (pressedKeys.has('KeyW') || pressedKeys.has('ArrowUp')) forward += 1;
-      if (pressedKeys.has('KeyS') || pressedKeys.has('ArrowDown')) forward -= 1;
-      if (pressedKeys.has('KeyA') || pressedKeys.has('ArrowLeft')) turn += 1;
-      if (pressedKeys.has('KeyD') || pressedKeys.has('ArrowRight')) turn -= 1;
-
-      manualControlBridge.forward = forward;
-      manualControlBridge.turn = turn;
-      manualControlBridge.active = forward !== 0 || turn !== 0;
-
-      if (manualControlBridge.active) {
-        const currentRobot = useRobotStore.getState();
-        // Cancela alvo A* prévio se estiver no modo manual
-        if (currentRobot.targetPosition) {
-          currentRobot.setTargetPosition(null);
-        }
-        if (
-          currentRobot.state === 'IDLE' ||
-          currentRobot.state === 'PAUSED' ||
-          currentRobot.state === 'RECHARGING'
-        ) {
-          currentRobot.setOperationalState(
-            'CLEANING',
-            'Controle manual direto (WASD / Setas) ativado'
-          );
-        }
-      }
-    };
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (
-        target &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.isContentEditable)
-      ) {
-        return;
-      }
-
-      if (
-        e.code === 'KeyW' ||
-        e.code === 'KeyA' ||
-        e.code === 'KeyS' ||
-        e.code === 'KeyD' ||
-        e.code === 'ArrowUp' ||
-        e.code === 'ArrowDown' ||
-        e.code === 'ArrowLeft' ||
-        e.code === 'ArrowRight'
-      ) {
-        pressedKeys.add(e.code);
-        syncKeyboardBridge();
-      }
-    };
-
-    const onKeyUp = (e: KeyboardEvent) => {
-      if (pressedKeys.delete(e.code)) {
-        syncKeyboardBridge();
-      }
-    };
-
-    const onBlur = () => {
-      pressedKeys.clear();
-      syncKeyboardBridge();
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
-    window.addEventListener('blur', onBlur);
-    return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
-      window.removeEventListener('blur', onBlur);
-    };
-  }, []);
 
   const locomotionRef = useRef<RobotLocomotionState>({
     x: robotMotionBridge.x,
@@ -304,8 +222,8 @@ export function Robot() {
         if (dist < 0.28) {
           if (robotState.state === 'RETURNING') {
             loc.speed = 0;
-            loc.rotationY = -Math.PI / 2;
-            loc.targetRotationY = -Math.PI / 2;
+            loc.rotationY = Math.PI / 2;
+            loc.targetRotationY = Math.PI / 2;
             robotState.setTargetPosition(null);
             robotState.setOperationalState(
               'RECHARGING',

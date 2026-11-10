@@ -193,6 +193,8 @@ export function FollowCamera() {
       rotateSpeed={0.85}
       zoomSpeed={0.95}
       panSpeed={0.85}
+      keyPanSpeed={0}
+      keys={{ LEFT: '', UP: '', RIGHT: '', BOTTOM: '' }}
       minDistance={0.9}
       maxDistance={16.5}
       minPolarAngle={0.02}
