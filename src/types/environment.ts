@@ -17,7 +17,9 @@ export type CatBehaviorState =
   | 'SITTING'
   | 'STRETCHING'
   | 'GROOMING'
-  | 'JUMPING';
+  | 'JUMPING'
+  | 'STARTLED'
+  | 'DISORIENTED';
 
 export interface CatMotionBridge {
   x: number;

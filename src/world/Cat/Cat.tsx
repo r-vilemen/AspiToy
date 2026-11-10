@@ -43,6 +43,12 @@ const catMaterials = {
   zzzMat: new THREE.MeshBasicMaterial({
     color: '#FFFBEB',
   }),
+  frightExclamation: new THREE.MeshBasicMaterial({
+    color: '#EF4444',
+  }),
+  dizzyStar: new THREE.MeshBasicMaterial({
+    color: '#FBBF24',
+  }),
 };
 
 /**
@@ -51,9 +57,9 @@ const catMaterials = {
 export interface FurniturePerchSpot {
   id: string;
   name: string;
-  surfaceY: number; // Altura do tampo / assento
-  stagingPoint: Vector2D; // Ponto de preparação no chão para pular
-  perchWaypoints: Vector2D[]; // Pontos de pouso e circulação sobre o móvel
+  surfaceY: number;
+  stagingPoint: Vector2D;
+  perchWaypoints: Vector2D[];
 }
 
 export const CAT_FURNITURE_PERCHES: FurniturePerchSpot[] = [
@@ -140,11 +146,12 @@ function pickRandomState(pool: CatBehaviorState[], current: CatBehaviorState): C
 
 /**
  * Gato Doméstico Autônomo com Comportamentos Felinos Completos:
- * - Anda, corre, fica em pé, senta, alonga-se ("big stretch"), limpa-se (banho de gato),
- *   deita e dorme com respiração e partículas Zzz.
- * - Sobe e desce de móveis (Sofá, Poltrona, Pufe, Mesa de Centro) com saltos parabólicos em arco 3D.
- * - Anda, senta, deita e dorme empoleirado no topo dos móveis.
- * - Desocupa a malha de obstáculos do robô no piso quando empoleirado.
+ * - Anda, corre, fica em pé, senta, alonga-se, toma banho de gato, deita e dorme.
+ * - Sobe e desce de móveis (Sofá, Poltrona, Pufe, Mesa de Centro) com saltos parabólicos 3D.
+ * - Reatividade ao Robô:
+ *   1. Se o robô aproxima-se e o gato está vendo -> sai calmamente da frente andando.
+ *   2. Se o robô aproxima-se e o gato NÃO está vendo -> toma um susto daqueles (salto vertical com dorso arqueado) e sai em disparada correndo!
+ *   3. Se o robô bate no gato enquanto ele está dormindo -> acorda todo desnorteado (com estrelinhas/balançando a cabeça atordoado) e sai da frente andando.
  */
 export function Cat() {
   const rootRef = useRef<THREE.Group>(null);
@@ -159,10 +166,13 @@ export function Cat() {
   const eyesAwakeRef = useRef<THREE.Group>(null);
   const eyesClosedRef = useRef<THREE.Group>(null);
   const zzzGroupRef = useRef<THREE.Group>(null);
+  const frightBadgeRef = useRef<THREE.Group>(null);
+  const dizzyGroupRef = useRef<THREE.Group>(null);
 
   const syncTimerRef = useRef(0);
   const climbingTargetPerchRef = useRef<FurniturePerchSpot | null>(null);
   const perchCyclesRemainingRef = useRef(0);
+  const startleCooldownRef = useRef(0);
 
   const obstacles = useEnvironmentStore((s) => s.obstacles);
   const roomDimensions = useEnvironmentStore((s) => s.roomDimensions);
@@ -203,7 +213,6 @@ export function Cat() {
     catMotionBridge.jumpArcHeight = arcHeight;
     catMotionBridge.stateTimer = duration;
 
-    // Rotação voltada para o ponto de pouso
     const heading = Math.atan2(end.x - start.x, end.z - start.z);
     catMotionBridge.targetRotationY = heading;
     catMotionBridge.rotationY = heading;
@@ -213,6 +222,91 @@ export function Cat() {
     const delta = Math.min(rawDelta, 0.05);
     catMotionBridge.animPhase += delta;
     catMotionBridge.stateTimer -= delta;
+    startleCooldownRef.current -= delta;
+
+    // ================================================================
+    // INTERAÇÃO REATIVA COM O ROBÔ (SUSTO, DESVIO E ACORDAR DESNORTEADO)
+    // ================================================================
+    if (!catMotionBridge.isPerched && (catMotionBridge.y ?? 0) < 0.25) {
+      const distToRobot = Math.hypot(
+        robotMotionBridge.x - catMotionBridge.x,
+        robotMotionBridge.z - catMotionBridge.z
+      );
+
+      // CASO 1: Robô bate no gato enquanto ele está dormindo
+      if (
+        catMotionBridge.state === 'SLEEPING' &&
+        distToRobot < 0.58 &&
+        startleCooldownRef.current <= 0
+      ) {
+        startleCooldownRef.current = 3.5;
+        catMotionBridge.state = 'DISORIENTED';
+        catMotionBridge.stateTimer = 1.4;
+        catMotionBridge.speed = 0;
+
+        useCommandStore
+          .getState()
+          .pushNotification(
+            'Gato Acordado!',
+            'O AspiToy esbarrou no gato dormindo! Ele acordou todo desnorteado e vai sair da frente.',
+            'info'
+          );
+      }
+      // CASO 2: Robô aproxima-se do gato acordado no chão
+      else if (
+        catMotionBridge.state !== 'JUMPING' &&
+        catMotionBridge.state !== 'STARTLED' &&
+        catMotionBridge.state !== 'DISORIENTED' &&
+        catMotionBridge.state !== 'SLEEPING' &&
+        distToRobot < 0.88 &&
+        startleCooldownRef.current <= 0
+      ) {
+        // Cálculo do campo de visão felino (FOV)
+        const catDirX = Math.sin(catMotionBridge.rotationY);
+        const catDirZ = Math.cos(catMotionBridge.rotationY);
+        const toRobX = robotMotionBridge.x - catMotionBridge.x;
+        const toRobZ = robotMotionBridge.z - catMotionBridge.z;
+        const dot = (catDirX * toRobX + catDirZ * toRobZ) / (distToRobot || 1);
+
+        const seesRobot = dot > 0.25; // Dentro do campo frontal visual
+
+        if (!seesRobot && distToRobot < 0.76) {
+          // Gato NÃO estava vendo o robô se aproximar -> TOMA SUSTO!
+          startleCooldownRef.current = 3.2;
+          catMotionBridge.state = 'STARTLED';
+          catMotionBridge.stateTimer = 0.65;
+          catMotionBridge.speed = 0;
+
+          const toRobotAngle = Math.atan2(toRobX, toRobZ);
+          catMotionBridge.targetRotationY = toRobotAngle;
+
+          useCommandStore
+            .getState()
+            .pushNotification(
+              'Gato Assustado!',
+              'O robô veio por trás e o gato levou um susto daqueles!',
+              'warning'
+            );
+        } else if (seesRobot && distToRobot < 0.85) {
+          // Gato ESTÁ VENDO o robô se aproximar -> sai calmamente da frente andando
+          startleCooldownRef.current = 1.6;
+          catMotionBridge.state = 'WALKING';
+          catMotionBridge.speed = 0.95;
+
+          const awayAngle = Math.atan2(
+            catMotionBridge.x - robotMotionBridge.x,
+            catMotionBridge.z - robotMotionBridge.z
+          );
+          const sideAngle = awayAngle + (Math.sin(catMotionBridge.animPhase) > 0 ? 0.45 : -0.45);
+
+          catMotionBridge.rotationY = sideAngle;
+          catMotionBridge.targetRotationY = sideAngle;
+          catMotionBridge.targetX = catMotionBridge.x + Math.sin(sideAngle) * 1.3;
+          catMotionBridge.targetZ = catMotionBridge.z + Math.cos(sideAngle) * 1.3;
+          catMotionBridge.stateTimer = 3.5;
+        }
+      }
+    }
 
     // ================================================================
     // MÁQUINA DE ESTADOS DO GATO (CHÃO, SUBIR EM MÓVEIS, POLEIRO, DESCER)
@@ -226,7 +320,7 @@ export function Cat() {
       );
 
       const p = catMotionBridge.jumpProgress;
-      const smoothP = p * p * (3 - 2 * p); // Smoothstep
+      const smoothP = p * p * (3 - 2 * p);
       const start = catMotionBridge.jumpStart ?? {
         x: catMotionBridge.x,
         y: catMotionBridge.y,
@@ -252,7 +346,6 @@ export function Cat() {
         catMotionBridge.jumpProgress = 1;
 
         if (end.y > 0.3) {
-          // Pousou em cima de um móvel!
           catMotionBridge.isPerched = true;
           perchCyclesRemainingRef.current = 2 + Math.floor(Math.random() * 3);
           const nextState = pickRandomState(
@@ -262,7 +355,6 @@ export function Cat() {
           catMotionBridge.state = nextState;
           catMotionBridge.stateTimer = 5.0 + Math.random() * 4.5;
         } else {
-          // Pousou de volta no chão
           catMotionBridge.isPerched = false;
           catMotionBridge.perchSurfaceId = null;
           climbingTargetPerchRef.current = null;
@@ -278,13 +370,46 @@ export function Cat() {
             z: catMotionBridge.z,
           });
       }
+    } else if (catMotionBridge.state === 'STARTLED') {
+      if (catMotionBridge.stateTimer <= 0) {
+        // Após o susto vertical, sai em disparada correndo para longe do robô!
+        const escapeAngle = Math.atan2(
+          catMotionBridge.x - robotMotionBridge.x,
+          catMotionBridge.z - robotMotionBridge.z
+        );
+        catMotionBridge.state = 'RUNNING';
+        catMotionBridge.rotationY = escapeAngle;
+        catMotionBridge.targetRotationY = escapeAngle;
+        catMotionBridge.speed = 1.85;
+
+        const escapeTarget = pickFreeFloorTarget();
+        catMotionBridge.targetX = escapeTarget.x;
+        catMotionBridge.targetZ = escapeTarget.z;
+        catMotionBridge.stateTimer = 3.5;
+      }
+    } else if (catMotionBridge.state === 'DISORIENTED') {
+      if (catMotionBridge.stateTimer <= 0) {
+        // Após acordar desnorteado, sai da frente andando
+        const walkAwayAngle = Math.atan2(
+          catMotionBridge.x - robotMotionBridge.x,
+          catMotionBridge.z - robotMotionBridge.z
+        );
+        catMotionBridge.state = 'WALKING';
+        catMotionBridge.rotationY = walkAwayAngle;
+        catMotionBridge.targetRotationY = walkAwayAngle;
+        catMotionBridge.speed = 0.68;
+
+        const altTarget = pickFreeFloorTarget();
+        catMotionBridge.targetX = altTarget.x;
+        catMotionBridge.targetZ = altTarget.z;
+        catMotionBridge.stateTimer = 5.0;
+      }
     } else if (catMotionBridge.stateTimer <= 0) {
       if (catMotionBridge.isPerched) {
         // Gato está no topo de um móvel
         perchCyclesRemainingRef.current -= 1;
 
         if (perchCyclesRemainingRef.current <= 0) {
-          // Hora de pular de volta para o chão
           const perch = CAT_FURNITURE_PERCHES.find(
             (p) => p.id === catMotionBridge.perchSurfaceId
           ) ?? CAT_FURNITURE_PERCHES[0];
@@ -296,7 +421,6 @@ export function Cat() {
             0.18
           );
         } else {
-          // Continua no móvel em outro comportamento (sentar, deitar, dormir, esticar, etc.)
           const nextState = pickRandomState(
             PERCHED_CAT_STATES,
             catMotionBridge.state
@@ -330,7 +454,6 @@ export function Cat() {
         }
       } else {
         // Gato está no chão
-        // Chance de 35% de decidir subir em um móvel (Sofá, Mesa, Poltrona, Pufe)
         const wantsToClimb = Math.random() < 0.35 && !climbingTargetPerchRef.current;
 
         if (wantsToClimb) {
@@ -416,7 +539,6 @@ export function Cat() {
               Math.floor(Math.random() * perch.perchWaypoints.length)
             ] ?? { x: perch.stagingPoint.x, z: perch.stagingPoint.z };
 
-          // Notificação opcional no HUD
           useCommandStore
             .getState()
             .pushNotification(
@@ -473,36 +595,22 @@ export function Cat() {
           Math.cos(catMotionBridge.rotationY) * catMotionBridge.speed * delta;
 
         if (catMotionBridge.isPerched) {
-          // Movimento suave limitado sobre o topo do móvel
           catMotionBridge.x = desiredX;
           catMotionBridge.z = desiredZ;
         } else {
-          // No chão: evita robô e móveis
-          const distToRobot = Math.hypot(
-            desiredX - robotMotionBridge.x,
-            desiredZ - robotMotionBridge.z
+          const resolved = catObstacleDetector.resolveSafeMovement(
+            currentPos,
+            { x: desiredX, z: desiredZ },
+            0.28
           );
+          catMotionBridge.x = resolved.position.x;
+          catMotionBridge.z = resolved.position.z;
 
-          if (distToRobot < 0.62) {
-            catMotionBridge.rotationY += 2.4 * delta;
+          if (resolved.collided && !climbingTargetPerchRef.current) {
             const altTarget = pickFreeFloorTarget();
             catMotionBridge.targetX = altTarget.x;
             catMotionBridge.targetZ = altTarget.z;
-          } else {
-            const resolved = catObstacleDetector.resolveSafeMovement(
-              currentPos,
-              { x: desiredX, z: desiredZ },
-              0.28
-            );
-            catMotionBridge.x = resolved.position.x;
-            catMotionBridge.z = resolved.position.z;
-
-            if (resolved.collided && !climbingTargetPerchRef.current) {
-              const altTarget = pickFreeFloorTarget();
-              catMotionBridge.targetX = altTarget.x;
-              catMotionBridge.targetZ = altTarget.z;
-              catMotionBridge.rotationY += 1.8 * delta;
-            }
+            catMotionBridge.rotationY += 1.8 * delta;
           }
         }
       }
@@ -511,10 +619,17 @@ export function Cat() {
     // ================================================================
     // SINCRONIZAÇÃO DA RAIZ 3D E SOMBRA PROJETADA
     // ================================================================
+    let effectiveY = catMotionBridge.y;
+    if (state === 'STARTLED') {
+      const hopProgress = clamp(1 - (catMotionBridge.stateTimer / 0.65), 0, 1);
+      const hopY = Math.sin(hopProgress * Math.PI) * 0.32;
+      effectiveY += hopY;
+    }
+
     if (rootRef.current) {
       rootRef.current.position.set(
         catMotionBridge.x,
-        catMotionBridge.y,
+        effectiveY,
         catMotionBridge.z
       );
       rootRef.current.rotation.y = catMotionBridge.rotationY;
@@ -526,6 +641,12 @@ export function Cat() {
         const arc = Math.sin(p * Math.PI) * (catMotionBridge.jumpArcHeight ?? 0.38);
         shadowRef.current.position.y = -arc + 0.007;
         const scaleVal = Math.max(0.45, 1 - arc * 0.85);
+        shadowRef.current.scale.set(scaleVal, scaleVal, scaleVal);
+      } else if (state === 'STARTLED') {
+        const hopProgress = clamp(1 - (catMotionBridge.stateTimer / 0.65), 0, 1);
+        const hopY = Math.sin(hopProgress * Math.PI) * 0.32;
+        shadowRef.current.position.y = -hopY + 0.007;
+        const scaleVal = Math.max(0.45, 1 - hopY * 1.2);
         shadowRef.current.scale.set(scaleVal, scaleVal, scaleVal);
       } else {
         shadowRef.current.position.y = 0.007;
@@ -586,7 +707,6 @@ export function Cat() {
         legFRRef.current.rotation.set(-Math.sin(t * freq) * stride, 0, 0);
         legBLRef.current.rotation.set(-Math.sin(t * freq) * stride, 0, 0);
       } else if (state === 'STANDING') {
-        // Em pé de prontidão
         bodyRef.current.position.y = damp(bodyRef.current.position.y, 0.22, 8, delta);
         bodyRef.current.rotation.set(0, 0, 0);
 
@@ -607,8 +727,51 @@ export function Cat() {
         legFRRef.current.rotation.set(0, 0, 0);
         legBLRef.current.rotation.set(0, 0, 0);
         legBRRef.current.rotation.set(0, 0, 0);
+      } else if (state === 'STARTLED') {
+        // Pulo de susto súbito: dorso muito arqueado e rabo arrepiado para cima!
+        bodyRef.current.position.y = damp(bodyRef.current.position.y, 0.28, 12, delta);
+        bodyRef.current.rotation.x = damp(bodyRef.current.rotation.x, -0.38, 12, delta);
+        bodyRef.current.rotation.z = Math.sin(t * 24.0) * 0.05;
+
+        headRef.current.position.y = damp(headRef.current.position.y, 0.15, 12, delta);
+        headRef.current.rotation.x = damp(headRef.current.rotation.x, -0.28, 12, delta);
+        headRef.current.rotation.y = Math.sin(t * 18.0) * 0.15;
+        headRef.current.rotation.z = 0;
+
+        // Rabo em alerta máximo com tremor de arrepio
+        tailRef.current.rotation.x = damp(tailRef.current.rotation.x, 1.35, 12, delta);
+        tailRef.current.rotation.z = Math.sin(t * 28.0) * 0.35;
+
+        legFLRef.current.rotation.set(-0.65, 0, 0);
+        legFRRef.current.rotation.set(-0.65, 0, 0);
+        legBLRef.current.rotation.set(0.85, 0, 0);
+        legBRRef.current.rotation.set(0.85, 0, 0);
+      } else if (state === 'DISORIENTED') {
+        // Acordando desnorteado: cabeça sacudindo tonta e corpo bambo
+        const prog = clamp(1 - (catMotionBridge.stateTimer / 1.4), 0, 1);
+        bodyRef.current.position.y = damp(
+          bodyRef.current.position.y,
+          lerp(0.12, 0.21, prog),
+          7,
+          delta
+        );
+        bodyRef.current.rotation.x = damp(bodyRef.current.rotation.x, -0.15, 7, delta);
+        bodyRef.current.rotation.z = Math.sin(t * 8.0) * 0.09;
+
+        // Cabeça rodopiando/sacudindo atordoada
+        headRef.current.position.y = damp(headRef.current.position.y, 0.12, 8, delta);
+        headRef.current.rotation.y = Math.sin(t * 12.0) * 0.45;
+        headRef.current.rotation.z = Math.cos(t * 9.0) * 0.32;
+        headRef.current.rotation.x = Math.sin(t * 6.0) * 0.18;
+
+        tailRef.current.rotation.x = damp(tailRef.current.rotation.x, 0.1, 7, delta);
+        tailRef.current.rotation.z = Math.sin(t * 5.0) * 0.35;
+
+        legFLRef.current.rotation.set(Math.sin(t * 8.0) * 0.25, 0, 0);
+        legFRRef.current.rotation.set(-Math.sin(t * 8.0) * 0.25, 0, 0);
+        legBLRef.current.rotation.set(Math.sin(t * 6.0) * 0.3, 0, 0);
+        legBRRef.current.rotation.set(-Math.sin(t * 6.0) * 0.3, 0, 0);
       } else if (state === 'SITTING') {
-        // Sentado elegante (patas dianteiras estendidas retas, traseiro no piso/cushion)
         bodyRef.current.position.y = damp(bodyRef.current.position.y, 0.16, 7, delta);
         bodyRef.current.rotation.x = damp(bodyRef.current.rotation.x, -0.36, 7, delta);
         bodyRef.current.rotation.z = 0;
@@ -631,7 +794,6 @@ export function Cat() {
         legBLRef.current.rotation.set(1.35, 0, 0);
         legBRRef.current.rotation.set(1.35, 0, 0);
       } else if (state === 'STRETCHING') {
-        // Alongamento clássico de gato ("Big Stretch")
         bodyRef.current.position.y = damp(bodyRef.current.position.y, 0.14, 6, delta);
         bodyRef.current.rotation.x = damp(bodyRef.current.rotation.x, 0.35, 6, delta);
         bodyRef.current.rotation.z = 0;
@@ -654,7 +816,6 @@ export function Cat() {
         legBLRef.current.rotation.set(0.25, 0, 0);
         legBRRef.current.rotation.set(0.25, 0, 0);
       } else if (state === 'GROOMING') {
-        // Limpando-se / Lambendo a pata dianteira e esfregando a orelha
         bodyRef.current.position.y = damp(bodyRef.current.position.y, 0.16, 7, delta);
         bodyRef.current.rotation.x = damp(bodyRef.current.rotation.x, -0.3, 7, delta);
         bodyRef.current.rotation.z = -0.06;
@@ -677,7 +838,6 @@ export function Cat() {
         legBLRef.current.rotation.set(1.35, 0, 0);
         legBRRef.current.rotation.set(1.35, 0, 0);
       } else if (state === 'LYING') {
-        // Deitado acordado ("pãozinho" relaxado)
         bodyRef.current.position.y = damp(bodyRef.current.position.y, 0.11, 7, delta);
         bodyRef.current.rotation.x = damp(bodyRef.current.rotation.x, -0.05, 7, delta);
         bodyRef.current.rotation.z = 0;
@@ -700,7 +860,6 @@ export function Cat() {
         legBLRef.current.rotation.set(1.25, 0, 0);
         legBRRef.current.rotation.set(1.25, 0, 0);
       } else if (state === 'SLEEPING') {
-        // Dormindo com respiração suave
         const breath = Math.sin(t * 2.1) * 0.008;
         bodyRef.current.position.y = damp(
           bodyRef.current.position.y,
@@ -729,7 +888,6 @@ export function Cat() {
         legBLRef.current.rotation.set(1.35, 0, 0);
         legBRRef.current.rotation.set(1.35, 0, 0);
       } else if (state === 'JUMPING') {
-        // Pose dinâmica de salto
         const p = catMotionBridge.jumpProgress ?? 0;
         const pitch =
           p < 0.35 ? -0.45 : p > 0.7 ? 0.38 : -0.05;
@@ -767,6 +925,23 @@ export function Cat() {
       zzzGroupRef.current.visible = state === 'SLEEPING';
       if (state === 'SLEEPING') {
         zzzGroupRef.current.position.y = 0.42 + Math.sin(t * 2.5) * 0.04;
+      }
+    }
+
+    // Ícone de Exclamação de susto ("!")
+    if (frightBadgeRef.current) {
+      frightBadgeRef.current.visible = state === 'STARTLED';
+      if (state === 'STARTLED') {
+        frightBadgeRef.current.position.y = 0.48 + Math.sin(t * 20.0) * 0.03;
+      }
+    }
+
+    // Estrelinhas orbitando a cabeça desnorteada
+    if (dizzyGroupRef.current) {
+      dizzyGroupRef.current.visible = state === 'DISORIENTED';
+      if (state === 'DISORIENTED') {
+        dizzyGroupRef.current.rotation.y += delta * 6.0;
+        dizzyGroupRef.current.position.y = 0.42 + Math.sin(t * 6.0) * 0.02;
       }
     }
 
@@ -983,6 +1158,32 @@ export function Cat() {
         <mesh position={[0.09, 0.15, 0]} material={catMaterials.zzzMat}>
           <boxGeometry args={[0.056, 0.056, 0.01]} />
         </mesh>
+      </group>
+
+      {/* Balão estilizado de susto ("!") quando o gato toma susto */}
+      <group ref={frightBadgeRef} visible={false} position={[0, 0.48, 0.12]}>
+        {/* Haste do ponto de exclamação */}
+        <mesh position={[0, 0.04, 0]} material={catMaterials.frightExclamation}>
+          <boxGeometry args={[0.036, 0.1, 0.02]} />
+        </mesh>
+        {/* Ponto da exclamação */}
+        <mesh position={[0, -0.04, 0]} material={catMaterials.frightExclamation}>
+          <boxGeometry args={[0.036, 0.032, 0.02]} />
+        </mesh>
+      </group>
+
+      {/* Estrelinhas de tontura orbitando a cabeça desnorteada */}
+      <group ref={dizzyGroupRef} visible={false} position={[0, 0.42, 0.15]}>
+        {[-0.09, 0, 0.09].map((ox, idx) => (
+          <mesh
+            key={idx}
+            position={[ox, Math.sin(idx * 2) * 0.025, Math.cos(idx * 2) * 0.06]}
+            rotation={[0, idx * 1.2, 0.4]}
+            material={catMaterials.dizzyStar}
+          >
+            <dodecahedronGeometry args={[0.026, 0]} />
+          </mesh>
+        ))}
       </group>
     </group>
   );
