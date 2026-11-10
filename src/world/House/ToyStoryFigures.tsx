@@ -586,7 +586,7 @@ function PushableToyVisual({ kind }: { kind: PushableToyKind }) {
       return <PiggyBankMesh />;
     case 'planet-ball':
       return (
-        <group position={[0, 0.21, 0]}>
+        <group>
           <mesh castShadow receiveShadow>
             <sphereGeometry args={[0.21, 24, 20]} />
             <meshPhysicalMaterial
@@ -767,30 +767,61 @@ function PushableToyVisual({ kind }: { kind: PushableToyKind }) {
   }
 }
 
+const _rollAxis = new THREE.Vector3();
+const _spinAxis = new THREE.Vector3(0, 1, 0);
+
 /**
  * Brinquedos pequenos no chão que são fisicamente empurrados pelo AspiToy em 60 FPS.
  */
 export const PushableFloorToys = memo(function PushableFloorToys() {
   const groupRefs = useRef<Array<THREE.Group | null>>([]);
+  const visualRefs = useRef<Array<THREE.Group | null>>([]);
 
-  useFrame((state) => {
+  useFrame((state, delta) => {
     const t = state.clock.elapsedTime;
+    const dt = Math.min(delta, 0.05);
+
     for (let i = 0; i < pushableToysBridge.length; i++) {
       const toy = pushableToysBridge[i];
       const node = groupRefs.current[i];
+      const visualNode = visualRefs.current[i];
       if (!node) continue;
 
-      // Base Y constante no nível exato do piso (y = 0)
-      node.position.set(toy.x, 0, toy.z);
+      // Elevação do piso: se o brinquedo estiver sobre o tapete (centro [-0.75, -1.1], raio 1.95m), eleva para 0.023m
+      const rugDist = Math.hypot(toy.x - (-0.75), toy.z - (-1.1));
+      let floorY = 0.0;
+      if (rugDist < 1.85) {
+        floorY = 0.023;
+      } else if (rugDist < 1.98) {
+        floorY = 0.023 * ((1.98 - rugDist) / 0.13);
+      }
 
-      if (toy.kind === 'planet-ball') {
-        // Rolamento tridimensional autêntico da esfera no ponto de tangência com o chão
-        node.rotation.set(toy.rollPitch, toy.rotY, toy.rollRoll, 'XYZ');
-      } else {
-        // Balanço elástico suave (wobble) quando o objeto é empurrado
-        const wobbleSin = Math.sin(t * 18 + i) * toy.wobble;
-        const wobbleCos = Math.cos(t * 16 + i) * toy.wobble;
-        node.rotation.set(wobbleSin, toy.rotY, wobbleCos, 'XYZ');
+      // Base Y constante e tangencial ao piso/tapete
+      node.position.set(toy.x, floorY, toy.z);
+
+      if (visualNode) {
+        if (toy.kind === 'planet-ball') {
+          // A esfera fica rigorosamente centrada a Y = toy.radius acima da superfície de apoio (piso ou tapete).
+          // Seu ponto inferior de contato NUNCA afunda nem penetra o chão.
+          visualNode.position.set(0, toy.radius, 0);
+
+          // Rolamento físico autêntico em torno do próprio centro geométrico usando eixo perpendicular ao vetor velocidade
+          const speed = Math.hypot(toy.vx, toy.vz);
+          if (speed > 0.001) {
+            const ballR = Math.max(0.05, toy.radius);
+            _rollAxis.set(toy.vz / speed, 0, -toy.vx / speed);
+            visualNode.rotateOnWorldAxis(_rollAxis, (speed * dt) / ballR);
+          }
+          if (Math.abs(toy.angVel) > 0.001) {
+            visualNode.rotateOnWorldAxis(_spinAxis, toy.angVel * dt);
+          }
+        } else {
+          // Balanço elástico suave (wobble) quando o objeto é empurrado
+          const wobbleSin = Math.sin(t * 18 + i) * toy.wobble;
+          const wobbleCos = Math.cos(t * 16 + i) * toy.wobble;
+          visualNode.position.set(0, 0, 0);
+          visualNode.rotation.set(wobbleSin, toy.rotY, wobbleCos, 'XYZ');
+        }
       }
     }
   });
@@ -804,10 +835,9 @@ export const PushableFloorToys = memo(function PushableFloorToys() {
             groupRefs.current[idx] = el;
           }}
           position={[toy.x, 0, toy.z]}
-          rotation={[0, toy.rotY, 0]}
         >
-          {/* Sombra de contato sob cada brinquedo */}
-          <mesh position={[0, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          {/* Sombra de contato sob cada brinquedo — fica sempre plana no piso/tapete */}
+          <mesh position={[0, 0.003, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <circleGeometry args={[toy.radius * 0.95, 18]} />
             <meshBasicMaterial
               color="#1E0E03"
@@ -816,7 +846,14 @@ export const PushableFloorToys = memo(function PushableFloorToys() {
               depthWrite={false}
             />
           </mesh>
-          <PushableToyVisual kind={toy.kind} />
+          <group
+            ref={(el) => {
+              visualRefs.current[idx] = el;
+            }}
+            position={[0, toy.kind === 'planet-ball' ? toy.radius : 0, 0]}
+          >
+            <PushableToyVisual kind={toy.kind} />
+          </group>
         </group>
       ))}
     </group>
