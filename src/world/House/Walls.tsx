@@ -32,17 +32,14 @@ export const Walls = memo(function Walls({
       {/* ======================================================== */}
       {/* 1. PAREDE ESQUERDA (OESTE): Lambris, Janela, Cortinas    */}
       {/* ======================================================== */}
-      <group position={[-halfW - wallThick / 2, 0, 0]}>
-        {/* Parede estrutural */}
-        <mesh
-          castShadow
-          receiveShadow
-          position={[0, height / 2, 0]}
-          material={sharedMaterials.wallPlaster}
-        >
-          <boxGeometry args={[wallThick, height, depth + wallThick * 2]} />
-        </mesh>
-
+      <OcclusionWall
+        name="bedroom-west-wall"
+        position={[-halfW - wallThick / 2, 0, 0]}
+        meshPosition={[0, height / 2, 0]}
+        args={[wallThick, height, depth + wallThick * 2]}
+        roomCenter={[0, 0]}
+        materialType="plaster"
+      >
         {/* Painel de Lambris (Wainscoting) */}
         <mesh
           receiveShadow
@@ -185,21 +182,19 @@ export const Walls = memo(function Walls({
             <meshStandardMaterial color="#F5C438" roughness={0.5} />
           </mesh>
         </group>
-      </group>
+      </OcclusionWall>
 
       {/* ======================================================== */}
       {/* 2. PAREDE DO FUNDO (NORTE): Lareira, Janela e Quadros    */}
       {/* ======================================================== */}
-      <group position={[0, 0, -halfD - wallThick / 2]}>
-        <mesh
-          castShadow
-          receiveShadow
-          position={[0, height / 2, 0]}
-          material={sharedMaterials.wallPlaster}
-        >
-          <boxGeometry args={[width + wallThick * 2, height, wallThick]} />
-        </mesh>
-
+      <OcclusionWall
+        name="bedroom-north-wall"
+        position={[0, 0, -halfD - wallThick / 2]}
+        meshPosition={[0, height / 2, 0]}
+        args={[width + wallThick * 2, height, wallThick]}
+        roomCenter={[0, 0]}
+        materialType="plaster"
+      >
         {/* Rodapé norte */}
         <mesh
           receiveShadow
@@ -350,7 +345,7 @@ export const Walls = memo(function Walls({
             </mesh>
           ))}
         </group>
-      </group>
+      </OcclusionWall>
 
       {/* ======================================================== */}
       {/* 3. PAREDE LESTE: Quadro Decorativo (Porta aberta via Doors)*/}

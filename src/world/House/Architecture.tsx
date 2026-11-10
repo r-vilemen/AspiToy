@@ -26,17 +26,14 @@ export const Architecture = memo(function Architecture({
       {/* Quarto original já renderiza sua parte Norte [-5, 5].    */}
       {/* Aqui estendemos para Corredor [5, 7.6] e Sala [7.6, 17.6] */}
       {/* ======================================================== */}
-      <group position={[11.3, 0, -4.0 - wallThick / 2]}>
-        {/* Parede de alvenaria Norte (Corredor + Sala de Estar) */}
-        <mesh
-          castShadow
-          receiveShadow
-          position={[0, wallHeight / 2, 0]}
-          material={sharedMaterials.wallPlaster}
-        >
-          <boxGeometry args={[12.6 + wallThick, wallHeight, wallThick]} />
-        </mesh>
-
+      <OcclusionWall
+        name="house-north-wall-living-corridor"
+        position={[11.3, 0, -4.0 - wallThick / 2]}
+        meshPosition={[0, wallHeight / 2, 0]}
+        args={[12.6 + wallThick, wallHeight, wallThick]}
+        roomCenter={[11.3, 0]}
+        materialType="plaster"
+      >
         {/* Rodapé Norte da Sala e Corredor */}
         <mesh
           receiveShadow
@@ -45,22 +42,20 @@ export const Architecture = memo(function Architecture({
         >
           <boxGeometry args={[12.6, 0.24, 0.08]} />
         </mesh>
-      </group>
+      </OcclusionWall>
 
       {/* ======================================================== */}
       {/* 2. PAREDE LESTE EXTERNA DA CASA (X = +17.6m)             */}
       {/* Abrange Sala de Estar e Cozinha (Z de -4.0 até 8.5m)     */}
       {/* ======================================================== */}
-      <group position={[17.6 + wallThick / 2, 0, 2.25]}>
-        <mesh
-          castShadow
-          receiveShadow
-          position={[0, wallHeight / 2, 0]}
-          material={sharedMaterials.wallPlaster}
-        >
-          <boxGeometry args={[wallThick, wallHeight, 12.5 + wallThick * 2]} />
-        </mesh>
-
+      <OcclusionWall
+        name="house-east-wall"
+        position={[17.6 + wallThick / 2, 0, 2.25]}
+        meshPosition={[0, wallHeight / 2, 0]}
+        args={[wallThick, wallHeight, 12.5 + wallThick * 2]}
+        roomCenter={[12.6, 2.25]}
+        materialType="plaster"
+      >
         {/* Rodapé leste */}
         <mesh
           receiveShadow
@@ -95,7 +90,7 @@ export const Architecture = memo(function Architecture({
             <boxGeometry args={[0.04, 1.4, 1.6]} />
           </mesh>
         </group>
-      </group>
+      </OcclusionWall>
 
       {/* ======================================================== */}
       {/* 3. PAREDE DIVISÓRIA ENTRE QUARTO E CORREDOR & OESTE CORREDOR (X = 5.0m) */}
@@ -103,36 +98,33 @@ export const Architecture = memo(function Architecture({
       {/* ======================================================== */}
       <group position={[5.0, 0, 0]}>
         {/* Segmento Norte da parede divisória (Z de -4.0 a 1.65) */}
-        <mesh
-          castShadow
-          receiveShadow
-          position={[0, wallHeight / 2, -1.175]}
-          material={sharedMaterials.wallPlaster}
+        <OcclusionWall
+          name="corridor-west-north-wall"
+          position={[0, 0, -1.175]}
+          meshPosition={[0, wallHeight / 2, 0]}
+          args={[wallThick, wallHeight, 5.65]}
+          roomCenter={[6.3, -1.175]}
+          materialType="plaster"
         >
-          <boxGeometry args={[wallThick, wallHeight, 5.65]} />
-        </mesh>
-        {/* Rodapé no lado do corredor (Norte) */}
-        <mesh
-          receiveShadow
-          position={[wallThick / 2 + 0.04, 0.12, -1.175]}
-          material={sharedMaterials.wallAccent}
-        >
-          <boxGeometry args={[0.08, 0.24, 5.65]} />
-        </mesh>
+          {/* Rodapé no lado do corredor (Norte) */}
+          <mesh
+            receiveShadow
+            position={[wallThick / 2 + 0.04, 0.12, 0]}
+            material={sharedMaterials.wallAccent}
+          >
+            <boxGeometry args={[0.08, 0.24, 5.65]} />
+          </mesh>
+        </OcclusionWall>
 
         {/* Verga superior acima do vão da porta (Z de 1.65 a 3.05, Y de 3.32 a wallHeight) */}
-        <mesh
-          castShadow
-          receiveShadow
-          position={[
-            0,
-            3.32 + (wallHeight - 3.32) / 2,
-            2.35,
-          ]}
-          material={sharedMaterials.wallPlaster}
-        >
-          <boxGeometry args={[wallThick, wallHeight - 3.32, 1.4]} />
-        </mesh>
+        <OcclusionWall
+          name="corridor-west-door-lintel"
+          position={[0, 3.32, 2.35]}
+          meshPosition={[0, (wallHeight - 3.32) / 2, 0]}
+          args={[wallThick, wallHeight - 3.32, 1.4]}
+          roomCenter={[6.3, 2.35]}
+          materialType="plaster"
+        />
 
         {/* Segmento Sul contínuo: divide o quarto (Z: 3.05 a 4.0) e fecha o Corredor Oeste (Z: 4.0 a 8.5) */}
         <OcclusionWall
@@ -159,75 +151,78 @@ export const Architecture = memo(function Architecture({
       {/* ======================================================== */}
       <group position={[7.6, 0, 0]}>
         {/* Segmento Norte (Z de -4.0 a -0.4) */}
-        <mesh
-          castShadow
-          receiveShadow
-          position={[0, wallHeight / 2, -2.2]}
-          material={sharedMaterials.wallPlaster}
+        <OcclusionWall
+          name="corridor-east-north-wall"
+          position={[0, 0, -2.2]}
+          meshPosition={[0, wallHeight / 2, 0]}
+          args={[wallThick, wallHeight, 3.6]}
+          roomCenter={[12.6, -2.2]}
+          materialType="plaster"
         >
-          <boxGeometry args={[wallThick, wallHeight, 3.6]} />
-        </mesh>
-        <mesh
-          receiveShadow
-          position={[-wallThick / 2 - 0.04, 0.12, -2.2]}
-          material={sharedMaterials.wallAccent}
-        >
-          <boxGeometry args={[0.08, 0.24, 3.6]} />
-        </mesh>
+          <mesh
+            receiveShadow
+            position={[-wallThick / 2 - 0.04, 0.12, 0]}
+            material={sharedMaterials.wallAccent}
+          >
+            <boxGeometry args={[0.08, 0.24, 3.6]} />
+          </mesh>
+        </OcclusionWall>
 
         {/* Verga sobre o arco de entrada da Sala (Z de -0.4 a 1.4) */}
-        <mesh
-          castShadow
-          receiveShadow
-          position={[0, 3.32 + (wallHeight - 3.32) / 2, 0.5]}
-          material={sharedMaterials.wallPlaster}
-        >
-          <boxGeometry args={[wallThick, wallHeight - 3.32, 1.8]} />
-        </mesh>
+        <OcclusionWall
+          name="corridor-east-living-lintel"
+          position={[0, 3.32, 0.5]}
+          meshPosition={[0, (wallHeight - 3.32) / 2, 0]}
+          args={[wallThick, wallHeight - 3.32, 1.8]}
+          roomCenter={[12.6, 0.5]}
+          materialType="plaster"
+        />
 
         {/* Segmento Central entre Sala e Cozinha (Z de 1.4 a 5.35) */}
-        <mesh
-          castShadow
-          receiveShadow
-          position={[0, wallHeight / 2, 3.375]}
-          material={sharedMaterials.wallPlaster}
+        <OcclusionWall
+          name="corridor-east-center-wall"
+          position={[0, 0, 3.375]}
+          meshPosition={[0, wallHeight / 2, 0]}
+          args={[wallThick, wallHeight, 3.95]}
+          roomCenter={[12.6, 3.375]}
+          materialType="plaster"
         >
-          <boxGeometry args={[wallThick, wallHeight, 3.95]} />
-        </mesh>
-        <mesh
-          receiveShadow
-          position={[-wallThick / 2 - 0.04, 0.12, 3.375]}
-          material={sharedMaterials.wallAccent}
-        >
-          <boxGeometry args={[0.08, 0.24, 3.95]} />
-        </mesh>
+          <mesh
+            receiveShadow
+            position={[-wallThick / 2 - 0.04, 0.12, 0]}
+            material={sharedMaterials.wallAccent}
+          >
+            <boxGeometry args={[0.08, 0.24, 3.95]} />
+          </mesh>
+        </OcclusionWall>
 
         {/* Verga sobre a porta da Cozinha (Z de 5.35 a 6.65) */}
-        <mesh
-          castShadow
-          receiveShadow
-          position={[0, 3.1 + (wallHeight - 3.1) / 2, 6.0]}
-          material={sharedMaterials.wallPlaster}
-        >
-          <boxGeometry args={[wallThick, wallHeight - 3.1, 1.3]} />
-        </mesh>
+        <OcclusionWall
+          name="corridor-east-kitchen-lintel"
+          position={[0, 3.1, 6.0]}
+          meshPosition={[0, (wallHeight - 3.1) / 2, 0]}
+          args={[wallThick, wallHeight - 3.1, 1.3]}
+          roomCenter={[12.6, 6.0]}
+          materialType="plaster"
+        />
 
         {/* Segmento Sul até o Banheiro (Z de 6.65 a 8.5) */}
-        <mesh
-          castShadow
-          receiveShadow
-          position={[0, wallHeight / 2, 7.575]}
-          material={sharedMaterials.wallPlaster}
+        <OcclusionWall
+          name="corridor-east-south-wall"
+          position={[0, 0, 7.575]}
+          meshPosition={[0, wallHeight / 2, 0]}
+          args={[wallThick, wallHeight, 1.85]}
+          roomCenter={[12.6, 7.575]}
+          materialType="plaster"
         >
-          <boxGeometry args={[wallThick, wallHeight, 1.85]} />
-        </mesh>
-        <mesh
-          receiveShadow
-          position={[-wallThick / 2 - 0.04, 0.12, 7.575]}
-          material={sharedMaterials.wallAccent}
-        >
-          <boxGeometry args={[0.08, 0.24, 1.85]} />
-        </mesh>
+          <mesh
+            receiveShadow
+            position={[-wallThick / 2 - 0.04, 0.12, 0]}
+            material={sharedMaterials.wallAccent}
+          >
+            <boxGeometry args={[0.08, 0.24, 1.85]} />
+          </mesh>
+        </OcclusionWall>
       </group>
 
       {/* ======================================================== */}
@@ -262,32 +257,32 @@ export const Architecture = memo(function Architecture({
         {/* Parede Norte do Banheiro (Z = 8.5m) com vão de porta em X = 6.3m */}
         <group position={[0, 0, 8.5]}>
           {/* Lado Oeste (X de 5.0 a 5.65) */}
-          <mesh
-            castShadow
-            receiveShadow
-            position={[5.325, wallHeight / 2, 0]}
-            material={sharedMaterials.wallPlaster}
-          >
-            <boxGeometry args={[0.65, wallHeight, wallThick]} />
-          </mesh>
+          <OcclusionWall
+            name="bathroom-north-west-wall"
+            position={[5.325, 0, 0]}
+            meshPosition={[0, wallHeight / 2, 0]}
+            args={[0.65, wallHeight, wallThick]}
+            roomCenter={[7.8, 11.0]}
+            materialType="plaster"
+          />
           {/* Verga sobre a porta do Banheiro (X de 5.65 a 6.95) */}
-          <mesh
-            castShadow
-            receiveShadow
-            position={[6.3, 3.0 + (wallHeight - 3.0) / 2, 0]}
-            material={sharedMaterials.wallPlaster}
-          >
-            <boxGeometry args={[1.3, wallHeight - 3.0, wallThick]} />
-          </mesh>
+          <OcclusionWall
+            name="bathroom-north-door-lintel"
+            position={[6.3, 3.0, 0]}
+            meshPosition={[0, (wallHeight - 3.0) / 2, 0]}
+            args={[1.3, wallHeight - 3.0, wallThick]}
+            roomCenter={[7.8, 11.0]}
+            materialType="plaster"
+          />
           {/* Lado Leste (X de 6.95 a 10.6) */}
-          <mesh
-            castShadow
-            receiveShadow
-            position={[8.775, wallHeight / 2, 0]}
-            material={sharedMaterials.wallPlaster}
-          >
-            <boxGeometry args={[3.65, wallHeight, wallThick]} />
-          </mesh>
+          <OcclusionWall
+            name="bathroom-north-east-wall"
+            position={[8.775, 0, 0]}
+            meshPosition={[0, wallHeight / 2, 0]}
+            args={[3.65, wallHeight, wallThick]}
+            roomCenter={[7.8, 11.0]}
+            materialType="plaster"
+          />
         </group>
 
         {/* Parede Oeste do Banheiro (X = 5.0m, Z de 8.5 a 13.5) */}

@@ -5,10 +5,11 @@ import { sharedMaterials } from '../Environment/Materials';
 
 export interface OcclusionWallProps {
   position: [number, number, number];
+  meshPosition?: [number, number, number];
   args: [number, number, number];
   roomCenter: [number, number]; // [x, z] centro do cômodo que a parede delimita
   materialType?: 'plaster' | 'bathroomTile';
-  minOpacity?: number; // Opacidade quando a câmera está na frente olhando para dentro (padrão: 0.18)
+  minOpacity?: number; // Opacidade quando a câmera está na frente olhando para dentro (padrão: 0.14)
   maxOpacity?: number; // Opacidade quando a parede está ao fundo / opaca (padrão: 1.0)
   name?: string;
   receiveShadow?: boolean;
@@ -18,7 +19,7 @@ export interface OcclusionWallProps {
 /**
  * Parede com Transparência Dinâmica por Oclusão de Câmera:
  * - Detecta em tempo real se a câmera está do lado externo da parede olhando para o cômodo.
- * - Quando a parede fica na frente da visão da câmera, faz fade suave para semi-transparente (0.18),
+ * - Quando a parede fica na frente da visão da câmera, faz fade suave para semi-transparente (0.14),
  *   permitindo ver 100% dos móveis, objetos, gatos e robô sem obstrução.
  * - Quando a parede fica ao fundo (backdrop do cômodo), mantém opacidade sólida (1.0).
  * - Sincroniza rodapés, lambris e molduras filhas para desaparecerem/reaparecerem em conjunto.
@@ -26,10 +27,11 @@ export interface OcclusionWallProps {
  */
 export const OcclusionWall = memo(function OcclusionWall({
   position,
+  meshPosition,
   args,
   roomCenter,
   materialType = 'plaster',
-  minOpacity = 0.18,
+  minOpacity = 0.14,
   maxOpacity = 1.0,
   name,
   receiveShadow = true,
@@ -141,6 +143,7 @@ export const OcclusionWall = memo(function OcclusionWall({
         ref={wallMeshRef}
         castShadow={false}
         receiveShadow={receiveShadow}
+        position={meshPosition ?? [0, 0, 0]}
         material={wallMaterial}
       >
         <boxGeometry args={args} />
