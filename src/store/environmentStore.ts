@@ -388,7 +388,8 @@ function createInitialPushableToys(): PushableToyState[] {
     vx: 0,
     vz: 0,
     angVel: 0,
-    rollPhase: 0,
+    rollPitch: 0,
+    rollRoll: 0,
     wobble: 0,
   }));
 }
@@ -407,7 +408,8 @@ export function resetPushableToys(): void {
     toy.vx = 0;
     toy.vz = 0;
     toy.angVel = 0;
-    toy.rollPhase = 0;
+    toy.rollPitch = 0;
+    toy.rollRoll = 0;
     toy.wobble = 0;
   }
 }
@@ -503,9 +505,11 @@ export function stepPushableToysPhysics(
     toy.z += toy.vz * delta;
     toy.rotY += toy.angVel * delta;
 
-    const speed = Math.hypot(toy.vx, toy.vz);
-    if (speed > 0.01) {
-      toy.rollPhase += (speed * delta) / Math.max(0.1, toy.radius);
+    // Rotação física de rolamento da esfera proporcional à velocidade vetorial
+    if (toy.kind === 'planet-ball') {
+      const ballR = Math.max(0.05, toy.radius);
+      toy.rollPitch += (toy.vz * delta) / ballR;
+      toy.rollRoll -= (toy.vx * delta) / ballR;
     }
 
     toy.vx *= friction;
