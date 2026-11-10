@@ -4,11 +4,13 @@ import type {
   CatMotionBridge,
   DustSpot,
   EnvironmentObstacle,
+  PushableToyState,
   RoomDimensions,
   RoomRegion,
 } from '@/types/environment';
 import type { Vector2D } from '@/types/robot';
 import { isPointInsideBounds } from '@/utils/coordinates';
+import { clamp } from '@/utils/math';
 
 export const INITIAL_DOCK_POSITION: Vector2D = { x: -0.15, z: 0.85 };
 
@@ -151,15 +153,15 @@ export const INITIAL_OBSTACLES: EnvironmentObstacle[] = [
     label: 'Blocos ABC',
     category: 'decor',
     bounds: { minX: -3.65, maxX: -2.75, minZ: 1.25, maxZ: 1.95 },
-    collidable: true,
-    height: 0.65,
+    collidable: false,
+    height: 0.32,
   },
   {
     id: 'toy-luxo-ball',
     label: 'Bola Planeta Toy',
     category: 'decor',
     bounds: { minX: -1.62, maxX: -1.14, minZ: 0.28, maxZ: 0.76 },
-    collidable: true,
+    collidable: false,
     height: 0.42,
   },
   {
@@ -167,7 +169,7 @@ export const INITIAL_OBSTACLES: EnvironmentObstacle[] = [
     label: 'Trenzinho Colorido',
     category: 'decor',
     bounds: { minX: 1.28, maxX: 1.96, minZ: -2.92, maxZ: -2.44 },
-    collidable: true,
+    collidable: false,
     height: 0.38,
   },
   {
@@ -175,7 +177,7 @@ export const INITIAL_OBSTACLES: EnvironmentObstacle[] = [
     label: 'Torre de Argolas',
     category: 'decor',
     bounds: { minX: -1.16, maxX: -0.72, minZ: -2.92, maxZ: -2.48 },
-    collidable: true,
+    collidable: false,
     height: 0.48,
   },
   {
@@ -183,7 +185,7 @@ export const INITIAL_OBSTACLES: EnvironmentObstacle[] = [
     label: 'Carrinho RC Verde',
     category: 'decor',
     bounds: { minX: 2.66, maxX: 3.34, minZ: 1.66, maxZ: 2.24 },
-    collidable: true,
+    collidable: false,
     height: 0.36,
   },
   {
@@ -191,7 +193,7 @@ export const INITIAL_OBSTACLES: EnvironmentObstacle[] = [
     label: 'Pinos de Boliche',
     category: 'decor',
     bounds: { minX: -3.14, maxX: -2.56, minZ: -0.92, maxZ: -0.38 },
-    collidable: true,
+    collidable: false,
     height: 0.45,
   },
   {
@@ -199,7 +201,7 @@ export const INITIAL_OBSTACLES: EnvironmentObstacle[] = [
     label: 'Baldinho de Soldados',
     category: 'decor',
     bounds: { minX: 2.08, maxX: 2.62, minZ: 2.18, maxZ: 2.72 },
-    collidable: true,
+    collidable: false,
     height: 0.46,
   },
   {
@@ -227,6 +229,329 @@ const INITIAL_DUST_SPOTS: DustSpot[] = [
   { id: 'dust-4', position: { x: 2.4, z: 1.2 }, radius: 0.45, intensity: 0.85, regionId: 'reading-nook' },
   { id: 'dust-5', position: { x: -2.15, z: -2.25 }, radius: 0.46, intensity: 0.85, regionId: 'media-zone' },
 ];
+
+const INITIAL_PUSHABLE_TOY_SEEDS: Array<
+  Pick<PushableToyState, 'id' | 'label' | 'kind' | 'x' | 'z' | 'rotY' | 'radius'>
+> = [
+  {
+    id: 'push-cowboy',
+    label: 'Boneco Cowboy Xerife',
+    kind: 'cowboy-doll',
+    x: -0.55,
+    z: -0.35,
+    rotY: 0.35,
+    radius: 0.18,
+  },
+  {
+    id: 'push-spaceranger',
+    label: 'Patrulheiro Espacial',
+    kind: 'space-ranger',
+    x: 0.35,
+    z: 0.15,
+    rotY: -0.45,
+    radius: 0.2,
+  },
+  {
+    id: 'push-alien-1',
+    label: 'Alienígena de 3 Olhos',
+    kind: 'green-alien',
+    x: -1.05,
+    z: -0.18,
+    rotY: 0.5,
+    radius: 0.15,
+  },
+  {
+    id: 'push-alien-2',
+    label: 'Alienígena de 3 Olhos',
+    kind: 'green-alien',
+    x: 1.85,
+    z: -0.65,
+    rotY: -0.8,
+    radius: 0.15,
+  },
+  {
+    id: 'push-trex',
+    label: 'Dinossauro T-Rex Verde',
+    kind: 'trex-dino',
+    x: -2.15,
+    z: 0.55,
+    rotY: 0.75,
+    radius: 0.22,
+  },
+  {
+    id: 'push-slinky',
+    label: 'Cachorro de Mola',
+    kind: 'slinky-dog',
+    x: 1.65,
+    z: 1.25,
+    rotY: -0.6,
+    radius: 0.22,
+  },
+  {
+    id: 'push-piggy',
+    label: 'Porquinho Cofrinho',
+    kind: 'piggy-bank',
+    x: 2.35,
+    z: 0.15,
+    rotY: -1.1,
+    radius: 0.18,
+  },
+  {
+    id: 'push-ball',
+    label: 'Bola de Brinquedo',
+    kind: 'planet-ball',
+    x: -1.38,
+    z: 0.52,
+    rotY: 0,
+    radius: 0.21,
+  },
+  {
+    id: 'push-block-red',
+    label: 'Bloco A Vermelho',
+    kind: 'block-red',
+    x: -3.28,
+    z: 1.58,
+    rotY: 0.1,
+    radius: 0.17,
+  },
+  {
+    id: 'push-block-blue',
+    label: 'Bloco B Azul',
+    kind: 'block-blue',
+    x: -2.92,
+    z: 1.68,
+    rotY: 0.4,
+    radius: 0.17,
+  },
+  {
+    id: 'push-block-yellow',
+    label: 'Bloco C Amarelo',
+    kind: 'block-yellow',
+    x: -3.08,
+    z: 1.28,
+    rotY: -0.3,
+    radius: 0.17,
+  },
+  {
+    id: 'push-train',
+    label: 'Trenzinho Colorido',
+    kind: 'wooden-train',
+    x: 1.62,
+    z: -2.68,
+    rotY: -0.35,
+    radius: 0.23,
+  },
+  {
+    id: 'push-rings',
+    label: 'Torre de Argolas',
+    kind: 'ring-stacker',
+    x: -0.94,
+    z: -2.65,
+    rotY: 0,
+    radius: 0.19,
+  },
+  {
+    id: 'push-buggy',
+    label: 'Carrinho RC Buggy',
+    kind: 'rc-buggy',
+    x: 2.95,
+    z: 1.9,
+    rotY: -2.2,
+    radius: 0.24,
+  },
+  {
+    id: 'push-pin-1',
+    label: 'Pino de Boliche',
+    kind: 'bowling-pin',
+    x: -2.85,
+    z: -0.65,
+    rotY: 0,
+    radius: 0.13,
+  },
+  {
+    id: 'push-pin-2',
+    label: 'Pino de Boliche',
+    kind: 'bowling-pin',
+    x: -2.62,
+    z: -0.58,
+    rotY: 0.3,
+    radius: 0.13,
+  },
+];
+
+function createInitialPushableToys(): PushableToyState[] {
+  return INITIAL_PUSHABLE_TOY_SEEDS.map((seed) => ({
+    ...seed,
+    initialX: seed.x,
+    initialZ: seed.z,
+    initialRotY: seed.rotY,
+    vx: 0,
+    vz: 0,
+    angVel: 0,
+    rollPhase: 0,
+    wobble: 0,
+  }));
+}
+
+/**
+ * Bridge mutável de 60 FPS para todos os brinquedos pequenos no chão que podem ser
+ * empurrados pelo AspiToy (ou pelo gato) sem bloquear a passagem do robô.
+ */
+export const pushableToysBridge: PushableToyState[] = createInitialPushableToys();
+
+export function resetPushableToys(): void {
+  for (const toy of pushableToysBridge) {
+    toy.x = toy.initialX;
+    toy.z = toy.initialZ;
+    toy.rotY = toy.initialRotY;
+    toy.vx = 0;
+    toy.vz = 0;
+    toy.angVel = 0;
+    toy.rollPhase = 0;
+    toy.wobble = 0;
+  }
+}
+
+/**
+ * Simula física leve em 60 FPS para brinquedos pequenos no chão:
+ * Quando o robô (ou o gato) passa por eles, empurra-os suavemente para o lado/frente
+ * permitindo que o robô atravesse o quarto inteiro sem ficar preso.
+ */
+export function stepPushableToysPhysics(
+  robotPos: Vector2D,
+  robotRadius: number,
+  delta: number
+): { pushedToyLabel: string | null } {
+  let pushedToyLabel: string | null = null;
+  const halfW = INITIAL_ROOM_DIMENSIONS.width / 2 - 0.28;
+  const halfD = INITIAL_ROOM_DIMENSIONS.depth / 2 - 0.28;
+  const solidFurniture = INITIAL_OBSTACLES.filter((o) => o.collidable);
+
+  // 1. Empurrão causado pelo Robô e pelo Gato
+  const pushers = [
+    { x: robotPos.x, z: robotPos.z, r: robotRadius, isRobot: true },
+    { x: catMotionBridge.x, z: catMotionBridge.z, r: 0.26, isRobot: false },
+  ];
+
+  for (const toy of pushableToysBridge) {
+    for (const pusher of pushers) {
+      const dx = toy.x - pusher.x;
+      const dz = toy.z - pusher.z;
+      const dist = Math.hypot(dx, dz);
+      const minDist = pusher.r + toy.radius;
+
+      if (dist < minDist) {
+        const nx = dist > 0.0001 ? dx / dist : 1;
+        const nz = dist > 0.0001 ? dz / dist : 0;
+        const overlap = minDist - dist;
+
+        // Desloca imediatamente o brinquedo para fora do raio do robô para liberar passagem
+        toy.x += nx * (overlap + 0.012);
+        toy.z += nz * (overlap + 0.012);
+
+        // Aplica impulso de velocidade e giro
+        const impulse = 1.45 + overlap * 5.0;
+        toy.vx = nx * impulse;
+        toy.vz = nz * impulse;
+        toy.angVel = (nx * dz - nz * dx) * 9.0 + (nx - nz) * 1.8;
+        toy.wobble = Math.min(0.42, toy.wobble + 0.22);
+
+        if (pusher.isRobot) {
+          pushedToyLabel = toy.label;
+        }
+      }
+    }
+  }
+
+  // 2. Colisão elástica leve entre brinquedos pequenos (efeito dominó / boliche)
+  for (let i = 0; i < pushableToysBridge.length; i++) {
+    for (let j = i + 1; j < pushableToysBridge.length; j++) {
+      const a = pushableToysBridge[i];
+      const b = pushableToysBridge[j];
+      const dx = b.x - a.x;
+      const dz = b.z - a.z;
+      const dist = Math.hypot(dx, dz);
+      const minDist = a.radius + b.radius;
+
+      if (dist < minDist && dist > 0.0001) {
+        const nx = dx / dist;
+        const nz = dz / dist;
+        const halfOverlap = (minDist - dist) * 0.52;
+        a.x -= nx * halfOverlap;
+        a.z -= nz * halfOverlap;
+        b.x += nx * halfOverlap;
+        b.z += nz * halfOverlap;
+
+        const relVx = a.vx - b.vx;
+        const relVz = a.vz - b.vz;
+        const sepVel = relVx * nx + relVz * nz;
+        if (sepVel > 0) {
+          a.vx -= nx * sepVel * 0.5;
+          a.vz -= nz * sepVel * 0.5;
+          b.vx += nx * sepVel * 0.5;
+          b.vz += nz * sepVel * 0.5;
+          b.wobble = Math.min(0.35, b.wobble + 0.15);
+        }
+      }
+    }
+  }
+
+  // 3. Integração de movimento, atrito com o piso e repulsão de móveis pesados/paredes
+  const friction = Math.exp(-5.2 * delta);
+  for (const toy of pushableToysBridge) {
+    toy.x += toy.vx * delta;
+    toy.z += toy.vz * delta;
+    toy.rotY += toy.angVel * delta;
+
+    const speed = Math.hypot(toy.vx, toy.vz);
+    if (speed > 0.01) {
+      toy.rollPhase += (speed * delta) / Math.max(0.1, toy.radius);
+    }
+
+    toy.vx *= friction;
+    toy.vz *= friction;
+    toy.angVel *= friction;
+    toy.wobble *= Math.exp(-6.5 * delta);
+
+    // Impede que o brinquedo empurrado atravesse paredes
+    toy.x = clamp(toy.x, -halfW, halfW);
+    toy.z = clamp(toy.z, -halfD, halfD);
+
+    // Impede que o brinquedo empurrado entre dentro de móveis fixos pesados
+    for (const furn of solidFurniture) {
+      const b = furn.bounds;
+      const r = toy.radius;
+      if (
+        toy.x + r > b.minX &&
+        toy.x - r < b.maxX &&
+        toy.z + r > b.minZ &&
+        toy.z - r < b.maxZ
+      ) {
+        const dLeft = Math.abs(toy.x + r - b.minX);
+        const dRight = Math.abs(b.maxX - (toy.x - r));
+        const dTop = Math.abs(toy.z + r - b.minZ);
+        const dBottom = Math.abs(b.maxZ - (toy.z - r));
+        const minPen = Math.min(dLeft, dRight, dTop, dBottom);
+
+        if (minPen === dLeft) {
+          toy.x = b.minX - r - 0.01;
+          toy.vx = -Math.abs(toy.vx) * 0.4;
+        } else if (minPen === dRight) {
+          toy.x = b.maxX + r + 0.01;
+          toy.vx = Math.abs(toy.vx) * 0.4;
+        } else if (minPen === dTop) {
+          toy.z = b.minZ - r - 0.01;
+          toy.vz = -Math.abs(toy.vz) * 0.4;
+        } else {
+          toy.z = b.maxZ + r + 0.01;
+          toy.vz = Math.abs(toy.vz) * 0.4;
+        }
+      }
+    }
+  }
+
+  return { pushedToyLabel };
+}
 
 const CAT_BEHAVIOR_ORDER: CatBehaviorState[] = [
   'WALKING',
@@ -334,6 +659,7 @@ export const useEnvironmentStore = create<EnvironmentStoreState>((set, get) => (
     catMotionBridge.speed = 0.65;
     catMotionBridge.state = 'WALKING';
     catMotionBridge.stateTimer = 4.5;
+    resetPushableToys();
 
     set({
       dustSpots: INITIAL_DUST_SPOTS.map((spot) => ({ ...spot })),

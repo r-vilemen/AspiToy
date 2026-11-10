@@ -14,6 +14,7 @@ import {
 } from '@/store/robotStore';
 import {
   getDynamicCatObstacle,
+  stepPushableToysPhysics,
   useEnvironmentStore,
 } from '@/store/environmentStore';
 import { useCommandStore } from '@/store/commandStore';
@@ -25,9 +26,13 @@ const PATROL_POINTS = [
   { x: -1.8, z: -0.2 },
   { x: -0.2, z: -1.4 },
   { x: 2.3, z: -1.1 },
-  { x: 2.4, z: 1.1 },
+  { x: 2.8, z: -2.4 },
+  { x: -0.2, z: -2.6 },
+  { x: -2.3, z: -2.2 },
+  { x: -3.2, z: 0.8 },
+  { x: -2.2, z: 2.2 },
+  { x: 2.4, z: 1.8 },
   { x: -0.3, z: 1.0 },
-  { x: -2.3, z: 0.4 },
 ];
 
 /**
@@ -338,6 +343,16 @@ export function Robot() {
         loc.rotationY += 2.2 * delta;
         loc.targetRotationY = loc.rotationY;
       }
+    }
+
+    // Empurra objetos e brinquedos pequenos no chão caso estejam na frente do robô
+    const pushResult = stepPushableToysPhysics(
+      { x: loc.x, z: loc.z },
+      0.32,
+      delta
+    );
+    if (pushResult.pushedToyLabel) {
+      loc.bumperCompression = Math.max(loc.bumperCompression, 0.015);
     }
 
     // Sincroniza com a bridge mutável de 60fps para a câmera e o gato

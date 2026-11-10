@@ -7,6 +7,9 @@ import {
   getDynamicCatObstacle,
   INITIAL_OBSTACLES,
   INITIAL_ROOM_DIMENSIONS,
+  pushableToysBridge,
+  resetPushableToys,
+  stepPushableToysPhysics,
   useEnvironmentStore,
 } from '@/store/environmentStore';
 
@@ -92,5 +95,22 @@ describe('Agente Inteligente, Colisão Física e Desvio do Gato Dinâmico', () =
     expect(seenStates.has('STANDING')).toBe(true);
     expect(seenStates.has('LYING')).toBe(true);
     expect(seenStates.has('SLEEPING')).toBe(true);
+  });
+
+  it('empurra brinquedos e bonecos pequenos no chão para o robô passar livremente', () => {
+    resetPushableToys();
+    const cowboy = pushableToysBridge.find((t) => t.id === 'push-cowboy')!;
+    const initialX = cowboy.x;
+    const initialZ = cowboy.z;
+
+    // Simula o robô encostando no boneco Cowboy pelo lado esquerdo
+    const result = stepPushableToysPhysics(
+      { x: initialX - 0.25, z: initialZ },
+      0.32,
+      0.016
+    );
+
+    expect(result.pushedToyLabel).not.toBeNull();
+    expect(cowboy.x).toBeGreaterThan(initialX);
   });
 });

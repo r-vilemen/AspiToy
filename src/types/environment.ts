@@ -66,3 +66,37 @@ export interface RoomDimensions {
   depth: number;
   wallHeight: number;
 }
+
+export type PushableToyKind =
+  | 'cowboy-doll'
+  | 'space-ranger'
+  | 'green-alien'
+  | 'trex-dino'
+  | 'slinky-dog'
+  | 'piggy-bank'
+  | 'planet-ball'
+  | 'block-red'
+  | 'block-blue'
+  | 'block-yellow'
+  | 'wooden-train'
+  | 'ring-stacker'
+  | 'rc-buggy'
+  | 'bowling-pin';
+
+export interface PushableToyState {
+  id: string;
+  label: string;
+  kind: PushableToyKind;
+  initialX: number;
+  initialZ: number;
+  initialRotY: number;
+  x: number;
+  z: number;
+  rotY: number;
+  vx: number;
+  vz: number;
+  angVel: number;
+  rollPhase: number;
+  wobble: number;
+  radius: number;
+}
