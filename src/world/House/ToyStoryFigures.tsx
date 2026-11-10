@@ -780,15 +780,18 @@ export const PushableFloorToys = memo(function PushableFloorToys() {
       const node = groupRefs.current[i];
       if (!node) continue;
 
+      // Base Y constante no nível exato do piso (y = 0)
       node.position.set(toy.x, 0, toy.z);
-      node.rotation.y = toy.rotY;
 
-      // Balanço elástico quando o brinquedo é empurrado pelo robô
-      const wobbleSin = Math.sin(t * 18 + i) * toy.wobble;
-      const wobbleCos = Math.cos(t * 16 + i) * toy.wobble;
-      node.rotation.x =
-        toy.kind === 'planet-ball' ? toy.rollPhase : wobbleSin;
-      node.rotation.z = wobbleCos;
+      if (toy.kind === 'planet-ball') {
+        // Rolamento tridimensional autêntico da esfera no ponto de tangência com o chão
+        node.rotation.set(toy.rollPitch, toy.rotY, toy.rollRoll, 'XYZ');
+      } else {
+        // Balanço elástico suave (wobble) quando o objeto é empurrado
+        const wobbleSin = Math.sin(t * 18 + i) * toy.wobble;
+        const wobbleCos = Math.cos(t * 16 + i) * toy.wobble;
+        node.rotation.set(wobbleSin, toy.rotY, wobbleCos, 'XYZ');
+      }
     }
   });
 
