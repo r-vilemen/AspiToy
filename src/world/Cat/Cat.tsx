@@ -1,5 +1,6 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { RoundedBox } from '@react-three/drei';
 import * as THREE from 'three';
 import {
   catMotionBridge,
@@ -12,21 +13,25 @@ import type { Vector2D } from '@/types/robot';
 import { damp, dampAngle, distance2D } from '@/utils/math';
 
 const catMaterials = {
-  furOrange: new THREE.MeshLambertMaterial({
-    color: '#D96B27',
-    flatShading: true,
+  furOrange: new THREE.MeshStandardMaterial({
+    color: '#DC6E29',
+    roughness: 0.78,
+    metalness: 0.02,
   }),
-  furStripe: new THREE.MeshLambertMaterial({
+  furStripe: new THREE.MeshStandardMaterial({
     color: '#9C3E11',
-    flatShading: true,
+    roughness: 0.82,
+    metalness: 0.02,
   }),
-  furCream: new THREE.MeshLambertMaterial({
-    color: '#F5EFE0',
-    flatShading: true,
+  furCream: new THREE.MeshStandardMaterial({
+    color: '#F6F0E2',
+    roughness: 0.76,
+    metalness: 0.02,
   }),
-  nosePink: new THREE.MeshLambertMaterial({
+  nosePink: new THREE.MeshStandardMaterial({
     color: '#F28B82',
-    flatShading: true,
+    roughness: 0.45,
+    metalness: 0.04,
   }),
   eyeAwake: new THREE.MeshBasicMaterial({
     color: '#4ADE80',
@@ -366,42 +371,60 @@ export function Cat() {
         />
       </mesh>
 
-      {/* Corpo articulado do Gato Low-Poly */}
+      {/* Corpo articulado do Gato com Volumes Arredondados */}
       <group ref={bodyRef} position={[0, 0.22, 0]}>
-        {/* Tronco principal laranja */}
-        <mesh castShadow receiveShadow material={catMaterials.furOrange}>
-          <boxGeometry args={[0.21, 0.17, 0.42]} />
-        </mesh>
+        {/* Tronco principal laranja arredondado */}
+        <RoundedBox
+          castShadow
+          receiveShadow
+          args={[0.21, 0.17, 0.42]}
+          radius={0.055}
+          smoothness={4}
+          material={catMaterials.furOrange}
+        />
 
-        {/* Peito creme/branco frontal */}
-        <mesh position={[0, -0.01, 0.16]} material={catMaterials.furCream}>
-          <boxGeometry args={[0.17, 0.14, 0.12]} />
-        </mesh>
+        {/* Peito creme frontal */}
+        <RoundedBox
+          args={[0.17, 0.14, 0.12]}
+          radius={0.04}
+          smoothness={3}
+          position={[0, -0.01, 0.16]}
+          material={catMaterials.furCream}
+        />
 
-        {/* Listras tigradas low-poly nas costas */}
+        {/* Listras tigradas nas costas */}
         {[-0.08, 0.02, 0.12].map((zStripe, idx) => (
-          <mesh
+          <RoundedBox
             key={idx}
-            position={[0, 0.088, -zStripe]}
+            args={[0.19, 0.014, 0.045]}
+            radius={0.005}
+            smoothness={2}
+            position={[0, 0.086, -zStripe]}
             material={catMaterials.furStripe}
-          >
-            <boxGeometry args={[0.19, 0.012, 0.045]} />
-          </mesh>
+          />
         ))}
 
         {/* ======================================================== */}
         {/* CABEÇA ARTICULADA DO GATO                                */}
         {/* ======================================================== */}
         <group ref={headRef} position={[0, 0.11, 0.22]}>
-          {/* Crânio low-poly */}
-          <mesh castShadow material={catMaterials.furOrange}>
-            <boxGeometry args={[0.2, 0.17, 0.18]} />
-          </mesh>
+          {/* Crânio arredondado */}
+          <RoundedBox
+            castShadow
+            args={[0.2, 0.17, 0.18]}
+            radius={0.05}
+            smoothness={4}
+            material={catMaterials.furOrange}
+          />
 
           {/* Focinho claro */}
-          <mesh position={[0, -0.032, 0.095]} material={catMaterials.furCream}>
-            <boxGeometry args={[0.12, 0.075, 0.04]} />
-          </mesh>
+          <RoundedBox
+            args={[0.12, 0.075, 0.045]}
+            radius={0.02}
+            smoothness={3}
+            position={[0, -0.032, 0.095]}
+            material={catMaterials.furCream}
+          />
 
           {/* Nariz rosa triangular */}
           <mesh position={[0, -0.012, 0.118]} material={catMaterials.nosePink}>

@@ -400,7 +400,10 @@ export function Robot() {
         state={state}
         expression={expression}
       />
-      <RobotEffects isCleaning={state === 'CLEANING'} />
+      <RobotEffects
+        isCleaning={state === 'CLEANING'}
+        isRecharging={state === 'RECHARGING'}
+      />
     </group>
   );
 }

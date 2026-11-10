@@ -45,7 +45,7 @@ function mapStateToExpression(state: RobotOperationalState): RobotExpression {
     case 'AVOIDING':
       return 'alert';
     case 'RETURNING':
-      return 'curious';
+      return 'worried';
     case 'RECHARGING':
       return 'sleepy';
     case 'PAUSED':
