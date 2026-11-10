@@ -24,7 +24,7 @@ describe('Feline Multi-Room Navigation & Preference System', () => {
     expect(bedroomPerches.length).toBeGreaterThanOrEqual(4);
     expect(livingPerches.length).toBeGreaterThanOrEqual(2);
     expect(kitchenPerches.length).toBeGreaterThanOrEqual(2);
-    expect(bathroomPerches.length).toBeGreaterThanOrEqual(1);
+    expect(bathroomPerches.length).toBe(0); // Banheiro não possui poleiros para gatos (evita cantos proibidos e box)
     expect(hallwayPerches.length).toBeGreaterThanOrEqual(1);
   });
 

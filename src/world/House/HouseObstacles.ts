@@ -416,7 +416,7 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     id: 'bathroom-shower-box',
     label: 'Box de Vidro com Chuveiro',
     category: 'furniture',
-    bounds: { minX: 5.2, maxX: 7.2, minZ: 11.2, maxZ: 13.2 },
+    bounds: { minX: 5.0, maxX: 7.6, minZ: 11.0, maxZ: 13.5 },
     collidable: true,
     height: 3.0,
   },

@@ -164,6 +164,66 @@ export function WhiteCat() {
     whiteCatMotionBridge.stateTimer -= delta;
     startleCooldownRef.current -= delta;
 
+    // 1. Processamento prioritário de SALTO (JUMPING)
+    if (whiteCatMotionBridge.state === 'JUMPING') {
+      const dur = whiteCatMotionBridge.jumpDuration || 0.65;
+      const p = clamp(1 - whiteCatMotionBridge.stateTimer / dur, 0, 1);
+      whiteCatMotionBridge.jumpProgress = p;
+
+      const s = whiteCatMotionBridge.jumpStart ?? {
+        x: whiteCatMotionBridge.x,
+        y: whiteCatMotionBridge.y,
+        z: whiteCatMotionBridge.z,
+      };
+      const e = whiteCatMotionBridge.jumpEnd ?? {
+        x: whiteCatMotionBridge.x,
+        y: whiteCatMotionBridge.y,
+        z: whiteCatMotionBridge.z,
+      };
+
+      const smoothP = p * p * (3 - 2 * p); // smoothstep
+      whiteCatMotionBridge.x = lerp(s.x, e.x, smoothP);
+      whiteCatMotionBridge.z = lerp(s.z, e.z, smoothP);
+      const arc =
+        Math.sin(p * Math.PI) * (whiteCatMotionBridge.jumpArcHeight ?? 0.38);
+      whiteCatMotionBridge.y = lerp(s.y, e.y, p) + arc;
+
+      if (p >= 1) {
+        whiteCatMotionBridge.x = e.x;
+        whiteCatMotionBridge.z = e.z;
+        const landedOnPerch = e.y > 0.25;
+        whiteCatMotionBridge.y = landedOnPerch ? e.y : 0;
+        whiteCatMotionBridge.isPerched = landedOnPerch;
+        if (!landedOnPerch) {
+          whiteCatMotionBridge.perchSurfaceId = null;
+          climbingTargetPerchRef.current = null;
+        }
+        whiteCatMotionBridge.state = landedOnPerch ? 'SITTING' : 'STANDING';
+        whiteCatMotionBridge.stateTimer = 4.0 + Math.random() * 2.5;
+        whiteCatMotionBridge.jumpProgress = 0;
+      }
+
+      if (rootRef.current) {
+        rootRef.current.position.set(
+          whiteCatMotionBridge.x,
+          whiteCatMotionBridge.y,
+          whiteCatMotionBridge.z
+        );
+        rootRef.current.rotation.y = whiteCatMotionBridge.rotationY;
+      }
+
+      if (shadowRef.current) {
+        shadowRef.current.position.y = 0.008 - whiteCatMotionBridge.y;
+      }
+
+      return;
+    }
+
+    // Invariante de piso: quando o gato não está empoleirado, seu Y no chão é ESTRITAMENTE 0
+    if (!whiteCatMotionBridge.isPerched && whiteCatMotionBridge.state !== 'STARTLED') {
+      whiteCatMotionBridge.y = 0;
+    }
+
     // Interação reativa com o robô
     if (!whiteCatMotionBridge.isPerched && (whiteCatMotionBridge.y ?? 0) < 0.25) {
       const distToRobot = Math.hypot(
@@ -189,7 +249,6 @@ export function WhiteCat() {
             'warning'
           );
       } else if (
-        whiteCatMotionBridge.state !== 'JUMPING' &&
         whiteCatMotionBridge.state !== 'STARTLED' &&
         whiteCatMotionBridge.state !== 'DISORIENTED' &&
         distToRobot < 1.15 &&
@@ -218,16 +277,18 @@ export function WhiteCat() {
               'warning'
             );
         } else if (whiteCatMotionBridge.state !== 'RUNNING') {
-          // Gato vê o robô -> afasta-se andando
-          const escapeAngle = Math.atan2(-dx, -dz);
-          whiteCatMotionBridge.targetRotationY = escapeAngle;
-          whiteCatMotionBridge.targetX =
-            whiteCatMotionBridge.x + Math.sin(escapeAngle) * 1.8;
-          whiteCatMotionBridge.targetZ =
-            whiteCatMotionBridge.z + Math.cos(escapeAngle) * 1.8;
+          // Gato vê o robô -> afasta-se andando para um ponto seguro de piso
+          const safePoint = pickFreeFloorTarget();
+          const escapeHeading = Math.atan2(
+            safePoint.x - whiteCatMotionBridge.x,
+            safePoint.z - whiteCatMotionBridge.z
+          );
+          whiteCatMotionBridge.targetRotationY = escapeHeading;
+          whiteCatMotionBridge.targetX = safePoint.x;
+          whiteCatMotionBridge.targetZ = safePoint.z;
           whiteCatMotionBridge.state = 'WALKING';
           whiteCatMotionBridge.speed = 1.1;
-          whiteCatMotionBridge.stateTimer = 2.5;
+          whiteCatMotionBridge.stateTimer = 3.0;
         }
       }
     }
@@ -252,23 +313,29 @@ export function WhiteCat() {
         if (perchCyclesRemainingRef.current <= 0) {
           const currentPerch = ALL_HOUSE_CAT_PERCHES.find(
             (p) => p.id === whiteCatMotionBridge.perchSurfaceId
-          ) ?? ALL_HOUSE_CAT_PERCHES[0];
-          startJump(
-            {
-              x: whiteCatMotionBridge.x,
-              y: currentPerch.surfaceY,
-              z: whiteCatMotionBridge.z,
-            },
-            {
-              x: currentPerch.stagingPoint.x,
-              y: 0,
-              z: currentPerch.stagingPoint.z,
-            },
-            0.55,
-            0.28
           );
-          whiteCatMotionBridge.isPerched = false;
-          whiteCatMotionBridge.perchSurfaceId = null;
+          if (currentPerch) {
+            startJump(
+              {
+                x: whiteCatMotionBridge.x,
+                y: currentPerch.surfaceY,
+                z: whiteCatMotionBridge.z,
+              },
+              {
+                x: currentPerch.stagingPoint.x,
+                y: 0,
+                z: currentPerch.stagingPoint.z,
+              },
+              0.55,
+              0.28
+            );
+          } else {
+            whiteCatMotionBridge.isPerched = false;
+            whiteCatMotionBridge.perchSurfaceId = null;
+            whiteCatMotionBridge.y = 0;
+            whiteCatMotionBridge.state = 'STANDING';
+            whiteCatMotionBridge.stateTimer = 3.0;
+          }
         } else {
           perchCyclesRemainingRef.current -= 1;
           const nextState = pickRandomState(['SITTING', 'LYING', 'SLEEPING', 'GROOMING'], whiteCatMotionBridge.state);
@@ -451,8 +518,8 @@ export function WhiteCat() {
       legActivityRef.current = damp(legActivityRef.current, 0, 16.0, delta);
     }
 
-    // Posição vertical efetiva (considerando saltos e pulos de susto)
-    let effectiveY = whiteCatMotionBridge.y;
+    // Posição vertical efetiva (garantindo que fora de poleiro ou salto Y seja estritamente 0)
+    let effectiveY = whiteCatMotionBridge.isPerched ? whiteCatMotionBridge.y : 0;
     if (state === 'STARTLED') {
       const hopProgress = clamp(1 - whiteCatMotionBridge.stateTimer / 0.65, 0, 1);
       effectiveY = Math.sin(hopProgress * Math.PI) * 0.42;
@@ -466,29 +533,6 @@ export function WhiteCat() {
         whiteCatMotionBridge.z
       );
       rootRef.current.rotation.y = whiteCatMotionBridge.rotationY;
-    }
-
-    if (state === 'JUMPING') {
-      const dur = whiteCatMotionBridge.jumpDuration ?? 0.65;
-      const p = clamp(1 - whiteCatMotionBridge.stateTimer / dur, 0, 1);
-      whiteCatMotionBridge.jumpProgress = p;
-
-      const s = whiteCatMotionBridge.jumpStart ?? { x: 0, y: 0, z: 0 };
-      const e = whiteCatMotionBridge.jumpEnd ?? { x: 0, y: 0, z: 0 };
-
-      whiteCatMotionBridge.x = lerp(s.x, e.x, p);
-      whiteCatMotionBridge.z = lerp(s.z, e.z, p);
-      const arc =
-        Math.sin(p * Math.PI) * (whiteCatMotionBridge.jumpArcHeight ?? 0.38);
-      whiteCatMotionBridge.y = lerp(s.y, e.y, p) + arc;
-
-      if (p >= 1) {
-        whiteCatMotionBridge.y = e.y;
-        whiteCatMotionBridge.isPerched = e.y > 0.25;
-        whiteCatMotionBridge.state = 'SITTING';
-        whiteCatMotionBridge.stateTimer = 4.0;
-        whiteCatMotionBridge.jumpProgress = 0;
-      }
     }
 
     // Animação de patas, tronco, cabeça e rabo

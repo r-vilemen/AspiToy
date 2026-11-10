@@ -164,6 +164,66 @@ export function TuxedoCat() {
     tuxedoCatMotionBridge.stateTimer -= delta;
     startleCooldownRef.current -= delta;
 
+    // 1. Processamento prioritário de SALTO (JUMPING)
+    if (tuxedoCatMotionBridge.state === 'JUMPING') {
+      const dur = tuxedoCatMotionBridge.jumpDuration || 0.65;
+      const p = clamp(1 - tuxedoCatMotionBridge.stateTimer / dur, 0, 1);
+      tuxedoCatMotionBridge.jumpProgress = p;
+
+      const s = tuxedoCatMotionBridge.jumpStart ?? {
+        x: tuxedoCatMotionBridge.x,
+        y: tuxedoCatMotionBridge.y,
+        z: tuxedoCatMotionBridge.z,
+      };
+      const e = tuxedoCatMotionBridge.jumpEnd ?? {
+        x: tuxedoCatMotionBridge.x,
+        y: tuxedoCatMotionBridge.y,
+        z: tuxedoCatMotionBridge.z,
+      };
+
+      const smoothP = p * p * (3 - 2 * p); // smoothstep
+      tuxedoCatMotionBridge.x = lerp(s.x, e.x, smoothP);
+      tuxedoCatMotionBridge.z = lerp(s.z, e.z, smoothP);
+      const arc =
+        Math.sin(p * Math.PI) * (tuxedoCatMotionBridge.jumpArcHeight ?? 0.38);
+      tuxedoCatMotionBridge.y = lerp(s.y, e.y, p) + arc;
+
+      if (p >= 1) {
+        tuxedoCatMotionBridge.x = e.x;
+        tuxedoCatMotionBridge.z = e.z;
+        const landedOnPerch = e.y > 0.25;
+        tuxedoCatMotionBridge.y = landedOnPerch ? e.y : 0;
+        tuxedoCatMotionBridge.isPerched = landedOnPerch;
+        if (!landedOnPerch) {
+          tuxedoCatMotionBridge.perchSurfaceId = null;
+          climbingTargetPerchRef.current = null;
+        }
+        tuxedoCatMotionBridge.state = landedOnPerch ? 'SITTING' : 'STANDING';
+        tuxedoCatMotionBridge.stateTimer = 4.0 + Math.random() * 2.5;
+        tuxedoCatMotionBridge.jumpProgress = 0;
+      }
+
+      if (rootRef.current) {
+        rootRef.current.position.set(
+          tuxedoCatMotionBridge.x,
+          tuxedoCatMotionBridge.y,
+          tuxedoCatMotionBridge.z
+        );
+        rootRef.current.rotation.y = tuxedoCatMotionBridge.rotationY;
+      }
+
+      if (shadowRef.current) {
+        shadowRef.current.position.y = 0.008 - tuxedoCatMotionBridge.y;
+      }
+
+      return;
+    }
+
+    // Invariante de piso: quando o gato não está empoleirado, seu Y no chão é ESTRITAMENTE 0
+    if (!tuxedoCatMotionBridge.isPerched && tuxedoCatMotionBridge.state !== 'STARTLED') {
+      tuxedoCatMotionBridge.y = 0;
+    }
+
     // Interação reativa com o robô
     if (!tuxedoCatMotionBridge.isPerched && (tuxedoCatMotionBridge.y ?? 0) < 0.25) {
       const distToRobot = Math.hypot(
@@ -189,7 +249,6 @@ export function TuxedoCat() {
             'warning'
           );
       } else if (
-        tuxedoCatMotionBridge.state !== 'JUMPING' &&
         tuxedoCatMotionBridge.state !== 'STARTLED' &&
         tuxedoCatMotionBridge.state !== 'DISORIENTED' &&
         distToRobot < 1.15 &&
@@ -218,16 +277,18 @@ export function TuxedoCat() {
               'warning'
             );
         } else if (tuxedoCatMotionBridge.state !== 'RUNNING') {
-          // Gato vê o robô -> afasta-se andando
-          const escapeAngle = Math.atan2(-dx, -dz);
-          tuxedoCatMotionBridge.targetRotationY = escapeAngle;
-          tuxedoCatMotionBridge.targetX =
-            tuxedoCatMotionBridge.x + Math.sin(escapeAngle) * 1.8;
-          tuxedoCatMotionBridge.targetZ =
-            tuxedoCatMotionBridge.z + Math.cos(escapeAngle) * 1.8;
+          // Gato vê o robô -> afasta-se andando para um ponto seguro de piso
+          const safePoint = pickFreeFloorTarget();
+          const escapeHeading = Math.atan2(
+            safePoint.x - tuxedoCatMotionBridge.x,
+            safePoint.z - tuxedoCatMotionBridge.z
+          );
+          tuxedoCatMotionBridge.targetRotationY = escapeHeading;
+          tuxedoCatMotionBridge.targetX = safePoint.x;
+          tuxedoCatMotionBridge.targetZ = safePoint.z;
           tuxedoCatMotionBridge.state = 'WALKING';
           tuxedoCatMotionBridge.speed = 1.1;
-          tuxedoCatMotionBridge.stateTimer = 2.5;
+          tuxedoCatMotionBridge.stateTimer = 3.0;
         }
       }
     }
@@ -252,23 +313,29 @@ export function TuxedoCat() {
         if (perchCyclesRemainingRef.current <= 0) {
           const currentPerch = ALL_HOUSE_CAT_PERCHES.find(
             (p) => p.id === tuxedoCatMotionBridge.perchSurfaceId
-          ) ?? ALL_HOUSE_CAT_PERCHES[0];
-          startJump(
-            {
-              x: tuxedoCatMotionBridge.x,
-              y: currentPerch.surfaceY,
-              z: tuxedoCatMotionBridge.z,
-            },
-            {
-              x: currentPerch.stagingPoint.x,
-              y: 0,
-              z: currentPerch.stagingPoint.z,
-            },
-            0.55,
-            0.28
           );
-          tuxedoCatMotionBridge.isPerched = false;
-          tuxedoCatMotionBridge.perchSurfaceId = null;
+          if (currentPerch) {
+            startJump(
+              {
+                x: tuxedoCatMotionBridge.x,
+                y: currentPerch.surfaceY,
+                z: tuxedoCatMotionBridge.z,
+              },
+              {
+                x: currentPerch.stagingPoint.x,
+                y: 0,
+                z: currentPerch.stagingPoint.z,
+              },
+              0.55,
+              0.28
+            );
+          } else {
+            tuxedoCatMotionBridge.isPerched = false;
+            tuxedoCatMotionBridge.perchSurfaceId = null;
+            tuxedoCatMotionBridge.y = 0;
+            tuxedoCatMotionBridge.state = 'STANDING';
+            tuxedoCatMotionBridge.stateTimer = 3.0;
+          }
         } else {
           perchCyclesRemainingRef.current -= 1;
           const nextState = pickRandomState(['SITTING', 'LYING', 'SLEEPING', 'GROOMING'], tuxedoCatMotionBridge.state);
@@ -451,8 +518,8 @@ export function TuxedoCat() {
       legActivityRef.current = damp(legActivityRef.current, 0, 16.0, delta);
     }
 
-    // Posição vertical efetiva (considerando saltos e pulos de susto)
-    let effectiveY = tuxedoCatMotionBridge.y;
+    // Posição vertical efetiva (garantindo que fora de poleiro ou salto Y seja estritamente 0)
+    let effectiveY = tuxedoCatMotionBridge.isPerched ? tuxedoCatMotionBridge.y : 0;
     if (state === 'STARTLED') {
       const hopProgress = clamp(1 - tuxedoCatMotionBridge.stateTimer / 0.65, 0, 1);
       effectiveY = Math.sin(hopProgress * Math.PI) * 0.42;
@@ -466,29 +533,6 @@ export function TuxedoCat() {
         tuxedoCatMotionBridge.z
       );
       rootRef.current.rotation.y = tuxedoCatMotionBridge.rotationY;
-    }
-
-    if (state === 'JUMPING') {
-      const dur = tuxedoCatMotionBridge.jumpDuration ?? 0.65;
-      const p = clamp(1 - tuxedoCatMotionBridge.stateTimer / dur, 0, 1);
-      tuxedoCatMotionBridge.jumpProgress = p;
-
-      const s = tuxedoCatMotionBridge.jumpStart ?? { x: 0, y: 0, z: 0 };
-      const e = tuxedoCatMotionBridge.jumpEnd ?? { x: 0, y: 0, z: 0 };
-
-      tuxedoCatMotionBridge.x = lerp(s.x, e.x, p);
-      tuxedoCatMotionBridge.z = lerp(s.z, e.z, p);
-      const arc =
-        Math.sin(p * Math.PI) * (tuxedoCatMotionBridge.jumpArcHeight ?? 0.38);
-      tuxedoCatMotionBridge.y = lerp(s.y, e.y, p) + arc;
-
-      if (p >= 1) {
-        tuxedoCatMotionBridge.y = e.y;
-        tuxedoCatMotionBridge.isPerched = e.y > 0.25;
-        tuxedoCatMotionBridge.state = 'SITTING';
-        tuxedoCatMotionBridge.stateTimer = 4.0;
-        tuxedoCatMotionBridge.jumpProgress = 0;
-      }
     }
 
     // Animação de patas, tronco, cabeça e rabo

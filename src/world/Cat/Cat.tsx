@@ -181,6 +181,11 @@ export function Cat() {
     catMotionBridge.stateTimer -= delta;
     startleCooldownRef.current -= delta;
 
+    // Invariante de piso: quando o gato não está empoleirado nem saltando, seu Y no chão é ESTRITAMENTE 0
+    if (!catMotionBridge.isPerched && catMotionBridge.state !== 'STARTLED' && catMotionBridge.state !== 'JUMPING') {
+      catMotionBridge.y = 0;
+    }
+
     // ================================================================
     // INTERAÇÃO REATIVA COM O ROBÔ (SUSTO, DESVIO E ACORDAR DESNORTEADO)
     // ================================================================
@@ -250,16 +255,16 @@ export function Cat() {
           catMotionBridge.state = 'WALKING';
           catMotionBridge.speed = 0.95;
 
-          const awayAngle = Math.atan2(
-            catMotionBridge.x - robotMotionBridge.x,
-            catMotionBridge.z - robotMotionBridge.z
+          const escapeTarget = pickFreeFloorTarget();
+          const walkAwayAngle = Math.atan2(
+            escapeTarget.x - catMotionBridge.x,
+            escapeTarget.z - catMotionBridge.z
           );
-          const sideAngle = awayAngle + (Math.sin(catMotionBridge.animPhase) > 0 ? 0.45 : -0.45);
 
-          catMotionBridge.rotationY = sideAngle;
-          catMotionBridge.targetRotationY = sideAngle;
-          catMotionBridge.targetX = catMotionBridge.x + Math.sin(sideAngle) * 1.3;
-          catMotionBridge.targetZ = catMotionBridge.z + Math.cos(sideAngle) * 1.3;
+          catMotionBridge.rotationY = walkAwayAngle;
+          catMotionBridge.targetRotationY = walkAwayAngle;
+          catMotionBridge.targetX = escapeTarget.x;
+          catMotionBridge.targetZ = escapeTarget.z;
           catMotionBridge.stateTimer = 3.5;
         }
       }
@@ -614,11 +619,11 @@ export function Cat() {
     // ================================================================
     // SINCRONIZAÇÃO DA RAIZ 3D E SOMBRA PROJETADA
     // ================================================================
-    let effectiveY = catMotionBridge.y;
+    let effectiveY = (catMotionBridge.isPerched || state === 'JUMPING') ? catMotionBridge.y : 0;
     if (state === 'STARTLED') {
       const hopProgress = clamp(1 - (catMotionBridge.stateTimer / 0.65), 0, 1);
       const hopY = Math.sin(hopProgress * Math.PI) * 0.32;
-      effectiveY += hopY;
+      effectiveY = hopY;
     }
 
     if (rootRef.current) {

@@ -109,14 +109,14 @@ export const ALL_HOUSE_CAT_PERCHES: FurniturePerchSpot[] = [
     perchWaypoints: [{ x: 12.05, z: 3.5 }],
   },
 
-  // --- 5. BANHEIRO ---
+  // --- 5. QUARTO ADICIONAL (Ambiente Principal dos Gatos) ---
   {
-    id: 'bathroom-hamper',
-    name: 'Cesto de Roupas em Vime (Banheiro)',
-    room: 'bathroom',
-    surfaceY: 0.68,
-    stagingPoint: { x: 6.3, z: 9.8 },
-    perchWaypoints: [{ x: 5.6, z: 9.4 }],
+    id: 'bedroom-bed-foot',
+    name: 'Peseira da Cama (Quarto)',
+    room: 'bedroom',
+    surfaceY: 0.95,
+    stagingPoint: { x: -2.1, z: -0.8 },
+    perchWaypoints: [{ x: -2.7, z: -1.2 }],
   },
 ];
 
@@ -158,25 +158,29 @@ export const HOUSE_CAT_WAYPOINTS_BY_ROOM: Record<RoomId, Vector2D[]> = {
     { x: 14.8, z: 4.2 }, // Circulação nordeste da cozinha
   ],
   bathroom: [
-    { x: 6.3, z: 9.8 }, // Tapete do banheiro (entrada)
-    { x: 7.8, z: 10.2 }, // Piso central em frente à pia
-    { x: 8.0, z: 11.5 }, // Piso livre entre box e sanitário
-    { x: 8.8, z: 10.5 }, // Frente do gabinete
+    { x: 6.3, z: 9.6 }, // Tapete do banheiro (entrada)
+    { x: 7.2, z: 9.8 }, // Piso livre em frente ao tapete
+    { x: 8.2, z: 10.0 }, // Piso central em frente à pia
+    { x: 8.6, z: 10.2 }, // Frente do gabinete (longe do box e do sanitário)
   ],
 };
 
 /**
- * Escolhe um cômodo de destino com preferência expressiva pelo Quarto (~60% de probabilidade).
+ * Escolhe um cômodo de destino com preferência expressiva pelo Quarto (~65% de probabilidade).
  * Se o gato já passou vários ciclos fora do quarto, o retorno ao quarto é acelerado (85%).
  */
 export function pickWeightedCatRoom(outsideBedroomSteps = 0): RoomId {
-  const bedroomChance = outsideBedroomSteps >= 2 ? 0.85 : 0.6;
+  const bedroomChance = outsideBedroomSteps >= 2 ? 0.88 : 0.65;
   if (Math.random() < bedroomChance) {
     return 'bedroom';
   }
 
-  const otherRooms: RoomId[] = ['hallway', 'living-room', 'kitchen', 'bathroom'];
-  return otherRooms[Math.floor(Math.random() * otherRooms.length)];
+  // Distribuição realista pelos outros cômodos: Sala > Corredor > Cozinha >> Banheiro
+  const roll = Math.random();
+  if (roll < 0.50) return 'living-room';
+  if (roll < 0.78) return 'hallway';
+  if (roll < 0.94) return 'kitchen';
+  return 'bathroom';
 }
 
 /**
