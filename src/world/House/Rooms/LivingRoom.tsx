@@ -9,7 +9,8 @@ interface SofaLegProps {
 }
 
 /**
- * Pé cônico de madeira escura torneada com ponteira de latão dourado polido (estilo Mid-Century / Toy Story).
+ * Pé cônico escultural de madeira escura torneada com ponteira de latão dourado polido
+ * (estilo Mid-Century Modern / Toy Story) - pernas altas, elegantes e bem destacadas.
  */
 const SofaLeg = memo(function SofaLeg({
   position,
@@ -17,14 +18,19 @@ const SofaLeg = memo(function SofaLeg({
 }: SofaLegProps) {
   return (
     <group position={position} rotation={rotation}>
-      {/* Corpo principal do pé em madeira escura */}
-      <mesh position={[0, 0.12, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.044, 0.026, 0.2, 16]} />
+      {/* Placa metálica de fixação estrutural sob o chassi */}
+      <mesh position={[0, 0.258, 0]} castShadow>
+        <cylinderGeometry args={[0.052, 0.052, 0.012, 16]} />
+        <primitive object={sharedMaterials.metalBrass} attach="material" />
+      </mesh>
+      {/* Corpo principal do pé em madeira escura nobre torneada */}
+      <mesh position={[0, 0.155, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.046, 0.03, 0.2, 16]} />
         <primitive object={sharedMaterials.furnitureWoodDark} attach="material" />
       </mesh>
-      {/* Ponteira metálica de latão dourado na base */}
-      <mesh position={[0, 0.02, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.028, 0.025, 0.04, 16]} />
+      {/* Ponteira metálica alta de latão dourado polido na base */}
+      <mesh position={[0, 0.03, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.032, 0.026, 0.06, 16]} />
         <primitive object={sharedMaterials.metalBrass} attach="material" />
       </mesh>
     </group>
@@ -78,14 +84,14 @@ export const LivingRoom = memo(function LivingRoom() {
       {/* 3. Sofá em L (L-Shaped Couch) na Sala de Estar */}
       {/* Base Principal (corre no eixo X em Z = 1.2m) */}
       <group position={[13.2, 0, 1.2]}>
-        {/* Chassi estrutural inferior de madeira maciça escura */}
+        {/* Chassi estrutural inferior de madeira maciça escura com 26cm de vão livre abaixo */}
         <RoundedBox
           castShadow
           receiveShadow
           args={[4.22, 0.08, 1.26]}
           radius={0.03}
           smoothness={2}
-          position={[0, 0.24, 0]}
+          position={[0, 0.3, 0]}
           material={sharedMaterials.furnitureWoodDark}
         />
 
@@ -95,10 +101,10 @@ export const LivingRoom = memo(function LivingRoom() {
             key={`sofa-seat-${idx}`}
             castShadow
             receiveShadow
-            args={[1.36, 0.28, 1.22]}
+            args={[1.36, 0.24, 1.22]}
             radius={0.08}
             smoothness={3}
-            position={[cx, 0.42, 0]}
+            position={[cx, 0.46, 0]}
             material={sharedMaterials.livingSofaLinen}
           />
         ))}
@@ -109,26 +115,27 @@ export const LivingRoom = memo(function LivingRoom() {
           args={[4.2, 0.72, 0.42]}
           radius={0.08}
           smoothness={3}
-          position={[0, 0.74, 0.42]}
+          position={[0, 0.82, 0.42]}
           material={sharedMaterials.livingSofaLinen}
         />
 
         {/* Braço esquerdo (extremidade aberta voltada para o centro da sala) */}
         <RoundedBox
           castShadow
-          args={[0.38, 0.42, 1.28]}
+          args={[0.38, 0.44, 1.28]}
           radius={0.06}
           smoothness={3}
-          position={[-2.05, 0.52, 0.02]}
+          position={[-2.05, 0.58, 0.02]}
           material={sharedMaterials.livingSofaLinen}
         />
 
-        {/* Pés de sustentação do corpo principal (estilo nórdico / mid-century) */}
-        <SofaLeg position={[-1.95, 0, -0.48]} rotation={[0.14, 0, -0.14]} />
-        <SofaLeg position={[-0.65, 0, -0.48]} rotation={[0.14, 0, 0]} />
-        <SofaLeg position={[-1.95, 0, 0.5]} rotation={[-0.14, 0, -0.14]} />
-        <SofaLeg position={[-0.65, 0, 0.5]} rotation={[-0.14, 0, 0]} />
-        <SofaLeg position={[0.75, 0, 0.5]} rotation={[-0.14, 0, 0]} />
+        {/* Pés de sustentação do corpo principal (estilo nórdico / mid-century altos e cônicos) */}
+        <SofaLeg position={[-1.98, 0, -0.52]} rotation={[0.18, 0, -0.18]} />
+        <SofaLeg position={[-0.65, 0, -0.52]} rotation={[0.18, 0, 0]} />
+        <SofaLeg position={[0.7, 0, -0.52]} rotation={[0.18, 0, 0]} />
+        <SofaLeg position={[-1.98, 0, 0.52]} rotation={[-0.18, 0, -0.18]} />
+        <SofaLeg position={[-0.65, 0, 0.52]} rotation={[-0.18, 0, 0]} />
+        <SofaLeg position={[0.7, 0, 0.52]} rotation={[-0.18, 0, 0]} />
 
         {/* Almofadas decorativas sobre o encosto */}
         {[-1.2, -0.2, 0.8, 1.5].map((cx, idx) => (
@@ -138,7 +145,7 @@ export const LivingRoom = memo(function LivingRoom() {
             args={[0.55, 0.5, 0.22]}
             radius={0.06}
             smoothness={2}
-            position={[cx, 0.72, 0.2]}
+            position={[cx, 0.8, 0.2]}
             rotation={[0.15, idx % 2 === 0 ? 0.1 : -0.1, 0]}
             material={
               idx % 2 === 0
@@ -151,43 +158,45 @@ export const LivingRoom = memo(function LivingRoom() {
 
       {/* Retorno em L do Sofá (Chaise lateral ao leste: X = 15.6m, Z de -0.8 a 1.2m) */}
       <group position={[15.6, 0, -0.1]}>
-        {/* Chassi estrutural de madeira da chaise */}
+        {/* Chassi estrutural de madeira da chaise com acabamento nobre */}
         <RoundedBox
           castShadow
           receiveShadow
           args={[1.16, 0.08, 1.82]}
           radius={0.03}
           smoothness={2}
-          position={[0, 0.24, 0]}
+          position={[0, 0.3, 0]}
           material={sharedMaterials.furnitureWoodDark}
         />
 
-        {/* Almofada inteiriça longa da chaise */}
+        {/* Almofada inteiriça longa da chaise sobre o chassi */}
         <RoundedBox
           castShadow
           receiveShadow
-          args={[1.12, 0.28, 1.78]}
+          args={[1.12, 0.24, 1.78]}
           radius={0.08}
           smoothness={3}
-          position={[0, 0.42, 0]}
+          position={[0, 0.46, 0]}
           material={sharedMaterials.livingSofaLinen}
         />
 
         {/* Rolinho almofadado de descanso na cabeceira da chaise */}
-        <mesh position={[0, 0.62, -0.55]} rotation={[0, 0, Math.PI / 2]} castShadow>
+        <mesh position={[0, 0.68, -0.55]} rotation={[0, 0, Math.PI / 2]} castShadow>
           <cylinderGeometry args={[0.11, 0.11, 0.9, 16]} />
           <primitive object={sharedMaterials.armchairOlive} attach="material" />
         </mesh>
 
-        {/* Pés de sustentação da Chaise com ponteiras douradas */}
+        {/* Pés de sustentação da Chaise proeminentes, abertos para fora e com ponteiras douradas */}
         {/* Canto frontal esquerdo (destacado no primeiro plano) */}
-        <SofaLeg position={[-0.46, 0, -0.78]} rotation={[0.14, 0, -0.14]} />
+        <SofaLeg position={[-0.48, 0, -0.82]} rotation={[0.18, 0, -0.18]} />
         {/* Canto frontal direito */}
-        <SofaLeg position={[0.46, 0, -0.78]} rotation={[0.14, 0, 0.14]} />
+        <SofaLeg position={[0.48, 0, -0.82]} rotation={[0.18, 0, 0.18]} />
         {/* Apoio lateral direito */}
-        <SofaLeg position={[0.46, 0, 0.1]} rotation={[0, 0, 0.14]} />
+        <SofaLeg position={[0.48, 0, 0.05]} rotation={[0, 0, 0.18]} />
         {/* Canto traseiro direito */}
-        <SofaLeg position={[0.46, 0, 0.78]} rotation={[-0.14, 0, 0.14]} />
+        <SofaLeg position={[0.48, 0, 0.82]} rotation={[-0.18, 0, 0.18]} />
+        {/* Canto traseiro esquerdo */}
+        <SofaLeg position={[-0.48, 0, 0.82]} rotation={[-0.18, 0, -0.18]} />
       </group>
 
       {/* 4. Mesa de Centro de Madeira Maciça da Sala */}

@@ -12,7 +12,15 @@ import { ObstacleDetector } from '@/agent/navigation/ObstacleDetector';
 import type { CatBehaviorState } from '@/types/environment';
 import type { Vector2D } from '@/types/robot';
 import { clamp, damp, dampAngle, distance2D, lerp } from '@/utils/math';
-import type { FurniturePerchSpot } from './Cat';
+import {
+  ALL_HOUSE_CAT_PERCHES,
+  pickWeightedCatFloorDestination,
+  pickWeightedCatPerch,
+  planCatRoute,
+  type FurniturePerchSpot,
+} from './catNavigation';
+
+export { ALL_HOUSE_CAT_PERCHES as TUXEDO_CAT_PERCHES };
 
 const tuxedoCatMaterials = {
   furBlack: new THREE.MeshStandardMaterial({
@@ -51,57 +59,6 @@ const tuxedoCatMaterials = {
     color: '#FBBF24',
   }),
 };
-
-/**
- * Móveis favoritos onde o Gato Mesclado (Frajola) gosta de subir (foco na Cozinha e Banheiro).
- */
-export const TUXEDO_CAT_PERCHES: FurniturePerchSpot[] = [
-  {
-    id: 'kitchen-counter',
-    name: 'Bancada da Cozinha',
-    surfaceY: 0.95,
-    stagingPoint: { x: 10.5, z: 5.6 },
-    perchWaypoints: [
-      { x: 10.5, z: 6.8 },
-      { x: 11.8, z: 6.8 },
-    ],
-  },
-  {
-    id: 'kitchen-stool',
-    name: 'Banqueta da Cozinha',
-    surfaceY: 0.85,
-    stagingPoint: { x: 12.0, z: 4.2 },
-    perchWaypoints: [
-      { x: 12.0, z: 4.8 },
-    ],
-  },
-  {
-    id: 'bathroom-vanity',
-    name: 'Gabinete da Pia do Banheiro',
-    surfaceY: 0.88,
-    stagingPoint: { x: 6.8, z: 10.2 },
-    perchWaypoints: [
-      { x: 6.8, z: 11.5 },
-    ],
-  },
-];
-
-const TUXEDO_CAT_FLOOR_WAYPOINTS: Vector2D[] = [
-  // Cozinha
-  { x: 10.5, z: 5.5 },
-  { x: 12.8, z: 6.2 },
-  { x: 15.2, z: 5.8 },
-  { x: 13.5, z: 7.2 },
-  // Banheiro
-  { x: 6.3, z: 9.8 },
-  { x: 8.2, z: 10.5 },
-  { x: 6.5, z: 12.0 },
-  // Corredor
-  { x: 6.3, z: 3.5 },
-  { x: 6.3, z: 7.2 },
-  // Sala
-  { x: 9.5, z: 1.0 },
-];
 
 const TUXEDO_CAT_STATES: CatBehaviorState[] = [
   'WALKING',
@@ -144,6 +101,8 @@ export function TuxedoCat() {
   const climbingTargetPerchRef = useRef<FurniturePerchSpot | null>(null);
   const perchCyclesRemainingRef = useRef(0);
   const startleCooldownRef = useRef(0);
+  const outsideBedroomStepsRef = useRef(0);
+  const waypointQueueRef = useRef<Vector2D[]>([]);
 
   const obstacles = useEnvironmentStore((s) => s.obstacles);
   const roomDimensions = useEnvironmentStore((s) => s.roomDimensions);
@@ -159,15 +118,22 @@ export function TuxedoCat() {
   );
 
   const pickFreeFloorTarget = (): Vector2D => {
-    const valid = TUXEDO_CAT_FLOOR_WAYPOINTS.filter((pt) => {
-      const distToRobot = Math.hypot(
-        pt.x - robotMotionBridge.x,
-        pt.z - robotMotionBridge.z
-      );
-      return !catObstacleDetector.isColliding(pt, 0.34) && distToRobot > 0.75;
-    });
-    if (valid.length === 0) return { x: 10.5, z: 5.5 };
-    return valid[Math.floor(Math.random() * valid.length)];
+    const { target, targetRoom } = pickWeightedCatFloorDestination(
+      catObstacleDetector,
+      outsideBedroomStepsRef.current
+    );
+    if (targetRoom === 'bedroom') {
+      outsideBedroomStepsRef.current = 0;
+    } else {
+      outsideBedroomStepsRef.current += 1;
+    }
+    const currentPos = {
+      x: tuxedoCatMotionBridge.x,
+      z: tuxedoCatMotionBridge.z,
+    };
+    const route = planCatRoute(currentPos, target);
+    waypointQueueRef.current = route;
+    return waypointQueueRef.current.shift() || target;
   };
 
   const startJump = (
@@ -281,27 +247,25 @@ export function TuxedoCat() {
         tuxedoCatMotionBridge.targetZ = safePoint.z;
       } else if (tuxedoCatMotionBridge.isPerched) {
         if (perchCyclesRemainingRef.current <= 0) {
-          const currentPerch = TUXEDO_CAT_PERCHES.find(
+          const currentPerch = ALL_HOUSE_CAT_PERCHES.find(
             (p) => p.id === tuxedoCatMotionBridge.perchSurfaceId
+          ) ?? ALL_HOUSE_CAT_PERCHES[0];
+          startJump(
+            {
+              x: tuxedoCatMotionBridge.x,
+              y: currentPerch.surfaceY,
+              z: tuxedoCatMotionBridge.z,
+            },
+            {
+              x: currentPerch.stagingPoint.x,
+              y: 0,
+              z: currentPerch.stagingPoint.z,
+            },
+            0.55,
+            0.28
           );
-          if (currentPerch) {
-            startJump(
-              {
-                x: tuxedoCatMotionBridge.x,
-                y: currentPerch.surfaceY,
-                z: tuxedoCatMotionBridge.z,
-              },
-              {
-                x: currentPerch.stagingPoint.x,
-                y: 0,
-                z: currentPerch.stagingPoint.z,
-              },
-              0.55,
-              0.28
-            );
-            tuxedoCatMotionBridge.isPerched = false;
-            tuxedoCatMotionBridge.perchSurfaceId = null;
-          }
+          tuxedoCatMotionBridge.isPerched = false;
+          tuxedoCatMotionBridge.perchSurfaceId = null;
         } else {
           perchCyclesRemainingRef.current -= 1;
           const nextState = pickRandomState(['SITTING', 'LYING', 'SLEEPING', 'GROOMING'], tuxedoCatMotionBridge.state);
@@ -309,19 +273,28 @@ export function TuxedoCat() {
           tuxedoCatMotionBridge.stateTimer = 4.5 + Math.random() * 4.0;
         }
       } else {
-        // Chance de subir em um móvel
-        const shouldClimb = Math.random() < 0.24;
+        // Chance de subir em um móvel (com preferência pelo quarto)
+        const shouldClimb = Math.random() < 0.26;
         if (shouldClimb) {
-          const chosenPerch =
-            TUXEDO_CAT_PERCHES[
-              Math.floor(Math.random() * TUXEDO_CAT_PERCHES.length)
-            ];
+          const chosenPerch = pickWeightedCatPerch(outsideBedroomStepsRef.current);
+          if (chosenPerch.room === 'bedroom') {
+            outsideBedroomStepsRef.current = 0;
+          } else {
+            outsideBedroomStepsRef.current += 1;
+          }
           climbingTargetPerchRef.current = chosenPerch;
-          tuxedoCatMotionBridge.targetX = chosenPerch.stagingPoint.x;
-          tuxedoCatMotionBridge.targetZ = chosenPerch.stagingPoint.z;
+          const currentPos = {
+            x: tuxedoCatMotionBridge.x,
+            z: tuxedoCatMotionBridge.z,
+          };
+          const route = planCatRoute(currentPos, chosenPerch.stagingPoint);
+          waypointQueueRef.current = route;
+          const nextTarget = waypointQueueRef.current.shift() || chosenPerch.stagingPoint;
+          tuxedoCatMotionBridge.targetX = nextTarget.x;
+          tuxedoCatMotionBridge.targetZ = nextTarget.z;
           tuxedoCatMotionBridge.state = 'WALKING';
           tuxedoCatMotionBridge.speed = 0.8;
-          tuxedoCatMotionBridge.stateTimer = 6.0;
+          tuxedoCatMotionBridge.stateTimer = 10.0;
         } else {
           const nextState = pickRandomState(TUXEDO_CAT_STATES, tuxedoCatMotionBridge.state);
           tuxedoCatMotionBridge.state = nextState;
@@ -358,38 +331,48 @@ export function TuxedoCat() {
 
       // Verificação de proximidade do móvel para salto de subida
       if (climbingTargetPerchRef.current && !tuxedoCatMotionBridge.isPerched) {
-        const perch = climbingTargetPerchRef.current;
-        if (dist < 0.45) {
-          climbingTargetPerchRef.current = null;
-          tuxedoCatMotionBridge.perchSurfaceId = perch.id;
-          perchCyclesRemainingRef.current = 2 + Math.floor(Math.random() * 3);
+        if (dist < 0.42) {
+          if (waypointQueueRef.current.length > 0) {
+            const nextTarget = waypointQueueRef.current.shift()!;
+            tuxedoCatMotionBridge.targetX = nextTarget.x;
+            tuxedoCatMotionBridge.targetZ = nextTarget.z;
+          } else {
+            const perch = climbingTargetPerchRef.current;
+            climbingTargetPerchRef.current = null;
+            tuxedoCatMotionBridge.perchSurfaceId = perch.id;
+            perchCyclesRemainingRef.current = 2 + Math.floor(Math.random() * 3);
 
-          const wp =
-            perch.perchWaypoints[
-              Math.floor(Math.random() * perch.perchWaypoints.length)
-            ];
+            const wp =
+              perch.perchWaypoints[
+                Math.floor(Math.random() * perch.perchWaypoints.length)
+              ];
 
-          useCommandStore
-            .getState()
-            .pushNotification(
-              'Gato Frajola no Móvel',
-              `O gato mesclado saltou no(a) ${perch.name}!`,
-              'info'
+            useCommandStore
+              .getState()
+              .pushNotification(
+                'Gato Frajola no Móvel',
+                `O gato mesclado saltou no(a) ${perch.name}!`,
+                'info'
+              );
+
+            startJump(
+              { x: tuxedoCatMotionBridge.x, y: 0, z: tuxedoCatMotionBridge.z },
+              { x: wp.x, y: perch.surfaceY, z: wp.z },
+              0.65,
+              0.42
             );
-
-          startJump(
-            { x: tuxedoCatMotionBridge.x, y: 0, z: tuxedoCatMotionBridge.z },
-            { x: wp.x, y: perch.surfaceY, z: wp.z },
-            0.65,
-            0.42
-          );
+          }
         }
-      }
-
-      if (dist < 0.28) {
-        const nextTarget = pickFreeFloorTarget();
-        tuxedoCatMotionBridge.targetX = nextTarget.x;
-        tuxedoCatMotionBridge.targetZ = nextTarget.z;
+      } else if (dist < 0.35) {
+        if (waypointQueueRef.current.length > 0) {
+          const nextTarget = waypointQueueRef.current.shift()!;
+          tuxedoCatMotionBridge.targetX = nextTarget.x;
+          tuxedoCatMotionBridge.targetZ = nextTarget.z;
+        } else {
+          const nextTarget = pickFreeFloorTarget();
+          tuxedoCatMotionBridge.targetX = nextTarget.x;
+          tuxedoCatMotionBridge.targetZ = nextTarget.z;
+        }
       }
 
       if (tuxedoCatMotionBridge.state !== 'JUMPING') {
@@ -821,3 +804,4 @@ export function TuxedoCat() {
     </group>
   );
 }
+

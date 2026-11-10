@@ -12,7 +12,15 @@ import { ObstacleDetector } from '@/agent/navigation/ObstacleDetector';
 import type { CatBehaviorState } from '@/types/environment';
 import type { Vector2D } from '@/types/robot';
 import { clamp, damp, dampAngle, distance2D, lerp } from '@/utils/math';
-import type { FurniturePerchSpot } from './Cat';
+import {
+  ALL_HOUSE_CAT_PERCHES,
+  pickWeightedCatFloorDestination,
+  pickWeightedCatPerch,
+  planCatRoute,
+  type FurniturePerchSpot,
+} from './catNavigation';
+
+export { ALL_HOUSE_CAT_PERCHES as WHITE_CAT_PERCHES };
 
 const whiteCatMaterials = {
   furWhite: new THREE.MeshStandardMaterial({
@@ -51,58 +59,6 @@ const whiteCatMaterials = {
     color: '#FBBF24',
   }),
 };
-
-/**
- * Móveis favoritos onde o Gato Branco gosta de subir e descansar (foco na Sala, Corredor e Cozinha).
- */
-export const WHITE_CAT_PERCHES: FurniturePerchSpot[] = [
-  {
-    id: 'living-sofa-chaise',
-    name: 'Chaise do Sofá da Sala',
-    surfaceY: 0.58,
-    stagingPoint: { x: 15.6, z: -0.9 },
-    perchWaypoints: [
-      { x: 15.6, z: -0.1 },
-      { x: 15.6, z: 0.5 },
-    ],
-  },
-  {
-    id: 'living-coffee-table',
-    name: 'Mesa de Centro da Sala',
-    surfaceY: 0.52,
-    stagingPoint: { x: 12.8, z: -0.1 },
-    perchWaypoints: [
-      { x: 12.8, z: -0.7 },
-      { x: 12.2, z: -0.7 },
-    ],
-  },
-  {
-    id: 'hallway-console',
-    name: 'Aparador do Corredor',
-    surfaceY: 0.55,
-    stagingPoint: { x: 6.3, z: 2.8 },
-    perchWaypoints: [
-      { x: 6.3, z: 3.5 },
-    ],
-  },
-];
-
-const WHITE_CAT_FLOOR_WAYPOINTS: Vector2D[] = [
-  // Sala de Estar
-  { x: 12.8, z: 0.2 },
-  { x: 10.5, z: -1.8 },
-  { x: 14.5, z: -1.5 },
-  { x: 11.2, z: 1.2 },
-  { x: 13.8, z: 1.8 },
-  // Corredor
-  { x: 6.3, z: 1.5 },
-  { x: 6.3, z: 4.2 },
-  { x: 6.3, z: 6.8 },
-  // Cozinha
-  { x: 10.5, z: 5.2 },
-  { x: 12.5, z: 6.5 },
-  { x: 14.8, z: 5.2 },
-];
 
 const WHITE_CAT_STATES: CatBehaviorState[] = [
   'WALKING',
@@ -145,6 +101,8 @@ export function WhiteCat() {
   const climbingTargetPerchRef = useRef<FurniturePerchSpot | null>(null);
   const perchCyclesRemainingRef = useRef(0);
   const startleCooldownRef = useRef(0);
+  const outsideBedroomStepsRef = useRef(0);
+  const waypointQueueRef = useRef<Vector2D[]>([]);
 
   const obstacles = useEnvironmentStore((s) => s.obstacles);
   const roomDimensions = useEnvironmentStore((s) => s.roomDimensions);
@@ -160,15 +118,22 @@ export function WhiteCat() {
   );
 
   const pickFreeFloorTarget = (): Vector2D => {
-    const valid = WHITE_CAT_FLOOR_WAYPOINTS.filter((pt) => {
-      const distToRobot = Math.hypot(
-        pt.x - robotMotionBridge.x,
-        pt.z - robotMotionBridge.z
-      );
-      return !catObstacleDetector.isColliding(pt, 0.34) && distToRobot > 0.75;
-    });
-    if (valid.length === 0) return { x: 12.8, z: 0.2 };
-    return valid[Math.floor(Math.random() * valid.length)];
+    const { target, targetRoom } = pickWeightedCatFloorDestination(
+      catObstacleDetector,
+      outsideBedroomStepsRef.current
+    );
+    if (targetRoom === 'bedroom') {
+      outsideBedroomStepsRef.current = 0;
+    } else {
+      outsideBedroomStepsRef.current += 1;
+    }
+    const currentPos = {
+      x: whiteCatMotionBridge.x,
+      z: whiteCatMotionBridge.z,
+    };
+    const route = planCatRoute(currentPos, target);
+    waypointQueueRef.current = route;
+    return waypointQueueRef.current.shift() || target;
   };
 
   const startJump = (
@@ -282,27 +247,25 @@ export function WhiteCat() {
         whiteCatMotionBridge.targetZ = safePoint.z;
       } else if (whiteCatMotionBridge.isPerched) {
         if (perchCyclesRemainingRef.current <= 0) {
-          const currentPerch = WHITE_CAT_PERCHES.find(
+          const currentPerch = ALL_HOUSE_CAT_PERCHES.find(
             (p) => p.id === whiteCatMotionBridge.perchSurfaceId
+          ) ?? ALL_HOUSE_CAT_PERCHES[0];
+          startJump(
+            {
+              x: whiteCatMotionBridge.x,
+              y: currentPerch.surfaceY,
+              z: whiteCatMotionBridge.z,
+            },
+            {
+              x: currentPerch.stagingPoint.x,
+              y: 0,
+              z: currentPerch.stagingPoint.z,
+            },
+            0.55,
+            0.28
           );
-          if (currentPerch) {
-            startJump(
-              {
-                x: whiteCatMotionBridge.x,
-                y: currentPerch.surfaceY,
-                z: whiteCatMotionBridge.z,
-              },
-              {
-                x: currentPerch.stagingPoint.x,
-                y: 0,
-                z: currentPerch.stagingPoint.z,
-              },
-              0.55,
-              0.28
-            );
-            whiteCatMotionBridge.isPerched = false;
-            whiteCatMotionBridge.perchSurfaceId = null;
-          }
+          whiteCatMotionBridge.isPerched = false;
+          whiteCatMotionBridge.perchSurfaceId = null;
         } else {
           perchCyclesRemainingRef.current -= 1;
           const nextState = pickRandomState(['SITTING', 'LYING', 'SLEEPING', 'GROOMING'], whiteCatMotionBridge.state);
@@ -310,19 +273,28 @@ export function WhiteCat() {
           whiteCatMotionBridge.stateTimer = 4.5 + Math.random() * 4.0;
         }
       } else {
-        // Chance de escolher subir em um móvel
-        const shouldClimb = Math.random() < 0.22;
+        // Chance de escolher subir em um móvel (com preferência pelo quarto)
+        const shouldClimb = Math.random() < 0.26;
         if (shouldClimb) {
-          const chosenPerch =
-            WHITE_CAT_PERCHES[
-              Math.floor(Math.random() * WHITE_CAT_PERCHES.length)
-            ];
+          const chosenPerch = pickWeightedCatPerch(outsideBedroomStepsRef.current);
+          if (chosenPerch.room === 'bedroom') {
+            outsideBedroomStepsRef.current = 0;
+          } else {
+            outsideBedroomStepsRef.current += 1;
+          }
           climbingTargetPerchRef.current = chosenPerch;
-          whiteCatMotionBridge.targetX = chosenPerch.stagingPoint.x;
-          whiteCatMotionBridge.targetZ = chosenPerch.stagingPoint.z;
+          const currentPos = {
+            x: whiteCatMotionBridge.x,
+            z: whiteCatMotionBridge.z,
+          };
+          const route = planCatRoute(currentPos, chosenPerch.stagingPoint);
+          waypointQueueRef.current = route;
+          const nextTarget = waypointQueueRef.current.shift() || chosenPerch.stagingPoint;
+          whiteCatMotionBridge.targetX = nextTarget.x;
+          whiteCatMotionBridge.targetZ = nextTarget.z;
           whiteCatMotionBridge.state = 'WALKING';
           whiteCatMotionBridge.speed = 0.8;
-          whiteCatMotionBridge.stateTimer = 6.0;
+          whiteCatMotionBridge.stateTimer = 10.0;
         } else {
           const nextState = pickRandomState(WHITE_CAT_STATES, whiteCatMotionBridge.state);
           whiteCatMotionBridge.state = nextState;
@@ -359,38 +331,48 @@ export function WhiteCat() {
 
       // Verificação de proximidade do móvel para salto de subida
       if (climbingTargetPerchRef.current && !whiteCatMotionBridge.isPerched) {
-        const perch = climbingTargetPerchRef.current;
-        if (dist < 0.45) {
-          climbingTargetPerchRef.current = null;
-          whiteCatMotionBridge.perchSurfaceId = perch.id;
-          perchCyclesRemainingRef.current = 2 + Math.floor(Math.random() * 3);
+        if (dist < 0.42) {
+          if (waypointQueueRef.current.length > 0) {
+            const nextTarget = waypointQueueRef.current.shift()!;
+            whiteCatMotionBridge.targetX = nextTarget.x;
+            whiteCatMotionBridge.targetZ = nextTarget.z;
+          } else {
+            const perch = climbingTargetPerchRef.current;
+            climbingTargetPerchRef.current = null;
+            whiteCatMotionBridge.perchSurfaceId = perch.id;
+            perchCyclesRemainingRef.current = 2 + Math.floor(Math.random() * 3);
 
-          const wp =
-            perch.perchWaypoints[
-              Math.floor(Math.random() * perch.perchWaypoints.length)
-            ];
+            const wp =
+              perch.perchWaypoints[
+                Math.floor(Math.random() * perch.perchWaypoints.length)
+              ];
 
-          useCommandStore
-            .getState()
-            .pushNotification(
-              'Gato Branco no Móvel',
-              `O gato branco saltou no(a) ${perch.name}!`,
-              'info'
+            useCommandStore
+              .getState()
+              .pushNotification(
+                'Gato Branco no Móvel',
+                `O gato branco saltou no(a) ${perch.name}!`,
+                'info'
+              );
+
+            startJump(
+              { x: whiteCatMotionBridge.x, y: 0, z: whiteCatMotionBridge.z },
+              { x: wp.x, y: perch.surfaceY, z: wp.z },
+              0.65,
+              0.42
             );
-
-          startJump(
-            { x: whiteCatMotionBridge.x, y: 0, z: whiteCatMotionBridge.z },
-            { x: wp.x, y: perch.surfaceY, z: wp.z },
-            0.65,
-            0.42
-          );
+          }
         }
-      }
-
-      if (dist < 0.28) {
-        const nextTarget = pickFreeFloorTarget();
-        whiteCatMotionBridge.targetX = nextTarget.x;
-        whiteCatMotionBridge.targetZ = nextTarget.z;
+      } else if (dist < 0.35) {
+        if (waypointQueueRef.current.length > 0) {
+          const nextTarget = waypointQueueRef.current.shift()!;
+          whiteCatMotionBridge.targetX = nextTarget.x;
+          whiteCatMotionBridge.targetZ = nextTarget.z;
+        } else {
+          const nextTarget = pickFreeFloorTarget();
+          whiteCatMotionBridge.targetX = nextTarget.x;
+          whiteCatMotionBridge.targetZ = nextTarget.z;
+        }
       }
 
       if (whiteCatMotionBridge.state !== 'JUMPING') {
