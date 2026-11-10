@@ -518,6 +518,7 @@ export interface EnvironmentStoreState {
   cycleCatBehavior: () => CatBehaviorState;
   resolveRegionAtPoint: (point: Vector2D) => RoomRegion;
   cleanDustNearPoint: (point: Vector2D, reachRadius?: number, power?: number) => number;
+  respawnDustSpots: () => void;
   resetEnvironment: () => void;
 }
 
@@ -592,6 +593,12 @@ export const useEnvironmentStore = create<EnvironmentStoreState>((set, get) => (
     const remaining = updated.reduce((acc, spot) => acc + spot.intensity, 0);
     const cleanedRatio = 1 - remaining / totalInitial;
     return Math.round(Math.min(100, Math.max(0, cleanedRatio * 100)));
+  },
+
+  respawnDustSpots: () => {
+    set({
+      dustSpots: INITIAL_DUST_SPOTS.map((spot) => ({ ...spot, intensity: 0.9 })),
+    });
   },
 
   resetEnvironment: () => {

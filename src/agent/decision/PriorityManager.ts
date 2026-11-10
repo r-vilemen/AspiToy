@@ -33,7 +33,7 @@ export class PriorityManager {
     // 2. Filtra pontos que ainda precisam de limpeza (intensidade > 0.05)
     const activeSpots = dustSpots.filter((s) => s.intensity > 0.05);
     if (activeSpots.length === 0) {
-      return dockPos; // Concluído: retorna para base
+      return null; // Concluído: todas as manchas ativas foram limpas
     }
 
     let bestTarget: Vector2D | null = null;

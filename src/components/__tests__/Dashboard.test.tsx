@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { StatusCard } from '../ui/StatusCard';
 import { ControlPanel } from '../ui/ControlPanel';
 import { Header } from '../layout/Header';
@@ -53,6 +53,35 @@ describe('Componentes de Interface e Controles (Dia 1)', () => {
     fireEvent.click(returnBtn);
     expect(screen.getByText('Rota direta para acoplamento')).toBeDefined();
     expect(useRobotStore.getState().state).toBe('RETURNING');
+
+    // Durante o retorno à base, o usuário também pode pausar a operação
+    const pauseWhileReturning = screen.getByRole('button', { name: /Pausar operação/i });
+    fireEvent.click(pauseWhileReturning);
+    expect(useRobotStore.getState().state).toBe('PAUSED');
+  });
+
+  it('permite reiniciar a limpeza e regenera poeira quando o robô conclui a tarefa', () => {
+    render(
+      <div>
+        <StatusCard />
+        <ControlPanel />
+      </div>
+    );
+
+    // Simula conclusão anterior com 100%
+    act(() => {
+      useRobotStore.getState().setCleaningProgress(100);
+      useRobotStore.getState().setOperationalState('COMPLETED');
+    });
+
+    const startBtn = screen.getByRole('button', { name: /Iniciar limpeza/i });
+    act(() => {
+      fireEvent.click(startBtn);
+    });
+
+    expect(useRobotStore.getState().state).toBe('CLEANING');
+    expect(useRobotStore.getState().cleaningProgress).toBe(0);
+    expect(useEnvironmentStore.getState().dustSpots.some((s) => s.intensity > 0.5)).toBe(true);
   });
 });
 

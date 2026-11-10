@@ -49,7 +49,10 @@ export function ControlPanel() {
   const keys = useKeyboardControls();
 
   const isRunning =
-    state === 'CLEANING' || state === 'EXPLORING' || state === 'AVOIDING';
+    state === 'CLEANING' ||
+    state === 'EXPLORING' ||
+    state === 'AVOIDING' ||
+    state === 'RETURNING';
   const isPaused = state === 'PAUSED';
   const isReturning = state === 'RETURNING';
 
@@ -158,11 +161,10 @@ export function ControlPanel() {
             onPointerUp={stopManualMove}
             onPointerLeave={stopManualMove}
             onPointerCancel={stopManualMove}
-            className={`flex h-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_3px_0px_#2A211B] transition cursor-pointer ${
-              keys.forward
+            className={`flex h-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_3px_0px_#2A211B] transition cursor-pointer ${keys.forward
                 ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
                 : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
-            }`}
+              }`}
           >
             <ArrowUp className="h-4.5 w-4.5 stroke-[2.5]" />
           </button>
@@ -174,11 +176,10 @@ export function ControlPanel() {
             onPointerUp={stopManualMove}
             onPointerLeave={stopManualMove}
             onPointerCancel={stopManualMove}
-            className={`flex h-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_3px_0px_#2A211B] transition cursor-pointer ${
-              keys.left
+            className={`flex h-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_3px_0px_#2A211B] transition cursor-pointer ${keys.left
                 ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
                 : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
-            }`}
+              }`}
           >
             <ArrowLeft className="h-4.5 w-4.5 stroke-[2.5]" />
           </button>
@@ -189,11 +190,10 @@ export function ControlPanel() {
             onPointerUp={stopManualMove}
             onPointerLeave={stopManualMove}
             onPointerCancel={stopManualMove}
-            className={`flex h-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_3px_0px_#2A211B] transition cursor-pointer ${
-              keys.backward
+            className={`flex h-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_3px_0px_#2A211B] transition cursor-pointer ${keys.backward
                 ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
                 : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
-            }`}
+              }`}
           >
             <ArrowDown className="h-4.5 w-4.5 stroke-[2.5]" />
           </button>
@@ -204,11 +204,10 @@ export function ControlPanel() {
             onPointerUp={stopManualMove}
             onPointerLeave={stopManualMove}
             onPointerCancel={stopManualMove}
-            className={`flex h-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_3px_0px_#2A211B] transition cursor-pointer ${
-              keys.right
+            className={`flex h-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_3px_0px_#2A211B] transition cursor-pointer ${keys.right
                 ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
                 : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
-            }`}
+              }`}
           >
             <ArrowRight className="h-4.5 w-4.5 stroke-[2.5]" />
           </button>
@@ -239,16 +238,14 @@ export function ControlPanel() {
                 onClick={() =>
                   dispatchCommand('CLEAN_REGION', { regionId: region.id })
                 }
-                className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-left text-xs font-bold transition cursor-pointer border-2 ${
-                  active
+                className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-left text-xs font-bold transition cursor-pointer border-2 ${active
                     ? 'border-[#2A211B] bg-[#E05A36] text-white shadow-[2px_2px_0px_#2A211B] translate-y-0.5'
                     : 'border-[#2A211B]/25 bg-[#F5ECE0] text-[#54463B] shadow-[2px_2px_0px_#2A211B]/15 hover:border-[#2A211B] hover:text-[#2A211B] hover:bg-[#EBDDCB]'
-                }`}
+                  }`}
               >
                 <RegionIcon
-                  className={`h-3.5 w-3.5 shrink-0 stroke-[2.2] ${
-                    active ? 'text-white' : 'text-[#8C6D4F]'
-                  }`}
+                  className={`h-3.5 w-3.5 shrink-0 stroke-[2.2] ${active ? 'text-white' : 'text-[#8C6D4F]'
+                    }`}
                   aria-hidden="true"
                 />
                 <span className="truncate">{region.label}</span>

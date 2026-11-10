@@ -104,7 +104,8 @@ export class AgentController {
     if (
       currentState === 'IDLE' ||
       currentState === 'PAUSED' ||
-      currentState === 'RECHARGING'
+      currentState === 'RECHARGING' ||
+      currentState === 'COMPLETED'
     ) {
       this.currentPath = [];
       this.currentPathIdx = 0;
@@ -138,11 +139,8 @@ export class AgentController {
       ...scan.rays.slice(centerIdx + 1).map((r) => r.distance)
     );
 
-    const minSideRayDist = Math.min(...scan.rays.map((r) => r.distance));
-
-    // Colisão iminente frontal (< 0.48m) ou nos raios diagonais dianteiros (< 0.35m)
-    const isImminentCollision =
-      minFrontRay.distance < 0.48 || minSideRayDist < 0.35;
+    // Colisão iminente frontal (< 0.42m nos feixes em direção ao avanço)
+    const isImminentCollision = minFrontRay.distance < 0.42;
 
     // Manobra de evasão ativa
     if (this.avoidanceTimer > 0) {
@@ -151,7 +149,7 @@ export class AgentController {
         this.avoidanceTimer <= 0 ? 'CLEANING' : 'AVOIDING';
       return {
         nextState: resumedState,
-        desiredSpeed: baseSpeed * 0.55,
+        desiredSpeed: baseSpeed * 0.35,
         desiredHeading: this.avoidTargetHeading,
         logAction: 'Contornando obstáculo com segurança',
         plannedPath: this.currentPath,
@@ -159,15 +157,15 @@ export class AgentController {
     }
 
     if (isImminentCollision) {
-      this.avoidanceTimer = 0.55;
+      this.avoidanceTimer = 0.5;
       this.avoidTurnDirection = leftDist >= rightDist ? -1 : 1;
       this.avoidTargetHeading =
-        rotationY + this.avoidTurnDirection * (Math.PI * 0.55);
+        rotationY + this.avoidTurnDirection * (Math.PI * 0.4);
       this.currentPath = []; // Invalida rota para forçar replanejamento A* contornando o gato/móvel
       const obstacleName = minFrontRay.obstacleLabel ?? 'obstáculo';
       return {
         nextState: 'AVOIDING',
-        desiredSpeed: baseSpeed * 0.35,
+        desiredSpeed: baseSpeed * 0.25,
         desiredHeading: this.avoidTargetHeading,
         logAction: `Desviando de ${obstacleName}`,
         detectedObstacleLabel: obstacleName,

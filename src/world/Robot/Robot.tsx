@@ -24,15 +24,14 @@ import { distance2D, damp } from '@/utils/math';
 
 const PATROL_POINTS = [
   { x: -1.8, z: -0.2 },
-  { x: -0.2, z: -1.4 },
   { x: 2.3, z: -1.1 },
-  { x: 2.8, z: -2.4 },
   { x: -0.2, z: -2.6 },
-  { x: -2.3, z: -2.2 },
-  { x: -3.2, z: 0.8 },
   { x: -2.2, z: 2.2 },
   { x: 2.4, z: 1.8 },
-  { x: -0.3, z: 1.0 },
+  { x: 6.3, z: 1.0 },   // Corredor
+  { x: 12.0, z: -0.5 }, // Sala de Estar
+  { x: 12.0, z: 5.5 },  // Cozinha
+  { x: 7.8, z: 10.5 },  // Banheiro
 ];
 
 /**
@@ -172,13 +171,14 @@ export function Robot() {
       }
     } else {
       // Quando não há controle manual ativo:
-      // Se o robô estiver em repouso (IDLE, PAUSED ou RECHARGING), garante parada imediata sem movimentação autônoma
+      // Se o robô estiver em repouso (IDLE, PAUSED, RECHARGING ou COMPLETED), garante parada imediata sem movimentação autônoma
       if (
         robotState.state === 'IDLE' ||
         robotState.state === 'PAUSED' ||
-        robotState.state === 'RECHARGING'
+        robotState.state === 'RECHARGING' ||
+        robotState.state === 'COMPLETED'
       ) {
-        loc.speed = damp(loc.speed, 0, 12.0, delta);
+        loc.speed = damp(loc.speed, 0, 16.0, delta);
         loc.pitch = damp(loc.pitch, 0, 8.0, delta);
         loc.roll = damp(loc.roll, 0, 8.0, delta);
       } else {
@@ -292,9 +292,8 @@ export function Robot() {
 
         if (collisionResult.collided) {
           loc.bumperCompression = 0.028;
-          // Gira decididamente para sair da tangente do obstáculo sem ser anulado no próximo frame
-          loc.rotationY += 2.2 * delta;
-          loc.targetRotationY = loc.rotationY;
+          // Amortece velocidade linear para não insistir contra o obstáculo nem girar descontroladamente
+          loc.speed = damp(loc.speed, 0, 16.0, delta);
         }
       }
     }
@@ -373,14 +372,14 @@ export function Robot() {
             'Nível crítico. Retorno automático à base acionado pelo agente.',
             'warning'
           );
-        } else if (nextProgress >= 100) {
+        } else if (nextProgress >= 100 && robotState.state === 'CLEANING') {
           robotState.setOperationalState(
             'COMPLETED',
-            'Limpeza da sala de estar concluída!'
+            'Limpeza da residência concluída com sucesso!'
           );
           cmdState.pushNotification(
             'Limpeza concluída!',
-            'Todas as áreas prioritárias foram higienizadas.',
+            'Todas as áreas prioritárias da residência foram higienizadas.',
             'success'
           );
         }

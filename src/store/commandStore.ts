@@ -6,7 +6,7 @@ import type {
   UserCommandType,
 } from '@/types/commands';
 import type { Vector2D } from '@/types/robot';
-import { useRobotStore, manualControlBridge } from './robotStore';
+import { useRobotStore, manualControlBridge, robotMotionBridge } from './robotStore';
 import { useEnvironmentStore } from './environmentStore';
 
 export type CameraPreset = 'follow' | 'overview' | 'closeup';
@@ -79,31 +79,55 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
 
     switch (type) {
       case 'START_CLEANING': {
-        if (robot.state === 'CLEANING' || robot.state === 'EXPLORING') {
+        manualControlBridge.active = false;
+        manualControlBridge.forward = 0;
+        manualControlBridge.turn = 0;
+
+        if (robot.state === 'CLEANING') {
           accepted = false;
           label = 'Iniciar limpeza';
-          reason = 'O AspiToy já está em operação.';
+          reason = 'O AspiToy já está em operação de limpeza.';
           break;
         }
+
+        // Se a limpeza anterior já havia sido concluída, regenera as manchas de poeira pela residência
+        if (robot.cleaningProgress >= 100 || robot.state === 'COMPLETED') {
+          env.respawnDustSpots();
+          robot.setCleaningProgress(0);
+        }
+
+        // Se estiver acoplado na base recarregando, desacopla para frente da estação
+        if (robot.state === 'RECHARGING') {
+          robotMotionBridge.x = -3.8;
+          robotMotionBridge.z = 2.6;
+          robotMotionBridge.rotationY = 0;
+        }
+
+        robot.setTargetPosition(null);
         label = 'Iniciar limpeza autônoma';
         robot.setOperationalState(
           'CLEANING',
-          'Iniciando varredura inteligente da sala de estar'
+          'Iniciando varredura inteligente da residência'
         );
         get().pushNotification(
           'Limpeza iniciada',
-          'O AspiToy deixou a base e iniciou a varredura da sala.',
+          'O AspiToy iniciou a varredura autônoma dos cômodos.',
           'success'
         );
         break;
       }
 
       case 'PAUSE_CLEANING': {
+        manualControlBridge.active = false;
+        manualControlBridge.forward = 0;
+        manualControlBridge.turn = 0;
+
         if (
           robot.state !== 'CLEANING' &&
           robot.state !== 'EXPLORING' &&
           robot.state !== 'RETURNING' &&
-          robot.state !== 'AVOIDING'
+          robot.state !== 'AVOIDING' &&
+          robot.state !== 'COMPLETED'
         ) {
           accepted = false;
           label = 'Pausar operação';
@@ -114,20 +138,27 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
         robot.setOperationalState('PAUSED', 'Operação pausada pelo usuário');
         get().pushNotification(
           'Operação em pausa',
-          'Motores em espera. Aguardando comando para retomar.',
+          'Motores paralisados. Clique em retomar para prosseguir.',
           'warning'
         );
         break;
       }
 
       case 'RESUME_CLEANING': {
+        manualControlBridge.active = false;
+        manualControlBridge.forward = 0;
+        manualControlBridge.turn = 0;
+
         if (robot.state !== 'PAUSED') {
           accepted = false;
           label = 'Retomar operação';
           reason = 'O robô não está pausado.';
           break;
         }
-        const targetState = robot.previousActiveState ?? 'CLEANING';
+        const targetState =
+          robot.previousActiveState && robot.previousActiveState !== 'PAUSED'
+            ? robot.previousActiveState
+            : 'CLEANING';
         label = 'Retomar operação';
         robot.setOperationalState(targetState, 'Operação retomada pelo usuário');
         get().pushNotification(
@@ -139,15 +170,16 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
       }
 
       case 'RETURN_TO_BASE': {
+        manualControlBridge.active = false;
+        manualControlBridge.forward = 0;
+        manualControlBridge.turn = 0;
+
         if (robot.state === 'RECHARGING') {
           accepted = false;
           label = 'Retornar à base';
           reason = 'O AspiToy já está acoplado na base.';
           break;
         }
-        manualControlBridge.active = false;
-        manualControlBridge.forward = 0;
-        manualControlBridge.turn = 0;
         label = 'Retornar à base de recarga';
         robot.setTargetPosition(env.dockPosition);
         robot.setOperationalState(
