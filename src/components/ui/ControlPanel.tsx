@@ -11,6 +11,7 @@ import {
 import { manualControlBridge, useRobotStore } from '@/store/robotStore';
 import { useEnvironmentStore } from '@/store/environmentStore';
 import { useCommandStore } from '@/store/commandStore';
+import { useKeyboardControls } from '@/hooks/useKeyboardControls';
 import { CommandInput } from './CommandInput';
 
 export function ControlPanel() {
@@ -18,6 +19,7 @@ export function ControlPanel() {
   const regions = useEnvironmentStore((s) => s.regions);
   const selectedRegionId = useEnvironmentStore((s) => s.selectedRegionId);
   const dispatchCommand = useCommandStore((s) => s.dispatchCommand);
+  const keys = useKeyboardControls();
 
   const isRunning =
     state === 'CLEANING' || state === 'EXPLORING' || state === 'AVOIDING';
@@ -108,7 +110,13 @@ export function ControlPanel() {
           <span className="text-[11px] font-semibold text-[#2A211B]">
             Direção manual (WASD / Setas)
           </span>
-          <span className="text-[10px] text-[#6E5D4F]">Segure para mover</span>
+          <span className="text-[10px] font-medium text-[#6E5D4F]">
+            {keys.forward || keys.backward || keys.left || keys.right ? (
+              <span className="text-[#E05A36] font-semibold">● Ativo</span>
+            ) : (
+              'WASD ou Setas'
+            )}
+          </span>
         </div>
         <div className="mt-2 grid grid-cols-3 gap-1.5 max-w-[180px] mx-auto">
           <div />
@@ -119,7 +127,11 @@ export function ControlPanel() {
             onPointerUp={stopManualMove}
             onPointerLeave={stopManualMove}
             onPointerCancel={stopManualMove}
-            className="flex h-8 items-center justify-center rounded-lg border border-[#8C6D4F]/25 bg-[#FBF7F0] text-[#2A211B] shadow-2xs active:bg-[#E05A36] active:text-white cursor-pointer"
+            className={`flex h-8 items-center justify-center rounded-lg border border-[#8C6D4F]/25 shadow-2xs transition cursor-pointer ${
+              keys.forward
+                ? 'bg-[#E05A36] text-white ring-2 ring-[#E05A36] shadow-sm'
+                : 'bg-[#FBF7F0] text-[#2A211B] active:bg-[#E05A36] active:text-white'
+            }`}
           >
             <ArrowUp className="h-4 w-4" />
           </button>
@@ -131,7 +143,11 @@ export function ControlPanel() {
             onPointerUp={stopManualMove}
             onPointerLeave={stopManualMove}
             onPointerCancel={stopManualMove}
-            className="flex h-8 items-center justify-center rounded-lg border border-[#8C6D4F]/25 bg-[#FBF7F0] text-[#2A211B] shadow-2xs active:bg-[#E05A36] active:text-white cursor-pointer"
+            className={`flex h-8 items-center justify-center rounded-lg border border-[#8C6D4F]/25 shadow-2xs transition cursor-pointer ${
+              keys.left
+                ? 'bg-[#E05A36] text-white ring-2 ring-[#E05A36] shadow-sm'
+                : 'bg-[#FBF7F0] text-[#2A211B] active:bg-[#E05A36] active:text-white'
+            }`}
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
@@ -142,7 +158,11 @@ export function ControlPanel() {
             onPointerUp={stopManualMove}
             onPointerLeave={stopManualMove}
             onPointerCancel={stopManualMove}
-            className="flex h-8 items-center justify-center rounded-lg border border-[#8C6D4F]/25 bg-[#FBF7F0] text-[#2A211B] shadow-2xs active:bg-[#E05A36] active:text-white cursor-pointer"
+            className={`flex h-8 items-center justify-center rounded-lg border border-[#8C6D4F]/25 shadow-2xs transition cursor-pointer ${
+              keys.backward
+                ? 'bg-[#E05A36] text-white ring-2 ring-[#E05A36] shadow-sm'
+                : 'bg-[#FBF7F0] text-[#2A211B] active:bg-[#E05A36] active:text-white'
+            }`}
           >
             <ArrowDown className="h-4 w-4" />
           </button>
@@ -153,7 +173,11 @@ export function ControlPanel() {
             onPointerUp={stopManualMove}
             onPointerLeave={stopManualMove}
             onPointerCancel={stopManualMove}
-            className="flex h-8 items-center justify-center rounded-lg border border-[#8C6D4F]/25 bg-[#FBF7F0] text-[#2A211B] shadow-2xs active:bg-[#E05A36] active:text-white cursor-pointer"
+            className={`flex h-8 items-center justify-center rounded-lg border border-[#8C6D4F]/25 shadow-2xs transition cursor-pointer ${
+              keys.right
+                ? 'bg-[#E05A36] text-white ring-2 ring-[#E05A36] shadow-sm'
+                : 'bg-[#FBF7F0] text-[#2A211B] active:bg-[#E05A36] active:text-white'
+            }`}
           >
             <ArrowRight className="h-4 w-4" />
           </button>
