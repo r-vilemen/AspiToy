@@ -1,4 +1,4 @@
-import { Sparkles } from 'lucide-react';
+import { Broom } from 'lucide-react';
 import { useRobotStore } from '@/store/robotStore';
 
 export function ProgressBar() {
@@ -11,7 +11,7 @@ export function ProgressBar() {
     >
       <div className="flex items-center justify-between text-xs text-[#6E5D4F]">
         <span className="inline-flex items-center gap-1.5 font-bold text-[#2A211B]">
-          <Sparkles className="h-3.5 w-3.5 stroke-[2.2] text-[#E05A36]" aria-hidden="true" />
+          <Broom className="h-4 w-4 stroke-[2.2] text-[#E05A36]" aria-hidden="true" />
           Área higienizada
         </span>
         <span className="font-mono font-black tabular-nums text-[#2A211B]">
