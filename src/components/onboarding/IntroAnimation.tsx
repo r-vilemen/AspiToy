@@ -142,6 +142,13 @@ export function IntroAnimation() {
                   <circle cx="38" cy="31.5" r="3.2" fill="#34D399" />
                   <circle cx="27.2" cy="30.3" r="1.1" fill="#FFFFFF" />
                   <circle cx="39.2" cy="30.3" r="1.1" fill="#FFFFFF" />
+                  <path
+                    d="M28 35.8 Q32 38.5 36 35.8"
+                    stroke="#34D399"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    fill="none"
+                  />
                 </g>
               )}
 
