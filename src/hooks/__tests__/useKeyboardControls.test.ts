@@ -38,5 +38,22 @@ describe('Reconhecimento Universal de Teclado e Controle Manual (WASD / Setas)',
     expect(normalizeDirectionKey(new KeyboardEvent('keydown', { code: 'Enter', key: 'Enter' }))).toBeNull();
     expect(normalizeDirectionKey(new KeyboardEvent('keydown', { code: 'KeyE', key: 'e' }))).toBeNull();
   });
+
+  it('mantém o robô em IDLE durante e após controle manual sem iniciar limpeza autônoma', () => {
+    const robot = useRobotStore.getState();
+    expect(robot.state).toBe('IDLE');
+
+    // Ao acionar controle manual, move o robô sem forçar CLEANING
+    manualControlBridge.forward = 1;
+    manualControlBridge.active = true;
+
+    // O estado permanece IDLE (apenas "Iniciar limpeza" deve iniciar a limpeza autônoma)
+    expect(useRobotStore.getState().state).toBe('IDLE');
+
+    // Ao soltar os controles, o robô para
+    manualControlBridge.forward = 0;
+    manualControlBridge.active = false;
+    expect(useRobotStore.getState().state).toBe('IDLE');
+  });
 });
 
