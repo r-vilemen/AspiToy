@@ -16,7 +16,7 @@ export function Scene() {
         camera={{ position: [-0.35, 0.92, 2.15], fov: 50, near: 0.1, far: 45 }}
       >
         <color attach="background" args={[WORLD_PALETTE.sunlitBackdrop]} />
-        <fog attach="fog" args={[WORLD_PALETTE.fogWarm, 11, 24]} />
+        <fog attach="fog" args={[WORLD_PALETTE.fogWarm, 16, 34]} />
 
         <Suspense fallback={null}>
           <Lighting />
