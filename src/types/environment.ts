@@ -13,10 +13,15 @@ export type CatBehaviorState =
   | 'WALKING'
   | 'RUNNING'
   | 'LYING'
-  | 'SLEEPING';
+  | 'SLEEPING'
+  | 'SITTING'
+  | 'STRETCHING'
+  | 'GROOMING'
+  | 'JUMPING';
 
 export interface CatMotionBridge {
   x: number;
+  y: number;
   z: number;
   rotationY: number;
   targetRotationY: number;
@@ -25,8 +30,16 @@ export interface CatMotionBridge {
   animPhase: number;
   stateTimer: number;
   targetX: number;
+  targetY: number;
   targetZ: number;
   radius: number;
+  isPerched: boolean;
+  perchSurfaceId?: string | null;
+  jumpProgress?: number;
+  jumpArcHeight?: number;
+  jumpDuration?: number;
+  jumpStart?: { x: number; y: number; z: number };
+  jumpEnd?: { x: number; y: number; z: number };
 }
 
 export interface BoundingBox2D {

@@ -28,6 +28,7 @@ export const INITIAL_ROOM_DIMENSIONS: RoomDimensions = {
  */
 export const catMotionBridge: CatMotionBridge = {
   x: INITIAL_CAT_POSITION.x,
+  y: 0,
   z: INITIAL_CAT_POSITION.z,
   rotationY: 0.6,
   targetRotationY: 0.6,
@@ -36,15 +37,22 @@ export const catMotionBridge: CatMotionBridge = {
   animPhase: 0,
   stateTimer: 4.5,
   targetX: 0.1,
+  targetY: 0,
   targetZ: -0.4,
   radius: 0.34,
+  isPerched: false,
+  perchSurfaceId: null,
+  jumpProgress: 0,
 };
 
 /**
  * Retorna o obstáculo dinâmico representando a posição instantânea do gato.
+ * Quando o gato está empoleirado nos móveis (sofá, poltrona, mesa com y > 0.35m),
+ * ele deixa de ser um obstáculo no piso para o robô.
  */
 export function getDynamicCatObstacle(): EnvironmentObstacle {
   const r = catMotionBridge.radius;
+  const isPerched = (catMotionBridge.y ?? 0) > 0.35 || catMotionBridge.isPerched;
   return {
     id: 'dynamic-cat',
     label: 'Gato Laranja',
@@ -55,7 +63,7 @@ export function getDynamicCatObstacle(): EnvironmentObstacle {
       minZ: catMotionBridge.z - r,
       maxZ: catMotionBridge.z + r,
     },
-    collidable: true,
+    collidable: !isPerched,
     height: 0.42,
   };
 }
@@ -587,6 +595,9 @@ const CAT_BEHAVIOR_ORDER: CatBehaviorState[] = [
   'STANDING',
   'LYING',
   'SLEEPING',
+  'SITTING',
+  'STRETCHING',
+  'GROOMING',
 ];
 
 export interface EnvironmentStoreState {
@@ -681,12 +692,19 @@ export const useEnvironmentStore = create<EnvironmentStoreState>((set, get) => (
 
   resetEnvironment: () => {
     catMotionBridge.x = INITIAL_CAT_POSITION.x;
+    catMotionBridge.y = 0;
     catMotionBridge.z = INITIAL_CAT_POSITION.z;
+    catMotionBridge.targetX = 0.1;
+    catMotionBridge.targetY = 0;
+    catMotionBridge.targetZ = -0.4;
     catMotionBridge.rotationY = 0.6;
     catMotionBridge.targetRotationY = 0.6;
     catMotionBridge.speed = 0.65;
     catMotionBridge.state = 'WALKING';
     catMotionBridge.stateTimer = 4.5;
+    catMotionBridge.isPerched = false;
+    catMotionBridge.perchSurfaceId = null;
+    catMotionBridge.jumpProgress = 0;
     resetPushableToys();
 
     set({
