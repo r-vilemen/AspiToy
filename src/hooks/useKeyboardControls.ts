@@ -94,15 +94,11 @@ export function useKeyboardControls() {
         if (currentRobot.targetPosition) {
           currentRobot.setTargetPosition(null);
         }
-        // Ativa modo manual imediatamente a partir de qualquer estado inativo/acoplado/pausado
-        if (
-          currentRobot.state !== 'CLEANING' &&
-          currentRobot.state !== 'EXPLORING' &&
-          currentRobot.state !== 'AVOIDING'
-        ) {
+        // Se estiver recarregando na base, desacopla para IDLE sem ativar limpeza autônoma
+        if (currentRobot.state === 'RECHARGING') {
           currentRobot.setOperationalState(
-            'CLEANING',
-            'Controle manual direto (WASD / Setas) ativado'
+            'IDLE',
+            'Desacoplado da base manualmente'
           );
         }
       }

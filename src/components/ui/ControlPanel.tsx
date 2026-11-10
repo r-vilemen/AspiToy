@@ -34,14 +34,10 @@ export function ControlPanel() {
     if (currentRobot.targetPosition) {
       currentRobot.setTargetPosition(null);
     }
-    if (
-      currentRobot.state === 'IDLE' ||
-      currentRobot.state === 'PAUSED' ||
-      currentRobot.state === 'RECHARGING'
-    ) {
+    if (currentRobot.state === 'RECHARGING') {
       currentRobot.setOperationalState(
-        'CLEANING',
-        'Controle manual direto ativado'
+        'IDLE',
+        'Desacoplado da base manualmente'
       );
     }
   };
