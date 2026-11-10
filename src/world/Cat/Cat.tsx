@@ -29,13 +29,18 @@ const catMaterials = {
     roughness: 0.76,
     metalness: 0.02,
   }),
+  furWhite: new THREE.MeshStandardMaterial({
+    color: '#FFFFFF',
+    roughness: 0.72,
+    metalness: 0.01,
+  }),
   nosePink: new THREE.MeshStandardMaterial({
     color: '#F28B82',
     roughness: 0.45,
     metalness: 0.04,
   }),
   eyeAwake: new THREE.MeshBasicMaterial({
-    color: '#4ADE80',
+    color: '#C97A24', // Olhos caramelo quentes
   }),
   eyePupil: new THREE.MeshBasicMaterial({
     color: '#171412',
@@ -992,13 +997,24 @@ export function Cat() {
           material={catMaterials.furOrange}
         />
 
-        {/* Peito creme frontal */}
+        {/* Barriga branca inferior (Underbelly) */}
         <RoundedBox
-          args={[0.17, 0.14, 0.12]}
-          radius={0.04}
+          castShadow
+          receiveShadow
+          args={[0.165, 0.05, 0.38]}
+          radius={0.024}
           smoothness={3}
-          position={[0, -0.01, 0.16]}
-          material={catMaterials.furCream}
+          position={[0, -0.072, -0.01]}
+          material={catMaterials.furWhite}
+        />
+
+        {/* Peito branco frontal conectando à barriga */}
+        <RoundedBox
+          args={[0.165, 0.14, 0.13]}
+          radius={0.038}
+          smoothness={3}
+          position={[0, -0.015, 0.155]}
+          material={catMaterials.furWhite}
         />
 
         {/* Listras tigradas nas costas */}
@@ -1026,13 +1042,13 @@ export function Cat() {
             material={catMaterials.furOrange}
           />
 
-          {/* Focinho claro */}
+          {/* Focinho branco */}
           <RoundedBox
             args={[0.12, 0.075, 0.045]}
             radius={0.02}
             smoothness={3}
             position={[0, -0.032, 0.095]}
-            material={catMaterials.furCream}
+            material={catMaterials.furWhite}
           />
 
           {/* Nariz rosa triangular */}
@@ -1101,7 +1117,7 @@ export function Cat() {
           </mesh>
           <mesh
             position={[0, 0.23, -0.09]}
-            material={catMaterials.furCream}
+            material={catMaterials.furWhite}
           >
             <sphereGeometry args={[0.026, 6, 6]} />
           </mesh>
@@ -1114,7 +1130,7 @@ export function Cat() {
           <mesh castShadow position={[0, -0.055, 0]} material={catMaterials.furOrange}>
             <boxGeometry args={[0.052, 0.12, 0.052]} />
           </mesh>
-          <mesh position={[0, -0.125, 0.01]} material={catMaterials.furCream}>
+          <mesh position={[0, -0.125, 0.01]} material={catMaterials.furWhite}>
             <boxGeometry args={[0.056, 0.04, 0.065]} />
           </mesh>
         </group>
@@ -1123,7 +1139,7 @@ export function Cat() {
           <mesh castShadow position={[0, -0.055, 0]} material={catMaterials.furOrange}>
             <boxGeometry args={[0.052, 0.12, 0.052]} />
           </mesh>
-          <mesh position={[0, -0.125, 0.01]} material={catMaterials.furCream}>
+          <mesh position={[0, -0.125, 0.01]} material={catMaterials.furWhite}>
             <boxGeometry args={[0.056, 0.04, 0.065]} />
           </mesh>
         </group>
@@ -1132,7 +1148,7 @@ export function Cat() {
           <mesh castShadow position={[0, -0.055, 0]} material={catMaterials.furOrange}>
             <boxGeometry args={[0.054, 0.12, 0.056]} />
           </mesh>
-          <mesh position={[0, -0.125, 0.01]} material={catMaterials.furCream}>
+          <mesh position={[0, -0.125, 0.01]} material={catMaterials.furWhite}>
             <boxGeometry args={[0.058, 0.04, 0.065]} />
           </mesh>
         </group>
@@ -1141,7 +1157,7 @@ export function Cat() {
           <mesh castShadow position={[0, -0.055, 0]} material={catMaterials.furOrange}>
             <boxGeometry args={[0.054, 0.12, 0.056]} />
           </mesh>
-          <mesh position={[0, -0.125, 0.01]} material={catMaterials.furCream}>
+          <mesh position={[0, -0.125, 0.01]} material={catMaterials.furWhite}>
             <boxGeometry args={[0.058, 0.04, 0.065]} />
           </mesh>
         </group>
