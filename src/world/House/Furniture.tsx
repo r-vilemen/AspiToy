@@ -177,15 +177,15 @@ export const Furniture = memo(function Furniture() {
       </group>
 
       {/* ======================================================== */}
-      {/* 4. MESA DE CENTRO COM VIDRO E OBJETOS SOBRE ELA          */}
-      {/* Centro ~ X: -1.45m, Z: -1.15m                            */}
+      {/* 4. MESA DE CENTRO COM VIDRO E ESPAÇO LIVRE INFERIOR     */}
+      {/* Centro ~ X: -1.45m, Z: -1.15m (Robô passa por baixo)     */}
       {/* ======================================================== */}
-      <group position={[-1.45, 0, -1.15]} rotation={[0, 0.1, 0]}>
+      <group position={[-1.45, 0, -1.15]} rotation={[0, 0, 0]}>
         {/* Moldura do tampo em madeira nobre arredondada */}
         <RoundedBox
           castShadow
           receiveShadow
-          args={[1.54, 0.07, 0.94]}
+          args={[1.72, 0.07, 1.12]}
           radius={0.025}
           smoothness={3}
           position={[0, 0.65, 0]}
@@ -193,23 +193,23 @@ export const Furniture = memo(function Furniture() {
         />
         {/* Painel central de vidro temperado translúcido */}
         <mesh position={[0, 0.688, 0]} material={sharedMaterials.tableGlass}>
-          <boxGeometry args={[1.28, 0.012, 0.68]} />
+          <boxGeometry args={[1.42, 0.012, 0.82]} />
         </mesh>
-        {/* Saia estrutural inferior */}
+        {/* Saia estrutural no topo das pernas */}
         <RoundedBox
           castShadow
-          args={[1.38, 0.08, 0.78]}
+          args={[1.56, 0.06, 0.96]}
           radius={0.02}
           smoothness={2}
-          position={[0, 0.58, 0]}
+          position={[0, 0.59, 0]}
           material={sharedMaterials.furnitureWoodDark}
         />
-        {/* 4 Pés torneados (permitem visibilidade sob a mesa) */}
+        {/* 4 Pés torneados finos nos 4 cantos da mesa */}
         {[
-          [-0.64, 0.31, -0.36],
-          [0.64, 0.31, -0.36],
-          [-0.64, 0.31, 0.36],
-          [0.64, 0.31, 0.36],
+          [-0.72, 0.28, -0.44],
+          [0.72, 0.28, -0.44],
+          [-0.72, 0.28, 0.44],
+          [0.72, 0.28, 0.44],
         ].map(([lx, ly, lz], idx) => (
           <mesh
             key={idx}
@@ -217,7 +217,7 @@ export const Furniture = memo(function Furniture() {
             position={[lx, ly, lz]}
             material={sharedMaterials.furnitureWoodDark}
           >
-            <cylinderGeometry args={[0.038, 0.024, 0.62, 12]} />
+            <cylinderGeometry args={[0.038, 0.024, 0.56, 12]} />
           </mesh>
         ))}
 
