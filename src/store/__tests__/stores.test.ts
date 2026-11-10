@@ -69,5 +69,17 @@ describe('Arquitetura de Estado Zustand (robotStore, environmentStore, commandSt
     const progress = env.cleanDustNearPoint(firstSpot.position, 0.6, 0.5);
     expect(progress).toBeGreaterThan(0);
   });
+
+  it('define destino no piso ao clicar no chão (MOVE_TO_POINT)', () => {
+    const cmd = useCommandStore.getState();
+    expect(
+      cmd.dispatchCommand('MOVE_TO_POINT', { point: { x: 1.25, z: -0.85 } })
+    ).toBe(true);
+    expect(useRobotStore.getState().targetPosition).toEqual({
+      x: 1.25,
+      z: -0.85,
+    });
+    expect(useRobotStore.getState().state).toBe('EXPLORING');
+  });
 });
 

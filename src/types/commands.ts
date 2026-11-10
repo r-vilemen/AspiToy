@@ -4,6 +4,7 @@ export type UserCommandType =
   | 'RESUME_CLEANING'
   | 'RETURN_TO_BASE'
   | 'CLEAN_REGION'
+  | 'MOVE_TO_POINT'
   | 'RESET_SIMULATION';
 
 export type NotificationTone = 'info' | 'success' | 'warning';

@@ -76,3 +76,4 @@ export function DustParticles() {
     </instancedMesh>
   );
 }
+

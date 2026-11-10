@@ -32,6 +32,7 @@ export class AgentController {
 
   private currentPath: Vector2D[] = [];
   private currentPathIdx: number = 0;
+  private lastGoal: Vector2D | null = null;
   private avoidanceTimer: number = 0;
   private avoidTurnDirection: number = 1;
   private avoidTargetHeading: number = 0;
@@ -188,6 +189,17 @@ export class AgentController {
       }
     }
 
+    // Verifica se o alvo mudou (ex: usuário clicou em um novo ponto no chão)
+    const goalChanged =
+      goal !== null &&
+      (this.lastGoal === null ||
+        Math.hypot(goal.x - this.lastGoal.x, goal.z - this.lastGoal.z) > 0.12);
+
+    if (goalChanged && goal) {
+      this.lastGoal = { x: goal.x, z: goal.z };
+      this.avoidanceTimer = 0;
+    }
+
     // Verifica se o próximo waypoint da rota atual foi bloqueado pelo gato em movimento
     const nextWaypointBlocked =
       this.currentPath.length > 0 &&
@@ -196,7 +208,8 @@ export class AgentController {
 
     const needsNewPlan =
       goal &&
-      (this.currentPath.length === 0 ||
+      (goalChanged ||
+        this.currentPath.length === 0 ||
         this.currentPathIdx >= this.currentPath.length ||
         nextWaypointBlocked ||
         (this.replanCooldown <= 0 && isImminentCollision));

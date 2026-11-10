@@ -5,6 +5,7 @@ import type {
   SystemNotification,
   UserCommandType,
 } from '@/types/commands';
+import type { Vector2D } from '@/types/robot';
 import { useRobotStore } from './robotStore';
 import { useEnvironmentStore } from './environmentStore';
 
@@ -15,7 +16,10 @@ export interface CommandStoreState {
   commandHistory: CommandRecord[];
   notifications: SystemNotification[];
   cameraPreset: CameraPreset;
-  dispatchCommand: (type: UserCommandType, options?: { regionId?: string }) => boolean;
+  dispatchCommand: (
+    type: UserCommandType,
+    options?: { regionId?: string; point?: Vector2D }
+  ) => boolean;
   pushNotification: (title: string, message: string, tone?: NotificationTone) => void;
   dismissNotification: (id: string) => void;
   setCameraPreset: (preset: CameraPreset) => void;
@@ -169,6 +173,22 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
           'Nova região selecionada',
           `Destino ajustado para ${region.label}.`,
           'info'
+        );
+        break;
+      }
+
+      case 'MOVE_TO_POINT': {
+        const target = options?.point ?? { x: 0, z: 0 };
+        const cleanX = Number(target.x.toFixed(2));
+        const cleanZ = Number(target.z.toFixed(2));
+        const targetRegion = env.resolveRegionAtPoint({ x: cleanX, z: cleanZ });
+        label = `Ir até (${cleanX}m, ${cleanZ}m)`;
+        robot.setTargetPosition({ x: cleanX, z: cleanZ });
+        const nextMode =
+          robot.state === 'CLEANING' ? 'CLEANING' : 'EXPLORING';
+        robot.setOperationalState(
+          nextMode,
+          `Deslocando-se até ponto selecionado em ${targetRegion.label} (${cleanX}m, ${cleanZ}m)`
         );
         break;
       }

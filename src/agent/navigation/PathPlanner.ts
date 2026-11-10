@@ -173,7 +173,7 @@ export class PathPlanner {
   }
 
   private findNearestWalkableNeighbor(col: number, row: number) {
-    for (let rad = 1; rad <= 4; rad++) {
+    for (let rad = 1; rad <= 6; rad++) {
       for (let dr = -rad; dr <= rad; dr++) {
         for (let dc = -rad; dc <= rad; dc++) {
           if (this.grid.isWalkable(col + dc, row + dr)) {

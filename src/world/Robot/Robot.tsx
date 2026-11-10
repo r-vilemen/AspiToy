@@ -268,11 +268,20 @@ export function Robot() {
 
       if (targetPoint && decision.desiredSpeed > 0) {
         const currentPos = { x: loc.x, z: loc.z };
-        const dist = distance2D(currentPos, targetPoint);
+        const planned = decision.plannedPath;
+        const effectiveTarget =
+          planned && planned.length > 0
+            ? planned[planned.length - 1]
+            : targetPoint;
+        const dist = Math.min(
+          distance2D(currentPos, targetPoint),
+          distance2D(currentPos, effectiveTarget)
+        );
 
         if (dist < 0.28) {
           if (robotState.state === 'RETURNING') {
             loc.speed = 0;
+            robotState.setTargetPosition(null);
             robotState.setOperationalState(
               'RECHARGING',
               'Acoplado na estação de carregamento'
@@ -281,6 +290,16 @@ export function Robot() {
               'Acoplamento concluído',
               'AspiToy conectado à base e recarregando bateria.',
               'success'
+            );
+          } else if (
+            robotState.state === 'EXPLORING' &&
+            robotState.targetPosition !== null
+          ) {
+            loc.speed = 0;
+            robotState.setTargetPosition(null);
+            robotState.setOperationalState(
+              'IDLE',
+              'Chegou ao ponto selecionado no chão'
             );
           } else {
             if (robotState.targetPosition) {
@@ -344,6 +363,7 @@ export function Robot() {
 
       if (
         robotState.state === 'CLEANING' ||
+        robotState.state === 'EXPLORING' ||
         robotState.state === 'AVOIDING'
       ) {
         const nextProgress = envState.cleanDustNearPoint(point, 0.65, 0.14);
