@@ -96,7 +96,8 @@ export interface PushableToyState {
   vx: number;
   vz: number;
   angVel: number;
-  rollPhase: number;
+  rollPitch: number;
+  rollRoll: number;
   wobble: number;
   radius: number;
 }
