@@ -373,6 +373,50 @@ export const Walls = memo(function Walls({
           </mesh>
         </group>
       </group>
+
+      {/* ======================================================== */}
+      {/* 4. PAREDE SUL DO QUARTO (Z = halfD = +4.0m)               */}
+      {/* Fecha o quarto contra o exterior, contornando o baú       */}
+      {/* ======================================================== */}
+      <group position={[0, 0, halfD + wallThick / 2]}>
+        {/* Parede estrutural de alvenaria */}
+        <mesh
+          castShadow
+          receiveShadow
+          position={[0, height / 2, 0]}
+          material={sharedMaterials.wallPlaster}
+        >
+          <boxGeometry args={[width + wallThick * 2, height, wallThick]} />
+        </mesh>
+
+        {/* Rodapé interno da parede sul */}
+        <mesh
+          receiveShadow
+          position={[0, 0.12, -wallThick / 2 - 0.04]}
+          material={sharedMaterials.wallAccent}
+        >
+          <boxGeometry args={[width, 0.24, 0.08]} />
+        </mesh>
+
+        {/* Painel de Lambris (Wainscoting) interno */}
+        <mesh
+          receiveShadow
+          position={[0, wainscotHeight / 2, -wallThick / 2 - 0.02]}
+          material={sharedMaterials.wallWainscot}
+        >
+          <boxGeometry args={[width, wainscotHeight, 0.04]} />
+        </mesh>
+
+        {/* Cornija do lambris (Chair Rail) */}
+        <RoundedBox
+          castShadow
+          args={[width, 0.11, 0.1]}
+          radius={0.02}
+          smoothness={3}
+          position={[0, wainscotHeight, -wallThick / 2 - 0.06]}
+          material={sharedMaterials.wallWainscot}
+        />
+      </group>
     </group>
   );
 });

@@ -97,8 +97,8 @@ export const Architecture = memo(function Architecture({
       </group>
 
       {/* ======================================================== */}
-      {/* 3. PAREDE DIVISÓRIA ENTRE QUARTO E CORREDOR (X = 5.0m)    */}
-      {/* Possui vão aberto para a porta em Z in [1.65, 3.05]      */}
+      {/* 3. PAREDE DIVISÓRIA ENTRE QUARTO E CORREDOR & OESTE CORREDOR (X = 5.0m) */}
+      {/* Possui vão aberto para a porta em Z in [1.65, 3.05] e fecha o corredor até Z = 8.5m */}
       {/* ======================================================== */}
       <group position={[5.0, 0, 0]}>
         {/* Segmento Norte da parede divisória (Z de -4.0 a 1.65) */}
@@ -110,7 +110,7 @@ export const Architecture = memo(function Architecture({
         >
           <boxGeometry args={[wallThick, wallHeight, 5.65]} />
         </mesh>
-        {/* Rodapé no lado do corredor */}
+        {/* Rodapé no lado do corredor (Norte) */}
         <mesh
           receiveShadow
           position={[wallThick / 2 + 0.04, 0.12, -1.175]}
@@ -133,21 +133,22 @@ export const Architecture = memo(function Architecture({
           <boxGeometry args={[wallThick, wallHeight - 3.32, 1.4]} />
         </mesh>
 
-        {/* Segmento Sul da parede divisória (Z de 3.05 a 4.0) */}
+        {/* Segmento Sul contínuo: divide o quarto (Z: 3.05 a 4.0) e fecha o Corredor Oeste (Z: 4.0 a 8.5) */}
         <mesh
           castShadow
           receiveShadow
-          position={[0, wallHeight / 2, 3.525]}
+          position={[0, wallHeight / 2, 5.775]}
           material={sharedMaterials.wallPlaster}
         >
-          <boxGeometry args={[wallThick, wallHeight, 0.95]} />
+          <boxGeometry args={[wallThick, wallHeight, 5.45]} />
         </mesh>
+        {/* Rodapé no lado do corredor (Sul completo até o banheiro) */}
         <mesh
           receiveShadow
-          position={[wallThick / 2 + 0.04, 0.12, 3.525]}
+          position={[wallThick / 2 + 0.04, 0.12, 5.775]}
           material={sharedMaterials.wallAccent}
         >
-          <boxGeometry args={[0.08, 0.24, 0.95]} />
+          <boxGeometry args={[0.08, 0.24, 5.45]} />
         </mesh>
       </group>
 

@@ -127,8 +127,8 @@ export const Hallway = memo(function Hallway() {
         </group>
       </group>
 
-      {/* 4. Arandelas de Parede com Luz Suave */}
-      {[-2.0, 3.5].map((zPos, idx) => (
+      {/* 4. Arandelas de Parede com Luz Suave ao longo de todo o corredor */}
+      {[-2.0, 3.5, 6.2].map((zPos, idx) => (
         <group key={idx} position={[5.08, 2.6, zPos]}>
           <mesh material={sharedMaterials.metalBrass}>
             <cylinderGeometry args={[0.04, 0.06, 0.08, 12]} />

@@ -100,3 +100,4 @@ describe('Feline Multi-Room Navigation & Preference System', () => {
     expect(route[route.length - 1]).toEqual(bedroomPos);
   });
 });
+
