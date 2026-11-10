@@ -222,6 +222,8 @@ export function Robot() {
         if (dist < 0.28) {
           if (robotState.state === 'RETURNING') {
             loc.speed = 0;
+            loc.x = envState.dockPosition.x;
+            loc.z = envState.dockPosition.z;
             loc.rotationY = Math.PI / 2;
             loc.targetRotationY = Math.PI / 2;
             robotState.setTargetPosition(null);
@@ -293,6 +295,14 @@ export function Robot() {
       loc.bumperCompression = Math.max(loc.bumperCompression, 0.015);
     }
 
+    // Mantém o robô perfeitamente acoplado no centro da base enquanto recarrega
+    if (robotState.state === 'RECHARGING') {
+      loc.x = envState.dockPosition.x;
+      loc.z = envState.dockPosition.z;
+      loc.speed = 0;
+      loc.rotationY = Math.PI / 2;
+    }
+
     // Sincroniza com a bridge mutável de 60fps para a câmera e o gato
     robotMotionBridge.x = loc.x;
     robotMotionBridge.z = loc.z;
@@ -300,9 +310,23 @@ export function Robot() {
     robotMotionBridge.currentSpeed = loc.speed;
     robotMotionBridge.wheelSpin = loc.wheelSpin;
 
+    // Altura vertical do piso: sobre a base de recarga (y = 0.04m) ou sobre o tapete (y = 0.023m)
+    const dockDist = Math.hypot(loc.x - (-4.15), loc.z - 3.2);
+    let floorY = 0.0;
+    if (robotState.state === 'RECHARGING' || dockDist < 0.35) {
+      floorY = 0.04;
+    } else {
+      const rugDist = Math.hypot(loc.x - (-0.75), loc.z - (-1.1));
+      if (rugDist < 1.85) {
+        floorY = 0.023;
+      } else if (rugDist < 1.98) {
+        floorY = 0.023 * ((1.98 - rugDist) / 0.13);
+      }
+    }
+
     // Atualiza nós Three.js diretamente
     if (rootRef.current) {
-      rootRef.current.position.set(loc.x, 0, loc.z);
+      rootRef.current.position.set(loc.x, floorY, loc.z);
       rootRef.current.rotation.y = loc.rotationY;
     }
 
@@ -357,7 +381,7 @@ export function Robot() {
   return (
     <group
       ref={rootRef}
-      position={[robotMotionBridge.x, 0, robotMotionBridge.z]}
+      position={[robotMotionBridge.x, 0.04, robotMotionBridge.z]}
       rotation={[0, robotMotionBridge.rotationY, 0]}
       name="aspitoy-actor"
     >

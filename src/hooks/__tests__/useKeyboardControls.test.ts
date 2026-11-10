@@ -39,3 +39,4 @@ describe('Reconhecimento Universal de Teclado e Controle Manual (WASD / Setas)',
     expect(normalizeDirectionKey(new KeyboardEvent('keydown', { code: 'KeyE', key: 'e' }))).toBeNull();
   });
 });
+
