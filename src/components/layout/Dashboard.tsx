@@ -3,11 +3,15 @@ import { Scene } from '@/world/Scene';
 import { Header } from './Header';
 import { StatusCard } from '@/components/ui/StatusCard';
 import { ControlPanel } from '@/components/ui/ControlPanel';
+import { IntroAnimation } from '@/components/onboarding/IntroAnimation';
+import { TutorialModal } from '@/components/onboarding/TutorialModal';
+import { useOnboardingStore } from '@/store/onboardingStore';
 import { useCommandStore } from '@/store/commandStore';
 import { useOperationClock } from '@/hooks/useRobotState';
 
 export function Dashboard() {
   useOperationClock();
+  const showIntro = useOnboardingStore((s) => s.showIntro);
   const notifications = useCommandStore((s) => s.notifications);
   const dismissNotification = useCommandStore((s) => s.dismissNotification);
 
@@ -15,6 +19,12 @@ export function Dashboard() {
 
   return (
     <div className="relative h-dvh w-screen overflow-hidden select-none bg-[#EFE7DA]">
+      {/* Apresentação Inicial Animada na Primeira Visita */}
+      {showIntro && <IntroAnimation />}
+
+      {/* Tutorial Rápido Interativo */}
+      <TutorialModal />
+
       {/* Protagonista: Cena 3D em tela cheia */}
       <main className="absolute inset-0" aria-label="Ambiente 3D da Sala de Estar">
         <Scene />
