@@ -154,7 +154,20 @@ export function Robot() {
         const nextProgress = envState.cleanDustNearPoint(point, 0.65, 0.12);
         robotState.setCleaningProgress(nextProgress);
         robotState.updateBattery(-0.08);
-        if (nextProgress >= 100) {
+
+        // Bateria crítica durante a operação -> Retorno automático à base
+        if (robotState.battery <= 18 && robotState.state !== 'RETURNING') {
+          robotState.setTargetPosition(envState.dockPosition);
+          robotState.setOperationalState(
+            'RETURNING',
+            'Bateria baixa (18%). Retornando automaticamente à base de recarga.'
+          );
+          cmdState.pushNotification(
+            'Bateria baixa',
+            'Nível crítico. Retorno automático à base acionado pelo agente.',
+            'warning'
+          );
+        } else if (nextProgress >= 100) {
           robotState.setOperationalState(
             'COMPLETED',
             'Limpeza da sala de estar concluída!'
