@@ -20,7 +20,7 @@ import {
 import { useCommandStore } from '@/store/commandStore';
 import { AgentController } from '@/agent/AgentController';
 import { PriorityManager } from '@/agent/decision/PriorityManager';
-import { distance2D } from '@/utils/math';
+import { distance2D, damp } from '@/utils/math';
 
 const PATROL_POINTS = [
   { x: -1.8, z: -0.2 },
