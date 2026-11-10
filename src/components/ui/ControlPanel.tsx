@@ -2,6 +2,7 @@ import { Home, Pause, Play, RotateCcw } from 'lucide-react';
 import { useRobotStore } from '@/store/robotStore';
 import { useEnvironmentStore } from '@/store/environmentStore';
 import { useCommandStore } from '@/store/commandStore';
+import { CommandInput } from './CommandInput';
 
 export function ControlPanel() {
   const state = useRobotStore((s) => s.state);
@@ -95,6 +96,14 @@ export function ControlPanel() {
             );
           })}
         </div>
+      </div>
+
+      {/* Entrada contextual de comando em linguagem natural */}
+      <div className="pt-1 border-t border-[#8C6D4F]/12">
+        <label className="block text-[11px] font-medium text-[#54463B]">
+          Instrução rápida por texto
+        </label>
+        <CommandInput />
       </div>
     </section>
   );
