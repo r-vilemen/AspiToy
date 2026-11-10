@@ -24,19 +24,19 @@ export function BatteryIndicator() {
 
   return (
     <div
-      className="rounded-xl bg-[#F3ECE0]/90 px-3.5 py-2.5 border border-[#8C6D4F]/15"
+      className="rounded-xl bg-[#FFFDF8] px-3 py-2.5 border-2 border-[#2A211B] shadow-[2px_2px_0px_#2A211B]"
       aria-label={`Bateria em ${Math.round(battery)}%`}
     >
       <div className="flex items-center justify-between text-xs text-[#6E5D4F]">
-        <span className="inline-flex items-center gap-1.5 font-medium text-[#2A211B]">
-          <Icon className="h-4 w-4 text-[#0F766E]" aria-hidden="true" />
+        <span className="inline-flex items-center gap-1.5 font-bold text-[#2A211B]">
+          <Icon className="h-4 w-4 stroke-[2.2] text-[#0F766E]" aria-hidden="true" />
           Bateria
         </span>
-        <span className="font-mono font-semibold tabular-nums text-[#2A211B]">
+        <span className="font-mono font-black tabular-nums text-[#2A211B]">
           {Math.round(battery)}%
         </span>
       </div>
-      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#DED3C1]">
+      <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-[#E5D7C5] border border-[#2A211B]/30">
         <div
           className={`h-full rounded-full transition-all duration-300 ${barColor}`}
           style={{ width: `${Math.min(100, Math.max(0, battery))}%` }}

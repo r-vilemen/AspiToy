@@ -35,28 +35,35 @@ export function Dashboard() {
         <Header />
 
         <div className="flex flex-1 flex-col justify-end gap-3 p-4 sm:flex-row sm:items-end sm:justify-between sm:p-6">
-          {/* Notificação contextual discreta no canto inferior esquerdo */}
-          <div className="pointer-events-auto max-w-sm">
+          {/* Notificação de Evento no Estilo Alerta de Jogo */}
+          <div className="pointer-events-auto max-w-sm sm:max-w-md">
             {latestNotification && (
               <div
                 role="status"
                 aria-live="polite"
-                className="flex items-start gap-2.5 rounded-2xl border border-[#8C6D4F]/20 bg-[#FBF7F0]/90 px-3.5 py-2.5 shadow-sm backdrop-blur-md"
+                className="flex items-start gap-3 rounded-2xl border-2.5 border-[#2A211B] bg-[#FFFDF8] p-3 sm:p-3.5 shadow-[4px_4px_0px_#2A211B] animate-bounce-in"
               >
-                <Bell
-                  className="mt-0.5 h-4 w-4 shrink-0 text-[#E05A36]"
-                  aria-hidden="true"
-                />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-[#2A211B] bg-[#FFEDD5] text-[#C2410C] shadow-[2px_2px_0px_#2A211B]">
+                  <Bell
+                    className="h-4 w-4 stroke-[2.2] fill-[#FDBA74]"
+                    aria-hidden="true"
+                  />
+                </div>
                 <div className="min-w-0 flex-1 text-xs">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="font-semibold text-[#2A211B]">
-                      {latestNotification.title}
-                    </p>
-                    <span className="font-mono text-[10px] tabular-nums text-[#6E5D4F]">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="inline-block rounded-md border border-[#2A211B] bg-[#FEF08A] px-1.5 py-0.5 font-mono text-[9px] font-black uppercase tracking-wider text-[#854D0E] shadow-[1px_1px_0px_#2A211B]">
+                        ALERTA
+                      </span>
+                      <p className="font-display font-black text-xs text-[#2A211B] truncate">
+                        {latestNotification.title}
+                      </p>
+                    </div>
+                    <span className="font-mono text-[10px] font-bold tabular-nums text-[#6E5D4F] rounded border border-[#2A211B]/20 bg-[#F5ECE0] px-1.5 py-0.5 shrink-0">
                       {latestNotification.timestamp}
                     </span>
                   </div>
-                  <p className="mt-0.5 text-[#54463B]">
+                  <p className="mt-1 font-semibold text-xs text-[#4B3B2F] leading-snug">
                     {latestNotification.message}
                   </p>
                 </div>
@@ -64,21 +71,21 @@ export function Dashboard() {
                   type="button"
                   onClick={() => dismissNotification(latestNotification.id)}
                   aria-label="Fechar notificação"
-                  className="rounded-lg p-1 text-[#6E5D4F] hover:bg-[#EFE6D6] hover:text-[#2A211B] cursor-pointer"
+                  className="rounded-lg border-1.5 border-[#2A211B] bg-[#F5ECE0] p-1 text-[#2A211B] shadow-[1px_1px_0px_#2A211B] hover:bg-[#E8DAC7] active:shadow-none active:translate-y-0.5 cursor-pointer transition shrink-0"
                 >
-                  <X className="h-3.5 w-3.5" aria-hidden="true" />
+                  <X className="h-3.5 w-3.5 stroke-[2.5]" aria-hidden="true" />
                 </button>
               </div>
             )}
           </div>
 
-          {/* Painel Lateral Tátil do Agente */}
+          {/* Painel Lateral Tátil do Console do Agente */}
           <aside
             aria-label="Painel de controle do AspiToy"
-            className="pointer-events-auto w-full sm:w-[340px] rounded-2xl border border-[#8C6D4F]/22 bg-[#FBF7F0]/90 p-4 shadow-lg backdrop-blur-md space-y-4 max-h-[75dvh] overflow-y-auto"
+            className="pointer-events-auto w-full sm:w-[340px] rounded-3xl border-2.5 border-[#2A211B] bg-[#FFFDF8]/96 p-4 sm:p-5 shadow-[5px_5px_0px_#2A211B] backdrop-blur-md space-y-4 max-h-[78dvh] overflow-y-auto"
           >
             <StatusCard />
-            <hr className="border-[#8C6D4F]/15" />
+            <hr className="border-t-2 border-[#2A211B]/15" />
             <ControlPanel />
           </aside>
         </div>

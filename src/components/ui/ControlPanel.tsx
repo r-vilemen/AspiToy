@@ -55,27 +55,27 @@ export function ControlPanel() {
             <button
               type="button"
               onClick={() => dispatchCommand('START_CLEANING')}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#E05A36] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#C94B29] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E05A36] cursor-pointer"
+              className="w-full inline-flex items-center justify-center gap-2 rounded-2xl border-2.5 border-[#2A211B] bg-linear-to-b from-[#F2724D] to-[#E05A36] px-4 py-3 text-sm font-black uppercase tracking-wider text-white shadow-[0_4px_0px_#9A3412] hover:shadow-[0_2px_0px_#9A3412] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px] transition cursor-pointer"
             >
-              <Play className="h-4 w-4 fill-current" aria-hidden="true" />
+              <Play className="h-4 w-4 fill-current stroke-[2]" aria-hidden="true" />
               Iniciar limpeza
             </button>
           ) : isPaused ? (
             <button
               type="button"
               onClick={() => dispatchCommand('RESUME_CLEANING')}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#0F766E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#115E59] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0F766E] cursor-pointer"
+              className="w-full inline-flex items-center justify-center gap-2 rounded-2xl border-2.5 border-[#2A211B] bg-linear-to-b from-[#14B8A6] to-[#0F766E] px-4 py-3 text-sm font-black uppercase tracking-wider text-white shadow-[0_4px_0px_#042F2E] hover:shadow-[0_2px_0px_#042F2E] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px] transition cursor-pointer"
             >
-              <Play className="h-4 w-4 fill-current" aria-hidden="true" />
+              <Play className="h-4 w-4 fill-current stroke-[2]" aria-hidden="true" />
               Retomar limpeza
             </button>
           ) : (
             <button
               type="button"
               onClick={() => dispatchCommand('PAUSE_CLEANING')}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#2A211B] px-4 py-2.5 text-sm font-semibold text-[#FBF7F0] shadow-sm transition hover:bg-[#3F322A] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2A211B] cursor-pointer"
+              className="w-full inline-flex items-center justify-center gap-2 rounded-2xl border-2.5 border-[#2A211B] bg-linear-to-b from-[#3F322A] to-[#2A211B] px-4 py-3 text-sm font-black uppercase tracking-wider text-[#FBF7F0] shadow-[0_4px_0px_#000000] hover:shadow-[0_2px_0px_#000000] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px] transition cursor-pointer"
             >
-              <Pause className="h-4 w-4" aria-hidden="true" />
+              <Pause className="h-4 w-4 stroke-[2.5]" aria-hidden="true" />
               Pausar operação
             </button>
           )}
@@ -86,18 +86,18 @@ export function ControlPanel() {
           type="button"
           disabled={isReturning || state === 'RECHARGING'}
           onClick={() => dispatchCommand('RETURN_TO_BASE')}
-          className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#8C6D4F]/25 bg-[#F3ECE0] px-3 py-2 text-xs font-semibold text-[#2A211B] transition hover:bg-[#E7DDD0] disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer"
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-[#2A211B] bg-[#F3ECE0] px-3 py-2 text-xs font-black uppercase tracking-wider text-[#2A211B] shadow-[0_3px_0px_#2A211B] hover:shadow-[0_1px_0px_#2A211B] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px] disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0 transition cursor-pointer"
         >
-          <Home className="h-3.5 w-3.5 text-[#0F766E]" aria-hidden="true" />
+          <Home className="h-3.5 w-3.5 stroke-[2.2] text-[#0F766E]" aria-hidden="true" />
           Retornar à base
         </button>
 
         <button
           type="button"
           onClick={() => dispatchCommand('RESET_SIMULATION')}
-          className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#8C6D4F]/25 bg-[#F3ECE0] px-3 py-2 text-xs font-semibold text-[#6E5D4F] transition hover:bg-[#E7DDD0] hover:text-[#2A211B] cursor-pointer"
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-[#2A211B] bg-[#F3ECE0] px-3 py-2 text-xs font-black uppercase tracking-wider text-[#6E5D4F] shadow-[0_3px_0px_#2A211B] hover:shadow-[0_1px_0px_#2A211B] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px] hover:text-[#2A211B] transition cursor-pointer"
         >
-          <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+          <RotateCcw className="h-3.5 w-3.5 stroke-[2.2]" aria-hidden="true" />
           Reiniciar cena
         </button>
       </div>
@@ -108,18 +108,20 @@ export function ControlPanel() {
         className="rounded-xl border border-[#8C6D4F]/18 bg-[#F3ECE0]/60 p-2.5"
       >
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-semibold text-[#2A211B]">
+          <span className="text-xs font-black uppercase tracking-wider text-[#2A211B]">
             Direção manual (WASD / Setas)
           </span>
-          <span className="text-[10px] font-medium text-[#6E5D4F]">
+          <span className="font-mono text-[10px] font-bold text-[#6E5D4F]">
             {keys.forward || keys.backward || keys.left || keys.right ? (
-              <span className="text-[#E05A36] font-semibold">● Ativo</span>
+              <span className="inline-flex items-center gap-1 rounded bg-[#E05A36] px-1.5 py-0.2 text-[10px] font-black uppercase text-white shadow-xs">
+                ● ATIVO
+              </span>
             ) : (
               'WASD ou Setas'
             )}
           </span>
         </div>
-        <div className="mt-2 grid grid-cols-3 gap-1.5 max-w-[180px] mx-auto">
+        <div className="mt-2.5 grid grid-cols-3 gap-2 max-w-[190px] mx-auto">
           <div />
           <button
             type="button"
@@ -128,13 +130,13 @@ export function ControlPanel() {
             onPointerUp={stopManualMove}
             onPointerLeave={stopManualMove}
             onPointerCancel={stopManualMove}
-            className={`flex h-8 items-center justify-center rounded-lg border border-[#8C6D4F]/25 shadow-2xs transition cursor-pointer ${
+            className={`flex h-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_3px_0px_#2A211B] transition cursor-pointer ${
               keys.forward
-                ? 'bg-[#E05A36] text-white ring-2 ring-[#E05A36] shadow-sm'
-                : 'bg-[#FBF7F0] text-[#2A211B] active:bg-[#E05A36] active:text-white'
+                ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
+                : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
             }`}
           >
-            <ArrowUp className="h-4 w-4" />
+            <ArrowUp className="h-4.5 w-4.5 stroke-[2.5]" />
           </button>
           <div />
           <button
@@ -144,13 +146,13 @@ export function ControlPanel() {
             onPointerUp={stopManualMove}
             onPointerLeave={stopManualMove}
             onPointerCancel={stopManualMove}
-            className={`flex h-8 items-center justify-center rounded-lg border border-[#8C6D4F]/25 shadow-2xs transition cursor-pointer ${
+            className={`flex h-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_3px_0px_#2A211B] transition cursor-pointer ${
               keys.left
-                ? 'bg-[#E05A36] text-white ring-2 ring-[#E05A36] shadow-sm'
-                : 'bg-[#FBF7F0] text-[#2A211B] active:bg-[#E05A36] active:text-white'
+                ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
+                : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
             }`}
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4.5 w-4.5 stroke-[2.5]" />
           </button>
           <button
             type="button"
@@ -159,13 +161,13 @@ export function ControlPanel() {
             onPointerUp={stopManualMove}
             onPointerLeave={stopManualMove}
             onPointerCancel={stopManualMove}
-            className={`flex h-8 items-center justify-center rounded-lg border border-[#8C6D4F]/25 shadow-2xs transition cursor-pointer ${
+            className={`flex h-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_3px_0px_#2A211B] transition cursor-pointer ${
               keys.backward
-                ? 'bg-[#E05A36] text-white ring-2 ring-[#E05A36] shadow-sm'
-                : 'bg-[#FBF7F0] text-[#2A211B] active:bg-[#E05A36] active:text-white'
+                ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
+                : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
             }`}
           >
-            <ArrowDown className="h-4 w-4" />
+            <ArrowDown className="h-4.5 w-4.5 stroke-[2.5]" />
           </button>
           <button
             type="button"
@@ -174,13 +176,13 @@ export function ControlPanel() {
             onPointerUp={stopManualMove}
             onPointerLeave={stopManualMove}
             onPointerCancel={stopManualMove}
-            className={`flex h-8 items-center justify-center rounded-lg border border-[#8C6D4F]/25 shadow-2xs transition cursor-pointer ${
+            className={`flex h-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_3px_0px_#2A211B] transition cursor-pointer ${
               keys.right
-                ? 'bg-[#E05A36] text-white ring-2 ring-[#E05A36] shadow-sm'
-                : 'bg-[#FBF7F0] text-[#2A211B] active:bg-[#E05A36] active:text-white'
+                ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
+                : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
             }`}
           >
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="h-4.5 w-4.5 stroke-[2.5]" />
           </button>
         </div>
       </div>
@@ -189,11 +191,11 @@ export function ControlPanel() {
       <div className="space-y-1.5 pt-1">
         <label
           htmlFor="region-select"
-          className="block text-xs font-medium text-[#54463B]"
+          className="block text-xs font-black uppercase tracking-wider text-[#2A211B]"
         >
           Priorizar região da sala
         </label>
-        <div className="grid grid-cols-2 gap-1.5" id="region-select">
+        <div className="grid grid-cols-2 gap-2" id="region-select">
           {regions.map((region) => {
             const active = selectedRegionId === region.id;
             return (
@@ -203,10 +205,10 @@ export function ControlPanel() {
                 onClick={() =>
                   dispatchCommand('CLEAN_REGION', { regionId: region.id })
                 }
-                className={`rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition cursor-pointer border ${
+                className={`rounded-xl px-2.5 py-2 text-left text-xs font-bold transition cursor-pointer border-2 ${
                   active
-                    ? 'border-[#E05A36]/50 bg-[#E05A36]/12 text-[#9E3518]'
-                    : 'border-[#8C6D4F]/15 bg-[#F3ECE0]/70 text-[#54463B] hover:bg-[#EAE0D0]'
+                    ? 'border-[#2A211B] bg-[#E05A36] text-white shadow-[2px_2px_0px_#2A211B]'
+                    : 'border-[#2A211B]/25 bg-[#F5ECE0] text-[#54463B] shadow-[1px_1px_0px_#2A211B]/20 hover:border-[#2A211B] hover:text-[#2A211B]'
                 }`}
               >
                 {region.label}
