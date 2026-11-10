@@ -204,3 +204,4 @@ export const Walls = memo(function Walls({
     </group>
   );
 });
+

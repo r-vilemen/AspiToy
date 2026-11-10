@@ -27,3 +27,4 @@ export const RobotEffects = memo(function RobotEffects({
     </group>
   );
 });
+

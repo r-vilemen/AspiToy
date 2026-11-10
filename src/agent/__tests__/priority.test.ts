@@ -37,3 +37,4 @@ describe('Sprint 3 — Limpeza Inteligente e Priorização', () => {
     expect(target).toEqual({ x: 3, z: 2 });
   });
 });
+

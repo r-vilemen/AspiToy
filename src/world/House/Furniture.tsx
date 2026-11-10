@@ -381,3 +381,4 @@ export const Furniture = memo(function Furniture() {
     </group>
   );
 });
+

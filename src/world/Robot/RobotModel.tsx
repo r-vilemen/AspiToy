@@ -235,3 +235,4 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
     </group>
   );
 });
+

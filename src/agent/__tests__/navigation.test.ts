@@ -54,3 +54,4 @@ describe('Inteligência e Navegação com Grade e Algoritmo A* (Sprint 2)', () =
     expect(unvisitedAfter).toBeLessThan(unvisitedBefore);
   });
 });
+

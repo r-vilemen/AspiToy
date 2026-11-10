@@ -48,3 +48,4 @@ export const House = memo(function House() {
     </group>
   );
 });
+

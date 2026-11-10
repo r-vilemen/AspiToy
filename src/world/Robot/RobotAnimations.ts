@@ -64,3 +64,4 @@ export function updateRobotLocomotion(
   // 7. Descompressão suave do amortecedor frontal
   locomotion.bumperCompression = damp(locomotion.bumperCompression, 0, 8.0, delta);
 }
+

@@ -50,3 +50,4 @@ describe('Agente Inteligente Desacoplado (Sprint 1 - Dia 5)', () => {
     expect(decision.desiredSpeed).toBeGreaterThan(0);
   });
 });
+
