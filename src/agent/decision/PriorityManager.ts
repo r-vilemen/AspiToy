@@ -21,7 +21,7 @@ export class PriorityManager {
     currentPos: Vector2D,
     dustSpots: DustSpot[],
     selectedRegionId: string,
-    regions: RoomRegion[],
+    _regions: RoomRegion[],
     battery: number,
     dockPos: Vector2D
   ): Vector2D | null {

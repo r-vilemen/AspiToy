@@ -3,6 +3,7 @@ import { Scene } from '@/world/Scene';
 import { Header } from './Header';
 import { StatusCard } from '@/components/ui/StatusCard';
 import { ControlPanel } from '@/components/ui/ControlPanel';
+import { ActivityLog } from '@/components/ui/ActivityLog';
 import { useCommandStore } from '@/store/commandStore';
 import { useOperationClock } from '@/hooks/useRobotState';
 
@@ -70,6 +71,7 @@ export function Dashboard() {
             <StatusCard />
             <hr className="border-[#8C6D4F]/15" />
             <ControlPanel />
+            <ActivityLog />
           </aside>
         </div>
       </div>

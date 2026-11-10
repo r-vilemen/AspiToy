@@ -156,7 +156,7 @@ export function Robot() {
         robotState.updateBattery(-0.08);
 
         // Bateria crítica durante a operação -> Retorno automático à base
-        if (robotState.battery <= 18 && robotState.state !== 'RETURNING') {
+        if (robotState.battery <= 18) {
           robotState.setTargetPosition(envState.dockPosition);
           robotState.setOperationalState(
             'RETURNING',
