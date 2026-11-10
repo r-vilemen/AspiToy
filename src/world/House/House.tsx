@@ -4,6 +4,7 @@ import { Walls } from './Walls';
 import { Furniture } from './Furniture';
 import { Architecture } from './Architecture';
 import { Doors } from './Doors';
+import { FloorDust } from './FloorDust';
 import { Hallway } from './Rooms/Hallway';
 import { LivingRoom } from './Rooms/LivingRoom';
 import { Kitchen } from './Rooms/Kitchen';
@@ -25,7 +26,6 @@ import { useEnvironmentStore } from '@/store/environmentStore';
  */
 export const House = memo(function House() {
   const roomDimensions = useEnvironmentStore((s) => s.roomDimensions);
-  const dustSpots = useEnvironmentStore((s) => s.dustSpots);
 
   return (
     <group name="house-complete-residence">
@@ -59,29 +59,9 @@ export const House = memo(function House() {
       <Bathroom />
 
       {/* ======================================================== */}
-      {/* 4. PONTOS DE POEIRA ESPALHADOS PELA RESIDÊNCIA           */}
+      {/* 4. SISTEMA DE POEIRA DINÂMICA NO CHÃO DA RESIDÊNCIA       */}
       {/* ======================================================== */}
-      {dustSpots.map(
-        (spot) =>
-          spot.intensity > 0.05 && (
-            <group
-              key={spot.id}
-              position={[spot.position.x, 0.015, spot.position.z]}
-            >
-              <mesh rotation={[-Math.PI / 2, 0, 0]}>
-                <ringGeometry
-                  args={[0.05, spot.radius * spot.intensity, 24]}
-                />
-                <meshStandardMaterial
-                  color="#8A6A4E"
-                  transparent
-                  opacity={0.38 * spot.intensity}
-                  roughness={1}
-                />
-              </mesh>
-            </group>
-          )
-      )}
+      <FloorDust />
     </group>
   );
 });

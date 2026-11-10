@@ -149,3 +149,4 @@ export const OcclusionWall = memo(function OcclusionWall({
     </group>
   );
 });
+
