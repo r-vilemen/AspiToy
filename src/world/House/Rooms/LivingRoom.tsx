@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { RoundedBox } from '@react-three/drei';
 import { sharedMaterials } from '../../Environment/Materials';
+import { useHouseFloorClick } from '../useFloorClick';
 
 /**
  * Sala de Estar Completa (Living Room):
@@ -12,6 +13,8 @@ import { sharedMaterials } from '../../Environment/Materials';
  * - Abajur de coluna clássico em latão
  */
 export const LivingRoom = memo(function LivingRoom() {
+  const handleFloorClick = useHouseFloorClick();
+
   return (
     <group name="room-living-room">
       {/* 1. Piso de Madeira da Sala de Estar (X: 7.6 a 17.6, Z: -4.0 a 3.2) */}
@@ -19,6 +22,7 @@ export const LivingRoom = memo(function LivingRoom() {
         receiveShadow
         position={[12.6, -0.01, -0.4]}
         rotation={[-Math.PI / 2, 0, 0]}
+        onClick={handleFloorClick}
       >
         <planeGeometry args={[10.0, 7.2]} />
         <primitive object={sharedMaterials.floorWood} attach="material" />
@@ -29,6 +33,7 @@ export const LivingRoom = memo(function LivingRoom() {
         receiveShadow
         position={[12.8, 0.008, -0.5]}
         rotation={[-Math.PI / 2, 0, 0]}
+        onClick={handleFloorClick}
       >
         <planeGeometry args={[6.2, 4.4]} />
         <primitive object={sharedMaterials.rugFabric} attach="material" />

@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { RoundedBox } from '@react-three/drei';
 import { sharedMaterials } from '../../Environment/Materials';
+import { useHouseFloorClick } from '../useFloorClick';
 
 /**
  * Cozinha Residencial (Kitchen):
@@ -12,6 +13,8 @@ import { sharedMaterials } from '../../Environment/Materials';
  * - Fruteira, chaleira e lixeira de pedal
  */
 export const Kitchen = memo(function Kitchen() {
+  const handleFloorClick = useHouseFloorClick();
+
   return (
     <group name="room-kitchen">
       {/* 1. Piso Cerâmico Xadrez da Cozinha (X: 7.6 a 17.6, Z: 3.2 a 8.5) */}
@@ -19,6 +22,7 @@ export const Kitchen = memo(function Kitchen() {
         receiveShadow
         position={[12.6, -0.01, 5.85]}
         rotation={[-Math.PI / 2, 0, 0]}
+        onClick={handleFloorClick}
       >
         <planeGeometry args={[10.0, 5.3]} />
         <primitive object={sharedMaterials.floorKitchen} attach="material" />

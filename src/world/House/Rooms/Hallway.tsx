@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { RoundedBox } from '@react-three/drei';
 import { sharedMaterials } from '../../Environment/Materials';
+import { useHouseFloorClick } from '../useFloorClick';
 
 /**
  * Corredor Central (Hallway):
@@ -11,6 +12,8 @@ import { sharedMaterials } from '../../Environment/Materials';
  * - Iluminação aconchegante de arandelas
  */
 export const Hallway = memo(function Hallway() {
+  const handleFloorClick = useHouseFloorClick();
+
   return (
     <group name="room-hallway">
       {/* 1. Piso de Parquet do Corredor (X: 5.0 a 7.6, Z: -4.0 a 8.5) */}
@@ -18,6 +21,7 @@ export const Hallway = memo(function Hallway() {
         receiveShadow
         position={[6.3, -0.01, 2.25]}
         rotation={[-Math.PI / 2, 0, 0]}
+        onClick={handleFloorClick}
       >
         <planeGeometry args={[2.6, 12.5]} />
         <primitive object={sharedMaterials.floorParquet} attach="material" />
@@ -28,6 +32,7 @@ export const Hallway = memo(function Hallway() {
         receiveShadow
         position={[6.3, 0.008, 2.25]}
         rotation={[-Math.PI / 2, 0, 0]}
+        onClick={handleFloorClick}
       >
         <planeGeometry args={[1.4, 10.0]} />
         <primitive object={sharedMaterials.rugFabric} attach="material" />

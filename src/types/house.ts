@@ -42,6 +42,8 @@ export interface HouseRoomConfig {
   spawnPoint: Vector2D;
   color: string;
   connectedDoors: string[];
+  width?: number;
+  depth?: number;
 }
 
 export interface HouseFloorPlan {

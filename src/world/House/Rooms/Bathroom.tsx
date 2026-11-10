@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { RoundedBox } from '@react-three/drei';
 import { sharedMaterials } from '../../Environment/Materials';
+import { useHouseFloorClick } from '../useFloorClick';
 
 /**
  * Banheiro Social Completo (Bathroom):
@@ -12,6 +13,8 @@ import { sharedMaterials } from '../../Environment/Materials';
  * - Cesto de roupas e frascos de higiene
  */
 export const Bathroom = memo(function Bathroom() {
+  const handleFloorClick = useHouseFloorClick();
+
   return (
     <group name="room-bathroom">
       {/* 1. Piso Cerâmico do Banheiro (X: 5.0 a 10.6, Z: 8.5 a 13.5) */}
@@ -19,6 +22,7 @@ export const Bathroom = memo(function Bathroom() {
         receiveShadow
         position={[7.8, -0.01, 11.0]}
         rotation={[-Math.PI / 2, 0, 0]}
+        onClick={handleFloorClick}
       >
         <planeGeometry args={[5.6, 5.0]} />
         <primitive object={sharedMaterials.floorBathroom} attach="material" />
@@ -29,6 +33,7 @@ export const Bathroom = memo(function Bathroom() {
         receiveShadow
         position={[7.8, 0.008, 10.8]}
         rotation={[-Math.PI / 2, 0, 0]}
+        onClick={handleFloorClick}
       >
         <planeGeometry args={[1.8, 1.2]} />
         <primitive object={sharedMaterials.rugFabric} attach="material" />

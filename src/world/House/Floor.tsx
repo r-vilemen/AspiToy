@@ -1,10 +1,10 @@
 import { memo, useRef } from 'react';
-import { useFrame, type ThreeEvent } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { sharedMaterials, WORLD_PALETTE } from '../Environment/Materials';
 import { useRobotStore } from '@/store/robotStore';
-import { useCommandStore } from '@/store/commandStore';
-import { clamp } from '@/utils/math';
+import { useHouseFloorClick } from './useFloorClick';
+import { HOUSE_FLOOR_PLAN } from './FloorPlan';
 
 interface FloorProps {
   width?: number;
@@ -12,13 +12,13 @@ interface FloorProps {
 }
 
 /**
- * Piso de madeira PBR estilizado com clique interativo ("Point-and-Click Navigation"):
- * - O usuário pode clicar em qualquer ponto do chão para enviar o AspiToy até lá
- * - Exibe um marcador luminoso 3D animado no ponto de destino selecionado
+ * Piso PBR estilizado com navegação por clique em toda a residência ("Point-and-Click"):
+ * - O usuário pode clicar em qualquer ponto do chão (Quarto, Corredor, Sala, Cozinha e Banheiro)
+ * - Exibe um marcador luminoso 3D animado no ponto de destino selecionado em qualquer cômodo
  */
 export const Floor = memo(function Floor({ width = 10, depth = 8 }: FloorProps) {
   const targetPosition = useRobotStore((s) => s.targetPosition);
-  const dispatchCommand = useCommandStore((s) => s.dispatchCommand);
+  const handleFloorClick = useHouseFloorClick();
 
   const ringRef = useRef<THREE.Mesh>(null);
   const pinRef = useRef<THREE.Mesh>(null);
@@ -36,24 +36,9 @@ export const Floor = memo(function Floor({ width = 10, depth = 8 }: FloorProps) 
     }
   });
 
-  const handleFloorClick = (e: ThreeEvent<MouseEvent>) => {
-    // Ignora caso o usuário estivesse arrastando o mouse para girar a câmera (OrbitControls)
-    if (e.delta > 6) return;
-    e.stopPropagation();
-
-    const halfW = width / 2 - 0.42;
-    const halfD = depth / 2 - 0.42;
-    const targetX = clamp(e.point.x, -halfW, halfW);
-    const targetZ = clamp(e.point.z, -halfD, halfD);
-
-    dispatchCommand('MOVE_TO_POINT', {
-      point: { x: targetX, z: targetZ },
-    });
-  };
-
   return (
     <group name="house-floor-interactive">
-      {/* Substrato estrutural do piso */}
+      {/* Substrato estrutural do piso do quarto */}
       <mesh
         receiveShadow
         position={[0, -0.06, 0]}
@@ -71,15 +56,23 @@ export const Floor = memo(function Floor({ width = 10, depth = 8 }: FloorProps) 
         <boxGeometry args={[width, 0.02, depth]} />
       </mesh>
 
-      {/* Malha de captura de clique em todo o piso (incluindo sobre o tapete e manchas de sol) */}
-      <mesh
-        position={[0, 0.028, 0]}
-        rotation={[-Math.PI / 2, 0, 0]}
-        onClick={handleFloorClick}
-      >
-        <planeGeometry args={[width - 0.2, depth - 0.2]} />
-        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-      </mesh>
+      {/* Malhas de captura de clique interativo cobrindo toda a residência (Quarto, Corredor, Sala, Cozinha, Banheiro) */}
+      {Object.values(HOUSE_FLOOR_PLAN.rooms).map((room) => {
+        const roomW = room.bounds.maxX - room.bounds.minX;
+        const roomD = room.bounds.maxZ - room.bounds.minZ;
+        return (
+          <mesh
+            key={`interactive-floor-${room.id}`}
+            position={[room.center.x, 0.028, room.center.z]}
+            rotation={[-Math.PI / 2, 0, 0]}
+            onClick={handleFloorClick}
+            receiveShadow={false}
+          >
+            <planeGeometry args={[roomW, roomD]} />
+            <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+          </mesh>
+        );
+      })}
 
       {/* Projeção de luz solar da janela no chão */}
       <group position={[-2.1, 0.013, -1.25]} rotation={[-Math.PI / 2, 0, -0.12]}>

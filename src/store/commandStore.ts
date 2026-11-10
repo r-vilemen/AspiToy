@@ -213,6 +213,17 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
       }
 
       case 'MOVE_TO_POINT': {
+        manualControlBridge.active = false;
+        manualControlBridge.forward = 0;
+        manualControlBridge.turn = 0;
+
+        // Se estiver acoplado na base, desacopla para frente da estação
+        if (robot.state === 'RECHARGING') {
+          robotMotionBridge.x = -3.8;
+          robotMotionBridge.z = 2.6;
+          robotMotionBridge.rotationY = 0;
+        }
+
         const target = options?.point ?? { x: 0, z: 0 };
         const cleanX = Number(target.x.toFixed(2));
         const cleanZ = Number(target.z.toFixed(2));
@@ -224,6 +235,11 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
         robot.setOperationalState(
           nextMode,
           `Deslocando-se até ponto selecionado em ${targetRegion.label} (${cleanX}m, ${cleanZ}m)`
+        );
+        get().pushNotification(
+          'Destino definido',
+          `AspiToy a caminho de ${targetRegion.label} (${cleanX}m, ${cleanZ}m).`,
+          'info'
         );
         break;
       }
