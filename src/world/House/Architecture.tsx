@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { RoundedBox } from '@react-three/drei';
 import { sharedMaterials } from '../Environment/Materials';
+import { OcclusionWall } from './OcclusionWall';
 
 interface ArchitectureProps {
   wallHeight?: number;
@@ -134,22 +135,22 @@ export const Architecture = memo(function Architecture({
         </mesh>
 
         {/* Segmento Sul contínuo: divide o quarto (Z: 3.05 a 4.0) e fecha o Corredor Oeste (Z: 4.0 a 8.5) */}
-        <mesh
-          castShadow
-          receiveShadow
+        <OcclusionWall
+          name="corridor-west-south-wall"
           position={[0, wallHeight / 2, 5.775]}
-          material={sharedMaterials.wallPlaster}
+          args={[wallThick, wallHeight, 5.45]}
+          roomCenter={[6.3, 5.0]}
+          materialType="plaster"
         >
-          <boxGeometry args={[wallThick, wallHeight, 5.45]} />
-        </mesh>
-        {/* Rodapé no lado do corredor (Sul completo até o banheiro) */}
-        <mesh
-          receiveShadow
-          position={[wallThick / 2 + 0.04, 0.12, 5.775]}
-          material={sharedMaterials.wallAccent}
-        >
-          <boxGeometry args={[0.08, 0.24, 5.45]} />
-        </mesh>
+          {/* Rodapé no lado do corredor (Sul completo até o banheiro) */}
+          <mesh
+            receiveShadow
+            position={[wallThick / 2 + 0.04, 0.12 - wallHeight / 2, 0]}
+            material={sharedMaterials.wallAccent}
+          >
+            <boxGeometry args={[0.08, 0.24, 5.45]} />
+          </mesh>
+        </OcclusionWall>
       </group>
 
       {/* ======================================================== */}
@@ -290,57 +291,52 @@ export const Architecture = memo(function Architecture({
         </group>
 
         {/* Parede Oeste do Banheiro (X = 5.0m, Z de 8.5 a 13.5) */}
-        <mesh
-          castShadow
-          receiveShadow
+        <OcclusionWall
+          name="bathroom-west-wall"
           position={[5.0 - wallThick / 2, wallHeight / 2, 11.0]}
-          material={sharedMaterials.bathroomWallTile}
-        >
-          <boxGeometry args={[wallThick, wallHeight, 5.0 + wallThick]} />
-        </mesh>
+          args={[wallThick, wallHeight, 5.0 + wallThick]}
+          roomCenter={[7.8, 11.0]}
+          materialType="bathroomTile"
+        />
 
         {/* Parede Sul do Banheiro (Z = 13.5m, X de 5.0 a 10.6) */}
-        <mesh
-          castShadow
-          receiveShadow
+        <OcclusionWall
+          name="bathroom-south-wall"
           position={[7.8, wallHeight / 2, 13.5 + wallThick / 2]}
-          material={sharedMaterials.bathroomWallTile}
-        >
-          <boxGeometry args={[5.6 + wallThick * 2, wallHeight, wallThick]} />
-        </mesh>
+          args={[5.6 + wallThick * 2, wallHeight, wallThick]}
+          roomCenter={[7.8, 11.0]}
+          materialType="bathroomTile"
+        />
 
         {/* Parede Leste do Banheiro (X = 10.6m, Z de 8.5 a 13.5) */}
-        <mesh
-          castShadow
-          receiveShadow
+        <OcclusionWall
+          name="bathroom-east-wall"
           position={[10.6 + wallThick / 2, wallHeight / 2, 11.0]}
-          material={sharedMaterials.bathroomWallTile}
-        >
-          <boxGeometry args={[wallThick, wallHeight, 5.0]} />
-        </mesh>
+          args={[wallThick, wallHeight, 5.0]}
+          roomCenter={[7.8, 11.0]}
+          materialType="bathroomTile"
+        />
       </group>
 
       {/* ======================================================== */}
       {/* 7. PAREDE SUL DA COZINHA (Z = 8.5m, X in [10.6, 17.6])   */}
-      {/* Divisória com corte arquitetônico suave                   */}
+      {/* Divisória com transparência dinâmica frontal              */}
       {/* ======================================================== */}
-      <group position={[14.1, 0, 8.5 + wallThick / 2]}>
-        <mesh
-          castShadow
-          receiveShadow
-          position={[0, wallHeight / 2, 0]}
-          material={sharedMaterials.wallPlaster}
-        >
-          <boxGeometry args={[7.0, wallHeight, wallThick]} />
-        </mesh>
+      <OcclusionWall
+        name="kitchen-south-wall"
+        position={[14.1, wallHeight / 2, 8.5 + wallThick / 2]}
+        args={[7.0, wallHeight, wallThick]}
+        roomCenter={[12.6, 5.85]}
+        materialType="plaster"
+      >
         <mesh
           receiveShadow
-          position={[0, 0.12, -wallThick / 2 - 0.04]}
+          position={[0, 0.12 - wallHeight / 2, -wallThick / 2 - 0.04]}
           material={sharedMaterials.wallAccent}
         >
           <boxGeometry args={[7.0, 0.24, 0.08]} />
         </mesh>
-      </group>
+      </OcclusionWall>
     </group>
   );
 });

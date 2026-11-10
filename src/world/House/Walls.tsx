@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { RoundedBox } from '@react-three/drei';
 import { sharedMaterials, WORLD_PALETTE } from '../Environment/Materials';
+import { OcclusionWall } from './OcclusionWall';
 
 interface WallsProps {
   width?: number;
@@ -376,23 +377,19 @@ export const Walls = memo(function Walls({
 
       {/* ======================================================== */}
       {/* 4. PAREDE SUL DO QUARTO (Z = halfD = +4.0m)               */}
-      {/* Fecha o quarto contra o exterior, contornando o baú       */}
+      {/* Transparência dinâmica frontal para visão aberta da câmera */}
       {/* ======================================================== */}
-      <group position={[0, 0, halfD + wallThick / 2]}>
-        {/* Parede estrutural de alvenaria */}
-        <mesh
-          castShadow
-          receiveShadow
-          position={[0, height / 2, 0]}
-          material={sharedMaterials.wallPlaster}
-        >
-          <boxGeometry args={[width + wallThick * 2, height, wallThick]} />
-        </mesh>
-
+      <OcclusionWall
+        name="bedroom-south-wall"
+        position={[0, height / 2, halfD + wallThick / 2]}
+        args={[width + wallThick * 2, height, wallThick]}
+        roomCenter={[0, 0]}
+        materialType="plaster"
+      >
         {/* Rodapé interno da parede sul */}
         <mesh
           receiveShadow
-          position={[0, 0.12, -wallThick / 2 - 0.04]}
+          position={[0, 0.12 - height / 2, -wallThick / 2 - 0.04]}
           material={sharedMaterials.wallAccent}
         >
           <boxGeometry args={[width, 0.24, 0.08]} />
@@ -401,7 +398,7 @@ export const Walls = memo(function Walls({
         {/* Painel de Lambris (Wainscoting) interno */}
         <mesh
           receiveShadow
-          position={[0, wainscotHeight / 2, -wallThick / 2 - 0.02]}
+          position={[0, wainscotHeight / 2 - height / 2, -wallThick / 2 - 0.02]}
           material={sharedMaterials.wallWainscot}
         >
           <boxGeometry args={[width, wainscotHeight, 0.04]} />
@@ -409,14 +406,13 @@ export const Walls = memo(function Walls({
 
         {/* Cornija do lambris (Chair Rail) */}
         <RoundedBox
-          castShadow
           args={[width, 0.11, 0.1]}
           radius={0.02}
           smoothness={3}
-          position={[0, wainscotHeight, -wallThick / 2 - 0.06]}
+          position={[0, wainscotHeight - height / 2, -wallThick / 2 - 0.06]}
           material={sharedMaterials.wallWainscot}
         />
-      </group>
+      </OcclusionWall>
     </group>
   );
 });
