@@ -183,11 +183,6 @@ export function IntroAnimation() {
                   <circle cx="42.5" cy="25.5" r="1.8" fill="#FFFFFF" />
                 </g>
               )}
-
-              {/* Antena no Topo com Sensor Esférico (sem estrelas) */}
-              <rect x="30.5" y="3.5" width="3" height="5.5" rx="1.5" fill="#4A2810" />
-              <circle cx="32" cy="3.5" r="3.2" fill="#E05A36" stroke="#9A3412" strokeWidth="0.8" />
-              <circle cx="30.8" cy="2.2" r="1.1" fill="#FFFFFF" opacity="0.8" />
             </svg>
           </div>
         </div>
@@ -207,14 +202,13 @@ export function IntroAnimation() {
             </h1>
           </div>
 
-          {/* 3. TAGLINE E BADGE DE IDENTIDADE DO PROJETO (sem estrelas) */}
+          {/* 3. TAGLINE E BADGE DE IDENTIDADE DO PROJETO (sem estrelas e sem bolinha) */}
           <div
             className={`space-y-2 sm:space-y-3 transition-all duration-700 ease-out transform ${
               animStage >= 3 ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
             }`}
           >
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#E05A36]/15 px-3.5 sm:px-4 py-1 sm:py-1.5 text-[11px] sm:text-xs font-semibold tracking-wider uppercase text-[#C2410C] border border-[#E05A36]/25 shadow-xs">
-              <span className="h-2 w-2 rounded-full bg-[#E05A36] animate-pulse" aria-hidden="true" />
+            <div className="inline-flex items-center rounded-full bg-[#E05A36]/15 px-4 py-1 sm:py-1.5 text-[11px] sm:text-xs font-semibold tracking-wider uppercase text-[#C2410C] border border-[#E05A36]/25 shadow-xs">
               <span>Agente Inteligente de Limpeza 3D</span>
             </div>
 
