@@ -176,6 +176,12 @@ export function FollowCamera() {
     }
 
     controls.update();
+
+    // Evita que a câmera atravesse as paredes externas quando posicionada dentro da sala
+    if (state.camera.position.y < 4.2) {
+      state.camera.position.x = clamp(state.camera.position.x, -4.65, 4.65);
+      state.camera.position.z = clamp(state.camera.position.z, -3.65, 3.65);
+    }
   });
 
   return (
