@@ -1,7 +1,8 @@
-import { Cat as CatIcon, Clock, Compass, MapPin } from 'lucide-react';
+import { Cat as CatIcon, Clock, Compass, MapPin, Sparkles } from 'lucide-react';
 import { useRobotStore } from '@/store/robotStore';
 import { useEnvironmentStore } from '@/store/environmentStore';
 import type { CatBehaviorState } from '@/types/environment';
+import type { RobotExpression } from '@/types/robot';
 import { formatDuration, STATE_DESCRIPTORS } from '@/hooks/useRobotState';
 import { formatCoordinates } from '@/utils/coordinates';
 import { BatteryIndicator } from './BatteryIndicator';
@@ -15,9 +16,20 @@ const CAT_STATE_LABELS: Record<CatBehaviorState, string> = {
   SLEEPING: 'Dormindo (Zzz)',
 };
 
+const EXPRESSION_LABELS: Record<RobotExpression, string> = {
+  neutral: 'Atento / Pronto',
+  curious: 'Curioso (Explorando)',
+  focused: 'Concentrado (Limpando)',
+  alert: 'Surpreso (Desviando)',
+  happy: 'Satisfeito (Missão cumprida)',
+  worried: 'Preocupado (Retornando)',
+  sleepy: 'Aliviado (Recarregando)',
+};
+
 export function StatusCard() {
   const name = useRobotStore((s) => s.name);
   const state = useRobotStore((s) => s.state);
+  const expression = useRobotStore((s) => s.expression);
   const currentRegionLabel = useRobotStore((s) => s.currentRegionLabel);
   const operationSeconds = useRobotStore((s) => s.operationSeconds);
   const lastAction = useRobotStore((s) => s.lastAction);
@@ -76,6 +88,16 @@ export function StatusCard() {
           <dd className="mt-0.5 font-mono font-semibold tabular-nums text-[#2A211B]">
             {formatDuration(operationSeconds)}
           </dd>
+        </div>
+
+        <div className="col-span-2 pt-1.5 border-t border-[#8C6D4F]/12 flex items-center justify-between">
+          <span className="inline-flex items-center gap-1 text-[#6E5D4F]">
+            <Sparkles className="h-3.5 w-3.5 text-[#0F766E]" aria-hidden="true" />
+            Expressão facial
+          </span>
+          <span className="text-[11px] font-semibold text-[#2A211B]">
+            {EXPRESSION_LABELS[expression]}
+          </span>
         </div>
 
         <div className="col-span-2 pt-1.5 border-t border-[#8C6D4F]/12 flex items-center justify-between">
