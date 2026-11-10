@@ -1,6 +1,9 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
+import type { ThreeEvent } from '@react-three/fiber';
 import { RoundedBox } from '@react-three/drei';
 import { sharedMaterials, WORLD_PALETTE } from '../Environment/Materials';
+import { useRobotStore } from '@/store/robotStore';
+import { useCommandStore } from '@/store/commandStore';
 
 /**
  * Mobiliário e Objetos Esculpidos (Seções 3.2, 3.3, 3.4 e 13 da Direção de Arte):
@@ -595,44 +598,123 @@ export const Furniture = memo(function Furniture() {
           />
         </mesh>
       </group>
-      <group position={[-3.4, 0, -1.6]} rotation={[0, Math.PI / 2, 0]}>
-        <RoundedBox
-          receiveShadow
-          args={[0.78, 0.04, 0.82]}
-          radius={0.015}
-          smoothness={3}
-          position={[0, 0.02, 0]}
-          material={sharedMaterials.dockBody}
-        />
-        {[-0.15, 0.15].map((cx, idx) => (
-          <mesh
-            key={idx}
-            position={[cx, 0.042, 0.08]}
-            material={sharedMaterials.metalChrome}
-          >
-            <boxGeometry args={[0.055, 0.006, 0.28]} />
-          </mesh>
-        ))}
-        <RoundedBox
-          castShadow
-          args={[0.58, 0.48, 0.2]}
-          radius={0.04}
-          smoothness={3}
-          position={[0, 0.26, -0.3]}
-          material={sharedMaterials.dockBody}
-        />
-        <RoundedBox
-          args={[0.6, 0.055, 0.22]}
-          radius={0.02}
-          smoothness={2}
-          position={[0, 0.48, -0.3]}
-          material={sharedMaterials.robotCoralTrim}
-        />
-        <mesh position={[0, 0.34, -0.195]}>
-          <boxGeometry args={[0.24, 0.04, 0.01]} />
-          <meshBasicMaterial color={WORLD_PALETTE.ledEmerald} />
-        </mesh>
-      </group>
+
+      {/* 9. BASE DE CARREGAMENTO NO CANTO DO QUARTO COM CLIQUE INTERATIVO */}
+      <ChargingDockInteractive />
     </group>
   );
 });
+
+/**
+ * Base de Carregamento Toy-Tech interativa localizada no canto do quarto (Sudoeste).
+ * - Ao clicar na base, envia o AspiToy para recarregar imediatamente (RETURN_TO_BASE).
+ * - Exibe feedback visual com cursor pointer, LED de status e anel luminoso de acoplamento no piso.
+ */
+function ChargingDockInteractive() {
+  const [hovered, setHovered] = useState(false);
+  const robotState = useRobotStore((s) => s.state);
+  const dispatchCommand = useCommandStore((s) => s.dispatchCommand);
+  const pushNotification = useCommandStore((s) => s.pushNotification);
+
+  const handleClick = (e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation();
+
+    if (robotState === 'RECHARGING') {
+      pushNotification(
+        'Base de Recarga',
+        'O AspiToy já está acoplado na base e recarregando.',
+        'info'
+      );
+      return;
+    }
+
+    dispatchCommand('RETURN_TO_BASE');
+  };
+
+  const isDockActive = robotState === 'RECHARGING' || robotState === 'RETURNING';
+
+  return (
+    <group
+      name="charging-dock-interactive"
+      position={[-4.2, 0, 3.2]}
+      rotation={[0, Math.PI / 2, 0]}
+      onClick={handleClick}
+      onPointerOver={(e) => {
+        e.stopPropagation();
+        setHovered(true);
+        document.body.style.cursor = 'pointer';
+      }}
+      onPointerOut={() => {
+        setHovered(false);
+        document.body.style.cursor = 'auto';
+      }}
+    >
+      {/* Rampa plana de acoplamento no piso */}
+      <RoundedBox
+        receiveShadow
+        args={[0.78, 0.04, 0.82]}
+        radius={0.015}
+        smoothness={3}
+        position={[0, 0.02, 0]}
+        material={sharedMaterials.dockBody}
+      />
+
+      {/* Contatos elétricos de recarga em metal cromado */}
+      {[-0.15, 0.15].map((cx, idx) => (
+        <mesh
+          key={idx}
+          position={[cx, 0.042, 0.08]}
+          material={sharedMaterials.metalChrome}
+        >
+          <boxGeometry args={[0.055, 0.006, 0.28]} />
+        </mesh>
+      ))}
+
+      {/* Torre vertical de energia encostada no rodapé da parede */}
+      <RoundedBox
+        castShadow
+        args={[0.58, 0.48, 0.2]}
+        radius={0.04}
+        smoothness={3}
+        position={[0, 0.26, -0.3]}
+        material={sharedMaterials.dockBody}
+      />
+
+      {/* Tampa superior com friso coral Toy Story */}
+      <RoundedBox
+        args={[0.6, 0.055, 0.22]}
+        radius={0.02}
+        smoothness={2}
+        position={[0, 0.48, -0.3]}
+        material={sharedMaterials.robotCoralTrim}
+      />
+
+      {/* Painel LED luminoso de status */}
+      <mesh position={[0, 0.34, -0.195]}>
+        <boxGeometry args={[0.24, 0.04, 0.01]} />
+        <meshBasicMaterial
+          color={
+            robotState === 'RECHARGING'
+              ? '#34D399'
+              : hovered || robotState === 'RETURNING'
+              ? '#10B981'
+              : WORLD_PALETTE.ledEmerald
+          }
+        />
+      </mesh>
+
+      {/* Marcador holográfico suave no piso quando em hover ou quando o robô está a caminho */}
+      {(hovered || isDockActive) && (
+        <mesh position={[0, 0.045, 0.06]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.22, 0.28, 24]} />
+          <meshBasicMaterial
+            color={robotState === 'RECHARGING' ? '#34D399' : '#10B981'}
+            transparent
+            opacity={hovered ? 0.85 : 0.45}
+            depthWrite={false}
+          />
+        </mesh>
+      )}
+    </group>
+  );
+}
