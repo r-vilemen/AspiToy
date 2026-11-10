@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <radialGradient id="shellGrad" cx="35%" cy="30%" r="65%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="60%" stop-color="#FFFDF7" />
+      <stop offset="100%" stop-color="#EADDCB" />
+    </radialGradient>
+    <linearGradient id="coralGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F2724D" />
+      <stop offset="100%" stop-color="#C2410C" />
+    </linearGradient>
+    <linearGradient id="visorGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#241E1A" />
+      <stop offset="100%" stop-color="#14110F" />
+    </linearGradient>
+    <filter id="eyeGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="1.5" flood-color="#34D399" flood-opacity="0.8" />
+    </filter>
+  </defs>
+
+  <!-- Sombra suave inferior -->
+  <ellipse cx="32" cy="59" rx="22" ry="4" fill="#241408" opacity="0.22" />
+
+  <!-- Bumper Externo Coral / Terracota -->
+  <circle cx="32" cy="33" r="27" fill="url(#coralGrad)" />
+  <circle cx="32" cy="33" r="24.8" fill="#9A3412" />
+
+  <!-- Chassi Redondo do AspiToy (Plástico Creme de Brinquedo) -->
+  <circle cx="32" cy="32" r="24" fill="url(#shellGrad)" />
+
+  <!-- Brilho especular no domo -->
+  <ellipse cx="30" cy="18" rx="14" ry="6" fill="#FFFFFF" opacity="0.55" />
+
+  <!-- Friso decorativo frontal -->
+  <path d="M14 36 C19 46, 45 46, 50 36" stroke="#E05A36" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.85" />
+
+  <!-- Visor Dark High-Tech -->
+  <rect x="18" y="24" width="28" height="15" rx="7.5" fill="url(#visorGrad)" stroke="#3D342C" stroke-width="1" />
+
+  <!-- Reflexo angular de vidro no visor -->
+  <path d="M21 26 L26 26 L22 37 L19 37 Z" fill="#FFFFFF" opacity="0.18" />
+
+  <!-- Olhos Robóticos LED Verdes / Ciano com Expressão Amigável -->
+  <g filter="url(#eyeGlow)">
+    <circle cx="26" cy="31.5" r="3.2" fill="#34D399" />
+    <circle cx="38" cy="31.5" r="3.2" fill="#34D399" />
+  </g>
+  <!-- Brilho da pupila nos olhos -->
+  <circle cx="27.2" cy="30.3" r="1.1" fill="#FFFFFF" />
+  <circle cx="39.2" cy="30.3" r="1.1" fill="#FFFFFF" />
+
+  <!-- Haste da Antena Superior -->
+  <rect x="30.5" y="3.5" width="3" height="6.5" rx="1.5" fill="#78350F" />
+
+  <!-- Estrela Dourada Toy Story no Topo da Antena -->
+  <path d="M32 1.5 L33.6 5.2 L37.5 5.6 L34.6 8.2 L35.5 12 L32 10.1 L28.5 12 L29.4 8.2 L26.5 5.6 L30.4 5.2 Z" fill="#FBBF24" stroke="#B45309" stroke-width="0.8" />
+  <!-- Brilho no centro da estrela -->
+  <circle cx="31.4" cy="5.2" r="1" fill="#FEF08A" />
+</svg>
