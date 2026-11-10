@@ -3,54 +3,37 @@
 ## Status Geral por Sprint
 
 - [x] **Planejamento Técnico Inicial (Seção 19)** — Concluído
-- [x] **Sprint 1 — Fundação Visual e Interação** — CONCLUÍDO COM SUCESSO
-- [ ] **Sprint 2 — Inteligência e Navegação** (Próximo Sprint a iniciar)
-- [ ] **Sprint 3 — Limpeza Inteligente** (Pendente)
-- [ ] **Sprint 4 — Interação Avançada** (Pendente)
-- [ ] **Sprint 5 — Refinamento e Entrega** (Pendente)
+- [x] **Sprint 1 — Fundação Visual e Interação** — Concluído
+- [x] **Sprint 2 — Inteligência e Navegação (A*)** — Concluído
+- [x] **Sprint 3 — Limpeza Inteligente e Bateria** — Concluído
+- [x] **Sprint 4 — Interação Avançada e Histórico** — Concluído
+- [x] **Sprint 5 — Refinamento, Testes e Entrega** — CONCLUÍDO COM SUCESSO
 
 ---
 
-## Sprint 1 — Fundação Visual e Interação (100% Concluído)
+## 1. Resumo Consolidado das Entregas por Sprint
 
-### [x] Dia 1 — Setup e Arquitetura
-- [x] Projeto React 19 + Vite 6 + TypeScript 5.8 + Tailwind CSS v4 + Vitest configurado.
-- [x] Documentação arquitetural em `docs/` (`ARCHITECTURE.md`, `PRODUCT_SPEC.md`, `DECISIONS.md`, `SPRINT_PLAN.md`, `PROGRESS.md`).
-- [x] Stores Zustand (`robotStore`, `environmentStore`, `commandStore`) com `robotMotionBridge` para 60 FPS sem re-renderizações por frame.
-- [x] Componentes de HUD tátil (`StatusCard`, `ControlPanel`, `BatteryIndicator`, `ProgressBar`).
+### Sprint 1 — Fundação Visual e Interação (100%)
+- **Arquitetura e Setup**: React 19, TypeScript 5.8 estrito, Tailwind CSS 4, Zustand 5 e React Three Fiber 9.
+- **Bridge 60 FPS**: `robotMotionBridge` desacopla a física contínua do ciclo de renderização do React.
+- **Casa 3D Inicial**: Palco inicial, base de recarga, tapete central e telemetria no HUD.
 
-### [x] Dia 2 — Construção da Casa
-- [x] Piso de madeira laminada com variação de tábuas em *running bond* (`src/world/House/Floor.tsx`).
-- [x] Paredes arquitetônicas com cortes cinematográficos, esquadrias brancas, vidro físico translúcido e porta semiaberta (`src/world/House/Walls.tsx`).
-- [x] Mobiliário estilizado: sofá de linho cru com almofadas, mesa de centro contemporânea com tampo de vidro, tapete central, estante/rack de TV, vaso com planta *Monstera Deliciosa*, luminária em latão e base de recarga detalhada (`src/world/House/Furniture.tsx`).
-- [x] Iluminação cinematográfica com sombras direcionais nítidas, luz hemisférica e sombras de contato suaves (`src/world/Environment/Lighting.tsx`).
+### Sprint 2 — Inteligência e Navegação (100%)
+- **`GridMap.ts`**: Grade 2D discreta de ocupação (40x32 células) com margem de segurança contra móveis e paredes.
+- **`PathPlanner.ts`**: Algoritmo A* completo em 8 direções com heurística octile e suavização de caminho.
+- **Replanejamento Dinâmico**: Detecção de obstruções ToF e recálculo autônomo sem atravessar móveis.
 
-### [x] Dia 3 — Aspirador
-- [x] Modelo 3D de alta expressividade `RobotModel.tsx`: chassi chanfrado, bumper frontal articulado, rodas funcionais com pneus de borracha, rodízio frontal, torre LIDAR 360 e visor frontal com olhos digitais dinâmicos.
-- [x] Locomoção orgânica `RobotAnimations.ts`: oscilação natural (*bobbing*), rotação suave amortecida, pitch ao acelerar/frear e roll em curvas acentuadas.
-- [x] Efeitos visuais `RobotEffects.tsx` com anel luminoso e pulso de aspiração.
-- [x] Câmera em terceira pessoa amortecida `FollowCamera.tsx` com 3 presets (`Acompanhar`, `Visão geral`, `Personagem`).
+### Sprint 3 — Limpeza Inteligente (100%)
+- **`PriorityManager.ts`**: Algoritmo de ponderação baseado em sujeira acumulada, região do usuário e distância.
+- **Controle de Bateria e Emergência**: Monitoramento de consumo de energia com retorno automático à base ao atingir <= 18%.
+- **Atualização Dinâmica do Piso**: Redução gradual das manchas de poeira e telemetria precisa de porcentagem higienizada.
 
-### [x] Dia 4 — Interação
-- [x] Máquina de estados completa (`IDLE`, `EXPLORING`, `CLEANING`, `AVOIDING`, `RETURNING`, `RECHARGING`, `PAUSED`, `COMPLETED`).
-- [x] Controles de Iniciar, Pausar, Retomar, Retornar à Base e Reiniciar Simulação com validação de estados incompatíveis.
-- [x] Caixa de entrada por linguagem natural `CommandInput.tsx` (interpreta instruções de texto como "limpar tapete", "ir à base", "pausar").
-- [x] Sistema de notificações contextuais na UI com histórico e descarte interativo.
+### Sprint 4 — Interação Avançada (100%)
+- **`CommandInput.tsx`**: Parser de instruções por linguagem natural ("limpar tapete", "ir à base", "pausar").
+- **`ActivityLog.tsx`**: Histórico contextual de instruções aceitas/rejeitadas com timestamps.
+- **Expressões do Personagem**: Reação dinâmica nos olhos digitais e anel LIDAR (alerta, focado, sonolento, curioso).
 
-### [x] Dia 5 — Autonomia Inicial
-- [x] Detector de obstáculos puro TypeScript `src/agent/navigation/ObstacleDetector.ts` com cálculo de proximidade e colisão em bounding boxes 2D.
-- [x] Sistema de sensores simulados ToF / LIDAR `src/agent/perception/SensorSystem.ts` com varredura em leque angular frontal.
-- [x] Controlador autônomo desacoplado `src/agent/AgentController.ts` que calcula velocidade e manobra evasiva em tempo real.
-- [x] Integração completa entre o agente e a cena 3D.
-- [x] Bateria de testes de unidade e componentes (13 testes aprovados, build 100% verde).
-
----
-
-## Próximo Passo: Início do Sprint 2 — Inteligência e Navegação
-
-### Entregas previstas do Sprint 2:
-1. **Grade de Ocupação (`GridMap.ts`)**: Mapeamento discreto do piso da sala em células navegáveis, bloqueadas e exploradas.
-2. **Algoritmo A\* (`PathPlanner.ts`)**: Planejamento de rotas ótimas sem colisão com móveis ou paredes.
-3. **Replanejamento Dinâmico de Trajetória**: Recálculo automático quando o caminho for obstruído.
-4. **Sistema de Exploração Autônoma**: Identificação e cobertura metódica de regiões desconhecidas.
-5. **Sincronização Visual de Rota**: Representação visual sutil do trajeto planejado no piso.
+### Sprint 5 — Refinamento e Entrega (100%)
+- **Materiais PBR**: Vidros físicos com transmissão (`MeshPhysicalMaterial`), cerâmica terracota, madeira em tábuas com ranhuras e latão escovado.
+- **Iluminação Cinematográfica**: Sol matinal dourado com sombras de alta resolução (2048x2048) e contato suave (`ContactShadows`).
+- **Garantia de Qualidade**: 18 testes automatizados no Vitest (100% aprovados), tipagem estrita sem erros no `tsc --noEmit` e bundle de produção com code-splitting (`three`, `r3f`, `app`).

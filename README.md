@@ -1,54 +1,94 @@
-# AspiToy
+# AspiToy — Agente Inteligente de Limpeza Doméstica em 3D
 
-Experiência web interativa em 3D que simula um aspirador robótico inteligente e expressivo operando autonomamente dentro de uma sala de estar cinematográfica.
+> Experiência web 3D interativa cinematográfica simulando um aspirador robótico autônomo e expressivo operando em uma residência contemporânea.
 
-## Visão Geral
+![AspiToy Status](https://img.shields.io/badge/Status-Sprint%201%20a%205%20Conclu%C3%ADdos-10B981)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.8%20Strict-blue)
+![React](https://img.shields.io/badge/React-19-61DAFB)
+![Three.js](https://img.shields.io/badge/Three.js-0.187-black)
+![Vitest](https://img.shields.io/badge/Tests-18%20Passed-success)
 
-O **AspiToy** combina uma direção de arte inspirada no cinema de animação 3D (iluminação natural aconchegante, materiais estilizados e um personagem robótico com personalidade própria) com uma arquitetura desacoplada de agente autônomo (percepção, navegação, tomada de decisão e máquina de estados operacional).
+---
 
-## Stack Tecnológica
+## 1. Visão do Projeto
 
-- **Front-end**: React 19, Vite 6, TypeScript 5.8, Tailwind CSS 4, Lucide React
-- **Estado Compartilhado**: Zustand 5 (com separação entre estado de UI e referências mutáveis de alta frequência para 60 FPS)
-- **Renderização 3D**: Three.js (`0.187+`), React Three Fiber (`@react-three/fiber` v9), React Three Drei (`@react-three/drei` v10)
-- **Testes**: Vitest, React Testing Library
+O **AspiToy** não é um dashboard administrativo convencional nem um tutorial estático de Three.js. Trata-se de uma aplicação imersiva de animação 3D inspirada na linguagem visual dos estúdios Pixar/Toy Story, onde um personagem robótico carismático dotado de inteligência artificial autônoma (percepção sensorial, máquina de estados, grade de ocupação e algoritmo A*) explora a sala, identifica sujeira, desvia de móveis e responde a comandos do usuário.
 
-## Estrutura de Diretórios
+---
+
+## 2. Destaques da Implementação
+
+- **Arquitetura Desacoplada em 3 Camadas**:
+  - `src/components/`: HUD tátil com `Header`, `Dashboard`, `ControlPanel`, `StatusCard`, `CommandInput` e `ActivityLog`.
+  - `src/agent/`: Agente puro TypeScript com máquina de estados finita (8 estados operacionais), percepção ToF/LIDAR simulada, grade de ocupação 2D e planejador de caminhos A*.
+  - `src/world/`: Mundo 3D cinematográfico com piso de madeira em tábuas alternadas, paredes em corte com grandes janelas de vidro físico, mobiliário completo (sofá de linho, mesa de centro com café, rack com TV e livros, Monstera em cerâmica, luminária de latão) e personagem **AspiToy** com olhos digitais reativos, rodas funcionais e oscilação orgânica.
+- **Performance a 60 FPS**:
+  - Zero chamadas a `setState` em `useFrame` (Regra de Ouro `perf-never-set-state-in-useframe`).
+  - Bridge mutável `robotMotionBridge` para transformações em alta frequência.
+  - Telemetria React sincronizada discretamente a ~4 Hz para manter a interface leve e responsiva.
+- **Controle e Interação Contextual**:
+  - Iniciar, Pausar, Retomar, Retornar à Base e Reiniciar Simulação.
+  - Seleção e priorização de regiões da sala (*Tapete Central*, *Canto da Janela*, *Área da Estante*).
+  - Entrada de instruções rápidas por linguagem natural (`CommandInput`).
+  - Retorno automático de emergência quando a bateria atinge nível crítico (<= 18%).
+  - Câmera em terceira pessoa com 3 modos: `Acompanhar`, `Visão geral` e `Personagem`.
+
+---
+
+## 3. Estrutura do Repositório
 
 ```text
 src/
-├── app/            # Componente raiz e providers da aplicação
-├── components/     # Interface React (Header, Dashboard e controles táteis)
-├── world/          # Mundo 3D (Scene, House, Robot, Camera, Environment)
-├── agent/          # Agente inteligente desacoplado da camada visual
-├── store/          # Stores Zustand (robotStore, environmentStore, commandStore)
-├── types/          # Contratos TypeScript do domínio
-├── hooks/          # Seletores e hooks de integração
-├── utils/          # Funções matemáticas e conversão de coordenadas
-└── styles/         # Estilos globais e tokens visuais
+├── agent/            # Agente inteligente (percepção, navegação A*, tomada de decisão)
+│   ├── decision/     # Gerenciamento de prioridade de sujeira e bateria
+│   ├── navigation/   # GridMap 2D, PathPlanner A*, ObstacleDetector
+│   └── perception/   # SensorSystem ToF / LIDAR simulado
+├── components/       # Interface de usuário (HUD, Controles, Histórico)
+├── world/            # Renderização 3D (React Three Fiber / Three.js)
+│   ├── Camera/       # FollowCamera em terceira pessoa com amortecimento
+│   ├── Environment/  # Lighting cinematográfico e materiais PBR compartilhados
+│   ├── House/        # Floor, Walls, Furniture e montagem da sala
+│   └── Robot/        # Robot, RobotModel, RobotAnimations, RobotEffects
+├── store/            # Stores Zustand (robotStore, environmentStore, commandStore)
+├── types/            # Contratos TypeScript de domínio
+├── utils/            # Matemática vetorial, interpolação e coordenadas mundo-grade
+└── styles/           # Estilos globais e tokens visuais Tailwind v4
 ```
 
-## Como Executar
+---
+
+## 4. Como Executar
+
+### Pré-requisitos
+- Node.js `v20+` (desenvolvido e testado em Node `v24.14.0`)
+- npm `v10+`
+
+### Comandos
 
 ```bash
-# Instalar dependências
+# 1. Instalar dependências
 npm install
 
-# Iniciar servidor de desenvolvimento
+# 2. Executar em modo desenvolvimento
 npm run dev
 
-# Executar testes automatizados
+# 3. Executar suíte de testes unitários
 npm test
 
-# Gerar build de produção
+# 4. Checagem de tipagem estrita
+npm run lint
+
+# 5. Gerar build otimizado de produção
 npm run build
 ```
 
-## Documentação do Projeto
+---
 
-- [`docs/PRODUCT_SPEC.md`](./docs/PRODUCT_SPEC.md) — Especificação de produto e direção de arte
-- [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — Arquitetura em 3 camadas e padrões de desempenho
-- [`docs/SPRINT_PLAN.md`](./docs/SPRINT_PLAN.md) — Planejamento detalhado dos Sprints e do Sprint 1
-- [`docs/DECISIONS.md`](./docs/DECISIONS.md) — Registro de decisões arquiteturais e técnicas (ADRs)
-- [`docs/PROGRESS.md`](./docs/PROGRESS.md) — Acompanhamento incremental das entregas
+## 5. Documentação Técnica
 
+- [`docs/MASTER_PROMPT.md`](./docs/MASTER_PROMPT.md) — Requisitos originais completos do projeto
+- [`docs/PRODUCT_SPEC.md`](./docs/PRODUCT_SPEC.md) — Especificação de produto e identidade visual
+- [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — Arquitetura desacoplada em 3 camadas e estratégias de 60 FPS
+- [`docs/SPRINT_PLAN.md`](./docs/SPRINT_PLAN.md) — Planejamento detalhado dos 5 Sprints
+- [`docs/DECISIONS.md`](./docs/DECISIONS.md) — Registro de Decisões Arquiteturais (ADRs)
+- [`docs/PROGRESS.md`](./docs/PROGRESS.md) — Acompanhamento do progresso de implementação
