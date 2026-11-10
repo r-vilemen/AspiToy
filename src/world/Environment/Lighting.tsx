@@ -1,57 +1,52 @@
-import { ContactShadows } from '@react-three/drei';
-
 export function Lighting() {
   return (
-    <group name="cinematic-lighting">
-      {/* 1. Iluminação hemisférica natural: sol matinal quente + rebote da madeira */}
+    <group name="ps2-retro-lighting">
+      {/* Luz ambiente quente característica de jogos 3D do início dos anos 2000 */}
+      <ambientLight intensity={0.62} color="#F7DEC0" />
+
+      {/* Luz hemisférica saturada: topo dourado solar e base âmbar amadeirada */}
       <hemisphereLight
-        args={['#FFF7EB', '#8F6642', 0.95]}
+        args={['#FFE8B8', '#7A4419', 0.85]}
         position={[0, 6, 0]}
       />
 
-      {/* 2. Luz solar direta principal entrando pelas janelas laterais */}
+      {/* Luz direcional principal vinda da janela alta esquerda/fundo (sombras definidas PS2) */}
       <directionalLight
         castShadow
-        position={[7.2, 7.8, 3.8]}
-        intensity={2.35}
-        color="#FFF2D9"
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
+        position={[-5.8, 7.2, -2.2]}
+        intensity={2.15}
+        color="#FFF0C2"
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
         shadow-camera-near={1}
         shadow-camera-far={24}
-        shadow-camera-left={-7}
-        shadow-camera-right={7}
-        shadow-camera-top={7}
-        shadow-camera-bottom={-7}
-        shadow-bias={-0.0003}
+        shadow-camera-left={-6.5}
+        shadow-camera-right={6.5}
+        shadow-camera-top={6.5}
+        shadow-camera-bottom={-6.5}
+        shadow-bias={-0.0005}
       />
 
-      {/* 3. Luz suave de preenchimento indireto no interior */}
+      {/* Preenchimento quente secundário do interior do quarto/sala */}
       <pointLight
-        position={[-3.5, 3.0, -1.8]}
+        position={[2.5, 3.4, 1.5]}
         intensity={0.55}
-        distance={12}
-        color="#FFE5BF"
+        distance={14}
+        color="#FFD699"
       />
 
-      {/* 4. Luz de realce quente da luminária de piso */}
-      <pointLight
-        position={[-2.2, 1.6, 2.7]}
-        intensity={0.4}
-        distance={4.5}
-        color="#FFDA9E"
-      />
-
-      {/* 5. Sombras de contato suaves junto ao piso */}
-      <ContactShadows
-        position={[0, 0.005, 0]}
-        opacity={0.35}
-        scale={14}
-        blur={2.0}
-        far={2.8}
-        resolution={512}
-        color="#342010"
-      />
+      {/* Feixes volumétricos de luz solar (Sunbeams estilo PS2 entrando pela janela alta) */}
+      <group position={[-3.6, 2.5, -1.3]} rotation={[0.12, 0, -0.48]}>
+        <mesh>
+          <cylinderGeometry args={[0.65, 1.55, 4.4, 12, 1, true]} />
+          <meshBasicMaterial
+            color="#FFF4C2"
+            transparent
+            opacity={0.11}
+            depthWrite={false}
+          />
+        </mesh>
+      </group>
     </group>
   );
 }

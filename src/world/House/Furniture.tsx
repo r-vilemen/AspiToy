@@ -1,384 +1,265 @@
 import { memo } from 'react';
-import { RoundedBox } from '@react-three/drei';
 import { sharedMaterials, WORLD_PALETTE } from '../Environment/Materials';
 
 /**
- * Mobiliário completo e estilizado da sala de estar:
- * - Sofá em linho bege com almofadas e pés em madeira inclinados
- * - Mesa de centro contemporânea com tampo de vidro e base em madeira
- * - Tapete amplo texturizado com orla geométrica
- * - Estante/Rack de TV com nichos, livros coloridos, TV e planta pequena
- * - Vaso cerâmico com Monstera Deliciosa (Costela-de-Adão)
- * - Luminária de piso em latão escovado
- * - Base de recarga do AspiToy com sinalização luminosa
+ * Mobiliário Low-Poly / Matte em Escala Gigante (Estilo Toy Story PS2 / 6ª Geração):
+ * - Poltrona Verde-Oliva Gigante (inspirada diretamente na referência)
+ * - Tapete Redondo Trançado Concêntrico (Bordô, Verde-Floresta e Mostarda)
+ * - Mesa de Centro de Madeira Maciça
+ * - Cubo Cinza / Pufe Lateral com sombra marcada no piso
+ * - Gabinete Esquerdo com TV de Tubo (CRT) anos 2000 e Vaso de Planta Low-Poly
+ * - Estante Alta de Livros e Cômoda de Madeira na Parede Direita
+ * - Blocos de Brinquedo Coloridos (ABC) espalhados pelo piso
+ * - Estação de Recarga Toy-Tech do AspiToy
  */
 export const Furniture = memo(function Furniture() {
   return (
-    <group name="house-furniture">
+    <group name="house-furniture-ps2">
       {/* ======================================================== */}
-      {/* 1. TAPETE CENTRAL (Área de Convivência)                  */}
+      {/* 1. TAPETE REDONDO TRANÇADO (Braided Target Rug PS2)      */}
       {/* ======================================================== */}
-      <group position={[0, 0.008, 0.2]}>
-        {/* Orla exterior do tapete */}
-        <RoundedBox
-          receiveShadow
-          args={[4.4, 0.018, 3.3]}
-          radius={0.015}
-          smoothness={2}
-          material={sharedMaterials.rugBorder}
-        />
-        {/* Corpo principal felpudo em linho cru */}
-        <RoundedBox
-          receiveShadow
-          position={[0, 0.005, 0]}
-          args={[4.1, 0.015, 3.0]}
-          radius={0.012}
-          smoothness={2}
-          material={sharedMaterials.rugFabric}
-        />
+      <group position={[-0.75, 0.012, -1.1]}>
+        <mesh receiveShadow>
+          <cylinderGeometry args={[1.95, 1.98, 0.016, 24]} />
+          <primitive object={sharedMaterials.rugFabric} attach="material" />
+        </mesh>
       </group>
 
       {/* ======================================================== */}
-      {/* 2. SOFÁ PRINCIPAL DE TRÊS LUGARES EM LINHO               */}
-      {/* Centro ~ Z: 2.5m, largura: 3.4m, profundidade: 1.15m     */}
+      {/* 2. POLTRONA GIGANTE VERDE-OLIVA (Iconic PS2 Armchair)    */}
+      {/* Centro ~ X: 0.95m, Z: -1.05m                             */}
       {/* ======================================================== */}
-      <group position={[0, 0, 2.5]}>
-        {/* 4 Pés cônicos de madeira com leve inclinação */}
+      <group position={[0.95, 0, -1.05]} rotation={[0, -0.18, 0]}>
+        {/* Sombra de oclusão sob a poltrona */}
+        <mesh position={[0, 0.014, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[1.25, 16]} />
+          <meshBasicMaterial color="#241205" transparent opacity={0.45} depthWrite={false} />
+        </mesh>
+
+        {/* Base inferior estofada */}
+        <mesh castShadow receiveShadow position={[0, 0.34, 0]} material={sharedMaterials.sofaLinen}>
+          <boxGeometry args={[1.65, 0.56, 1.55]} />
+        </mesh>
+
+        {/* Almofada grossa do assento */}
+        <mesh castShadow receiveShadow position={[0, 0.72, 0.06]} material={sharedMaterials.sofaLinen}>
+          <boxGeometry args={[1.38, 0.36, 1.38]} />
+        </mesh>
+
+        {/* Braço volumoso esquerdo (visto de frente na referência) */}
+        <mesh castShadow receiveShadow position={[-0.68, 0.92, 0.02]} material={sharedMaterials.sofaLinen}>
+          <boxGeometry args={[0.42, 0.44, 1.52]} />
+        </mesh>
+
+        {/* Braço volumoso direito */}
+        <mesh castShadow receiveShadow position={[0.68, 0.92, 0.02]} material={sharedMaterials.sofaLinen}>
+          <boxGeometry args={[0.42, 0.44, 1.52]} />
+        </mesh>
+
+        {/* Encosto alto inclinado em dois gomos low-poly */}
+        <mesh
+          castShadow
+          receiveShadow
+          position={[0, 1.48, -0.52]}
+          rotation={[0.12, 0, 0]}
+          material={sharedMaterials.sofaLinen}
+        >
+          <boxGeometry args={[1.56, 1.25, 0.42]} />
+        </mesh>
+      </group>
+
+      {/* ======================================================== */}
+      {/* 3. BLOCO / PUFE CINZA LOW-POLY (Direita do primeiro plano)*/}
+      {/* Centro ~ X: 1.05m, Z: 0.75m                              */}
+      {/* ======================================================== */}
+      <group position={[1.05, 0, 0.75]} rotation={[0, -0.28, 0]}>
+        {/* Sombra projetada marcante estilo PS2 */}
+        <mesh position={[0.22, 0.014, 0.16]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[0.85, 0.85]} />
+          <meshBasicMaterial color="#1F0F04" transparent opacity={0.48} depthWrite={false} />
+        </mesh>
+        <mesh castShadow receiveShadow position={[0, 0.36, 0]} material={sharedMaterials.blockGrey}>
+          <boxGeometry args={[0.62, 0.72, 0.62]} />
+        </mesh>
+      </group>
+
+      {/* ======================================================== */}
+      {/* 4. MESA DE CENTRO DE MADEIRA (Esquerda do Tapete)        */}
+      {/* Centro ~ X: -1.45m, Z: -1.15m                            */}
+      {/* ======================================================== */}
+      <group position={[-1.45, 0, -1.15]} rotation={[0, 0.1, 0]}>
+        {/* Tampo chanfrado low-poly */}
+        <mesh castShadow receiveShadow position={[0, 0.66, 0]} material={sharedMaterials.furnitureWood}>
+          <boxGeometry args={[1.55, 0.08, 0.95]} />
+        </mesh>
+        {/* Saia sob o tampo */}
+        <mesh castShadow position={[0, 0.58, 0]} material={sharedMaterials.furnitureWoodDark}>
+          <boxGeometry args={[1.36, 0.1, 0.78]} />
+        </mesh>
+        {/* 4 Pernas finas altas (o robô consegue passar ao redor) */}
         {[
-          [-1.5, 0.06, -0.42],
-          [1.5, 0.06, -0.42],
-          [-1.5, 0.06, 0.42],
-          [1.5, 0.06, 0.42],
-        ].map(([px, py, pz], idx) => (
-          <mesh
-            key={idx}
-            castShadow
-            position={[px, py, pz]}
-            material={sharedMaterials.floorTrim}
-          >
-            <cylinderGeometry args={[0.032, 0.02, 0.12, 12]} />
+          [-0.64, 0.31, -0.36],
+          [0.64, 0.31, -0.36],
+          [-0.64, 0.31, 0.36],
+          [0.64, 0.31, 0.36],
+        ].map(([lx, ly, lz], idx) => (
+          <mesh key={idx} castShadow position={[lx, ly, lz]} material={sharedMaterials.furnitureWoodDark}>
+            <cylinderGeometry args={[0.035, 0.022, 0.62, 8]} />
           </mesh>
         ))}
-
-        {/* Chassi estrutural estofado inferior */}
-        <RoundedBox
-          castShadow
-          receiveShadow
-          position={[0, 0.18, 0]}
-          args={[3.3, 0.16, 1.05]}
-          radius={0.04}
-          smoothness={3}
-          material={sharedMaterials.sofaLinen}
-        />
-
-        {/* 3 Almofadas de assento macias */}
-        {[-1.02, 0, 1.02].map((cx, i) => (
-          <RoundedBox
-            key={i}
-            castShadow
-            receiveShadow
-            position={[cx, 0.32, -0.06]}
-            args={[0.98, 0.18, 0.82]}
-            radius={0.07}
-            smoothness={4}
-            material={sharedMaterials.sofaLinen}
-          />
-        ))}
-
-        {/* Encosto traseiro acolchoado */}
-        <RoundedBox
-          castShadow
-          receiveShadow
-          position={[0, 0.58, 0.38]}
-          args={[3.3, 0.48, 0.28]}
-          radius={0.08}
-          smoothness={3}
-          material={sharedMaterials.sofaLinen}
-        />
-
-        {/* Braço Esquerdo */}
-        <RoundedBox
-          castShadow
-          receiveShadow
-          position={[-1.72, 0.44, 0]}
-          args={[0.26, 0.42, 1.08]}
-          radius={0.08}
-          smoothness={3}
-          material={sharedMaterials.sofaLinen}
-        />
-
-        {/* Braço Direito */}
-        <RoundedBox
-          castShadow
-          receiveShadow
-          position={[1.72, 0.44, 0]}
-          args={[0.26, 0.42, 1.08]}
-          radius={0.08}
-          smoothness={3}
-          material={sharedMaterials.sofaLinen}
-        />
-
-        {/* Almofadas decorativas complementares */}
-        <group position={[-1.35, 0.45, 0.22]} rotation={[0.2, 0.3, 0.1]}>
-          <RoundedBox
-            castShadow
-            args={[0.38, 0.35, 0.14]}
-            radius={0.06}
-            smoothness={3}
-            material={sharedMaterials.sofaCushionAlt}
-          />
-        </group>
-        <group position={[1.35, 0.45, 0.22]} rotation={[0.2, -0.3, -0.1]}>
-          <RoundedBox
-            castShadow
-            args={[0.38, 0.35, 0.14]}
-            radius={0.06}
-            smoothness={3}
-            material={sharedMaterials.sofaCushionAlt}
-          />
-        </group>
       </group>
 
       {/* ======================================================== */}
-      {/* 3. MESA DE CENTRO DESIGN                                 */}
-      {/* Centro ~ X: 0, Z: 0.2m, altura: 0.42m                    */}
+      {/* 5. GABINETE DE CANTO + TV DE TUBO (CRT) + PLANTA         */}
+      {/* Canto Noroeste ~ X: -3.1m, Z: -3.15m                     */}
       {/* ======================================================== */}
-      <group position={[0, 0, 0.2]}>
-        {/* Base / Pés de madeira com travessa */}
-        <mesh castShadow position={[-0.72, 0.18, -0.32]} material={sharedMaterials.furnitureWood}>
-          <cylinderGeometry args={[0.024, 0.024, 0.36, 12]} />
+      <group position={[-3.1, 0, -3.15]}>
+        {/* Móvel gabinete de madeira */}
+        <mesh castShadow receiveShadow position={[0, 0.78, 0]} material={sharedMaterials.furnitureWood}>
+          <boxGeometry args={[2.1, 1.56, 1.1]} />
         </mesh>
-        <mesh castShadow position={[0.72, 0.18, -0.32]} material={sharedMaterials.furnitureWood}>
-          <cylinderGeometry args={[0.024, 0.024, 0.36, 12]} />
-        </mesh>
-        <mesh castShadow position={[-0.72, 0.18, 0.32]} material={sharedMaterials.furnitureWood}>
-          <cylinderGeometry args={[0.024, 0.024, 0.36, 12]} />
-        </mesh>
-        <mesh castShadow position={[0.72, 0.18, 0.32]} material={sharedMaterials.furnitureWood}>
-          <cylinderGeometry args={[0.024, 0.024, 0.36, 12]} />
+        {/* Nicho escuro interno */}
+        <mesh position={[-0.25, 0.75, 0.56]} material={sharedMaterials.robotVisor}>
+          <boxGeometry args={[0.75, 1.15, 0.02]} />
         </mesh>
 
-        {/* Prateleira inferior para revistas */}
-        <RoundedBox
-          castShadow
-          receiveShadow
-          position={[0, 0.12, 0]}
-          args={[1.35, 0.02, 0.58]}
-          radius={0.008}
-          smoothness={2}
-          material={sharedMaterials.furnitureWoodDark}
-        />
-
-        {/* Tampo de Vidro Biselado Flutuante */}
-        <RoundedBox
-          castShadow
-          receiveShadow
-          position={[0, 0.38, 0]}
-          args={[1.6, 0.024, 0.78]}
-          radius={0.025}
-          smoothness={3}
-          material={sharedMaterials.tableGlass}
-        />
-
-        {/* Livro de arte decorativo sobre a mesa */}
-        <group position={[-0.32, 0.405, 0.08]} rotation={[0, 0.15, 0]}>
-          <RoundedBox
-            castShadow
-            args={[0.26, 0.026, 0.34]}
-            radius={0.005}
-            smoothness={2}
-            material={sharedMaterials.robotCoralTrim}
-          />
+        {/* TV de Tubo (CRT) Anos 2000 no topo esquerdo */}
+        <group position={[-0.45, 2.02, 0]} rotation={[0, 0.35, 0]}>
+          <mesh castShadow material={sharedMaterials.tvCaseRetro}>
+            <boxGeometry args={[0.88, 0.92, 0.74]} />
+          </mesh>
+          {/* Tela abaulada escura */}
+          <mesh position={[0, 0.04, 0.38]} material={sharedMaterials.tvScreenOff}>
+            <boxGeometry args={[0.68, 0.58, 0.04]} />
+          </mesh>
         </group>
 
-        {/* Xícara de cerâmica com café */}
-        <group position={[0.35, 0.42, -0.1]}>
-          <mesh castShadow material={sharedMaterials.plantPotCeramic}>
-            <cylinderGeometry args={[0.042, 0.032, 0.065, 16]} />
+        {/* Vaso com Planta Low-Poly no topo direito do gabinete */}
+        <group position={[0.52, 1.56, 0]}>
+          <mesh castShadow position={[0, 0.2, 0]} material={sharedMaterials.plantPotCeramic}>
+            <cylinderGeometry args={[0.2, 0.14, 0.4, 8]} />
           </mesh>
-          <mesh position={[0, 0.026, 0]}>
-            <circleGeometry args={[0.038, 16]} />
-            <meshStandardMaterial color="#2B180C" roughness={0.2} />
-          </mesh>
-        </group>
-      </group>
-
-      {/* ======================================================== */}
-      {/* 4. RACK / ESTANTE DE TV E ENTRETENIMENTO                 */}
-      {/* Centro ~ Z: -3.5m, largura: 3.4m, altura: 0.52m          */}
-      {/* ======================================================== */}
-      <group position={[0, 0, -3.5]}>
-        {/* Corpo principal do aparador em carvalho e nogueira */}
-        <RoundedBox
-          castShadow
-          receiveShadow
-          position={[0, 0.3, 0]}
-          args={[3.4, 0.48, 0.56]}
-          radius={0.03}
-          smoothness={3}
-          material={sharedMaterials.furnitureWood}
-        />
-
-        {/* 4 Pés curtos em latão escovado */}
-        {[
-          [-1.5, 0.03, -0.2],
-          [1.5, 0.03, -0.2],
-          [-1.5, 0.03, 0.2],
-          [1.5, 0.03, 0.2],
-        ].map(([px, py, pz], i) => (
-          <mesh key={i} castShadow position={[px, py, pz]} material={sharedMaterials.metalBrass}>
-            <cylinderGeometry args={[0.02, 0.02, 0.06, 12]} />
-          </mesh>
-        ))}
-
-        {/* Gavetas com puxadores metálicos */}
-        {[-0.85, 0.85].map((gx, i) => (
-          <group key={i} position={[gx, 0.3, 0.285]}>
-            <mesh material={sharedMaterials.furnitureWoodDark}>
-              <boxGeometry args={[1.5, 0.4, 0.01]} />
-            </mesh>
-            <mesh position={[0, 0, 0.015]} material={sharedMaterials.metalBrass}>
-              <boxGeometry args={[0.18, 0.015, 0.015]} />
-            </mesh>
-          </group>
-        ))}
-
-        {/* Televisão estilizada fixada/apoiada */}
-        <group position={[0, 1.05, 0]}>
-          {/* Base do suporte */}
-          <mesh castShadow position={[0, -0.48, 0]} material={sharedMaterials.tvScreenOff}>
-            <boxGeometry args={[0.7, 0.02, 0.28]} />
-          </mesh>
-          <mesh castShadow position={[0, -0.32, 0]} material={sharedMaterials.tvScreenOff}>
-            <boxGeometry args={[0.08, 0.32, 0.08]} />
-          </mesh>
-          {/* Moldura da tela ultrafina */}
-          <RoundedBox
-            castShadow
-            args={[2.2, 1.25, 0.04]}
-            radius={0.01}
-            smoothness={2}
-            material={sharedMaterials.tvScreenOff}
-          />
-        </group>
-
-        {/* Livros decorativos organizados no rack */}
-        <group position={[-1.25, 0.62, 0.06]}>
-          {WORLD_PALETTE.bookSpines.map((color, idx) => (
+          {[
+            [0, 0.58, 0, 0, 0, 0],
+            [-0.14, 0.52, 0.06, 0.2, 0, 0.45],
+            [0.14, 0.52, -0.06, -0.2, 0, -0.45],
+            [0.05, 0.54, 0.14, 0.45, 0, -0.15],
+            [-0.05, 0.54, -0.14, -0.45, 0, 0.15],
+          ].map(([fx, fy, fz, rx, ry, rz], idx) => (
             <mesh
               key={idx}
               castShadow
-              position={[idx * 0.045, 0.08, 0]}
-              rotation={[0, 0, idx === 3 ? -0.2 : 0]}
+              position={[fx, fy, fz]}
+              rotation={[rx, ry, rz]}
+              material={sharedMaterials.plantFoliage}
             >
-              <boxGeometry args={[0.035, 0.18, 0.2]} />
-              <meshStandardMaterial color={color} roughness={0.5} />
+              <coneGeometry args={[0.14, 0.58, 5]} />
             </mesh>
           ))}
         </group>
       </group>
 
       {/* ======================================================== */}
-      {/* 5. PLANTA DECORATIVA: VASO COM MONSTERA (Costela-de-Adão)*/}
-      {/* Posicionada junto ao canto leste ensolarado ~ [3.6, 0, -2.8] */}
+      {/* 6. ESTANTE ALTA E CÔMODA NA PAREDE DIREITA (LESTE)       */}
       {/* ======================================================== */}
-      <group position={[3.6, 0, -2.8]}>
-        {/* Suporte de pés tripé de madeira */}
-        <mesh position={[0, 0.15, 0]} material={sharedMaterials.furnitureWood}>
-          <cylinderGeometry args={[0.26, 0.28, 0.3, 16]} />
+      <group position={[4.15, 0, -1.2]}>
+        {/* Estante de livros alta ao fundo */}
+        <mesh castShadow receiveShadow position={[0, 1.75, -1.35]} material={sharedMaterials.furnitureWoodDark}>
+          <boxGeometry args={[0.95, 3.5, 1.45]} />
         </mesh>
+        {/* Cômoda / Aparador de madeira com gavetas à direita */}
+        <mesh castShadow receiveShadow position={[0.05, 1.05, 0.55]} material={sharedMaterials.furnitureWood}>
+          <boxGeometry args={[0.92, 2.1, 1.95]} />
+        </mesh>
+        {/* Abajur vermelho retrô sobre a cômoda */}
+        <group position={[0.05, 2.1, 0.85]}>
+          <mesh position={[0, 0.15, 0]} material={sharedMaterials.metalBrass}>
+            <cylinderGeometry args={[0.06, 0.1, 0.3, 8]} />
+          </mesh>
+          <mesh position={[0, 0.42, 0]} material={sharedMaterials.robotCoralTrim}>
+            <cylinderGeometry args={[0.14, 0.26, 0.38, 10]} />
+          </mesh>
+        </group>
 
-        {/* Vaso em cerâmica terracota cônica */}
-        <mesh castShadow position={[0, 0.52, 0]} material={sharedMaterials.plantPotCeramic}>
-          <cylinderGeometry args={[0.34, 0.24, 0.52, 24]} />
-        </mesh>
-        {/* Terra preta orgânica */}
-        <mesh position={[0, 0.77, 0]} material={sharedMaterials.plantSoil}>
-          <cylinderGeometry args={[0.32, 0.32, 0.02, 24]} />
-        </mesh>
-
-        {/* Caules e Folhagem escultórica da Monstera */}
-        {[
-          { rot: [0.35, 0.4, 0.2], pos: [0.08, 1.05, 0.06], scale: [0.38, 0.48, 0.02] },
-          { rot: [0.2, 1.8, 0.3], pos: [-0.12, 1.15, -0.05], scale: [0.42, 0.54, 0.02] },
-          { rot: [0.4, -1.2, 0.15], pos: [0.15, 1.1, -0.14], scale: [0.36, 0.46, 0.02] },
-          { rot: [0.15, 3.1, 0.35], pos: [-0.08, 1.25, 0.12], scale: [0.45, 0.58, 0.02] },
-          { rot: [0.55, 0.0, 0.1], pos: [0.0, 0.95, 0.18], scale: [0.32, 0.42, 0.02] },
-        ].map((leaf, idx) => (
-          <group key={idx} position={leaf.pos as [number, number, number]} rotation={leaf.rot as [number, number, number]}>
-            <mesh castShadow material={sharedMaterials.plantFoliage}>
-              <boxGeometry args={leaf.scale as [number, number, number]} />
-            </mesh>
-          </group>
+        {/* Livros coloridos low-poly nas prateleiras */}
+        {WORLD_PALETTE.bookSpines.map((color, idx) => (
+          <mesh
+            key={idx}
+            position={[-0.38, 2.25, -1.65 + idx * 0.18]}
+          >
+            <boxGeometry args={[0.22, 0.34, 0.12]} />
+            <meshLambertMaterial color={color} flatShading />
+          </mesh>
         ))}
       </group>
 
       {/* ======================================================== */}
-      {/* 6. LUMINÁRIA DE PISO EM LATÃO ESCOVADO (Floor Lamp)      */}
-      {/* Posicionada atrás do sofá à esquerda ~ [-2.2, 0, 2.8]   */}
+      {/* 7. BRINQUEDOS LOW-POLY ESPALHADOS PELO CHÃO              */}
       {/* ======================================================== */}
-      <group position={[-2.2, 0, 2.8]}>
-        {/* Base pesada circular */}
-        <mesh castShadow material={sharedMaterials.metalBrass}>
-          <cylinderGeometry args={[0.18, 0.18, 0.024, 24]} />
+      {/* Blocos ABC empilhados perto do lambris esquerdo */}
+      <group position={[-3.3, 0, 1.55]}>
+        <mesh castShadow receiveShadow position={[0, 0.16, 0]} material={sharedMaterials.robotCoralTrim}>
+          <boxGeometry args={[0.32, 0.32, 0.32]} />
         </mesh>
-        {/* Haste metálica esguia */}
-        <mesh castShadow position={[0, 0.85, 0]} material={sharedMaterials.metalBrass}>
-          <cylinderGeometry args={[0.012, 0.012, 1.7, 12]} />
+        <mesh castShadow receiveShadow position={[0.34, 0.16, 0.12]} rotation={[0, 0.3, 0]} material={sharedMaterials.robotBlueTrim}>
+          <boxGeometry args={[0.32, 0.32, 0.32]} />
         </mesh>
-        {/* Cúpula cônica elegante */}
-        <mesh position={[0, 1.62, 0]} material={sharedMaterials.sofaLinen}>
-          <cylinderGeometry args={[0.16, 0.28, 0.32, 24]} />
+        <mesh castShadow receiveShadow position={[0.15, 0.48, 0.05]} rotation={[0, -0.25, 0]} material={sharedMaterials.robotYellowTrim}>
+          <boxGeometry args={[0.3, 0.3, 0.3]} />
         </mesh>
       </group>
 
       {/* ======================================================== */}
-      {/* 7. ESTAÇÃO DE RECARGA (CHARGING DOCK)                    */}
-      {/* Centro ~ [-3.8, 0, -3.2]                                 */}
+      {/* 8. BAÚ GIGANTE DE BRINQUEDOS (Parede Sul ~ Z: 2.6m)      */}
       {/* ======================================================== */}
-      <group position={[-3.8, 0, -3.2]}>
-        {/* Plataforma de acoplamento do robô no piso */}
-        <RoundedBox
-          receiveShadow
-          position={[0, 0.015, 0]}
-          args={[0.76, 0.03, 0.82]}
-          radius={0.012}
-          smoothness={2}
-          material={sharedMaterials.dockBody}
-        />
-        {/* Faixas guias de contato elétrico */}
-        <mesh position={[-0.14, 0.031, 0.08]} material={sharedMaterials.metalBrass}>
-          <boxGeometry args={[0.04, 0.002, 0.22]} />
+      <group position={[0, 0, 2.6]}>
+        <mesh castShadow receiveShadow position={[0, 0.42, 0]} material={sharedMaterials.furnitureWood}>
+          <boxGeometry args={[2.8, 0.84, 1.05]} />
         </mesh>
-        <mesh position={[0.14, 0.031, 0.08]} material={sharedMaterials.metalBrass}>
-          <boxGeometry args={[0.04, 0.002, 0.22]} />
+        {/* Tampa vermelha brinquedo do baú */}
+        <mesh castShadow position={[0, 0.88, 0]} material={sharedMaterials.robotCoralTrim}>
+          <boxGeometry args={[2.92, 0.12, 1.12]} />
         </mesh>
-        {/* Torre vertical da estação de energia */}
-        <RoundedBox
-          castShadow
-          receiveShadow
-          position={[0, 0.24, -0.32]}
-          args={[0.54, 0.46, 0.18]}
-          radius={0.05}
-          smoothness={3}
-          material={sharedMaterials.dockBody}
-        />
-        {/* Sensor de alinhamento infravermelho escurecido */}
-        <mesh position={[0, 0.26, -0.225]}>
-          <boxGeometry args={[0.34, 0.06, 0.01]} />
-          <meshStandardMaterial color="#0A0908" roughness={0.1} />
+        {/* Fecho dourado */}
+        <mesh position={[0, 0.78, -0.54]} material={sharedMaterials.metalBrass}>
+          <boxGeometry args={[0.28, 0.18, 0.04]} />
         </mesh>
-        {/* LED indicador de status de energia */}
-        <mesh position={[0, 0.41, -0.225]}>
-          <boxGeometry args={[0.18, 0.02, 0.01]} />
-          <meshStandardMaterial
-            color={WORLD_PALETTE.ledEmerald}
-            emissive={WORLD_PALETTE.ledEmerald}
-            emissiveIntensity={1.8}
-          />
+      </group>
+
+      {/* ======================================================== */}
+      {/* 9. ESTAÇÃO DE RECARGA TOY-TECH DO ASPITOY                */}
+      {/* Tapete de indução discreto sob o AspiToy + Torre lateral */}
+      {/* ======================================================== */}
+      <group position={[-0.15, 0.005, 0.85]}>
+        <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.26, 0.34, 16]} />
+          <meshBasicMaterial color={WORLD_PALETTE.robotYellow} transparent opacity={0.55} />
+        </mesh>
+      </group>
+      <group position={[-3.4, 0, -1.6]} rotation={[0, Math.PI / 2, 0]}>
+        {/* Base plástica chanfrada */}
+        <mesh receiveShadow position={[0, 0.02, 0]} material={sharedMaterials.dockBody}>
+          <boxGeometry args={[0.78, 0.04, 0.82]} />
+        </mesh>
+        {/* Faixas de contato amarelas estilo brinquedo */}
+        <mesh position={[-0.15, 0.042, 0.08]} material={sharedMaterials.robotYellowTrim}>
+          <boxGeometry args={[0.06, 0.005, 0.28]} />
+        </mesh>
+        <mesh position={[0.15, 0.042, 0.08]} material={sharedMaterials.robotYellowTrim}>
+          <boxGeometry args={[0.06, 0.005, 0.28]} />
+        </mesh>
+        {/* Torre da base com detalhes em vermelho e LED verde */}
+        <mesh castShadow position={[0, 0.26, -0.3]} material={sharedMaterials.dockBody}>
+          <boxGeometry args={[0.58, 0.48, 0.2]} />
+        </mesh>
+        <mesh position={[0, 0.48, -0.3]} material={sharedMaterials.robotCoralTrim}>
+          <boxGeometry args={[0.62, 0.06, 0.22]} />
+        </mesh>
+        <mesh position={[0, 0.34, -0.19]}>
+          <boxGeometry args={[0.24, 0.05, 0.02]} />
+          <meshBasicMaterial color={WORLD_PALETTE.ledEmerald} />
         </mesh>
       </group>
     </group>
   );
 });
-

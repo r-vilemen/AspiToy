@@ -1,165 +1,284 @@
 import * as THREE from 'three';
 
 /**
- * Paleta de cores oficial do mundo 3D (Seção 7.3 do MASTER_PROMPT).
+ * Paleta de cores "Early 2000s PS2 Toy Game" (6th Gen Console Aesthetic):
+ * Tons vibrantes, plásticos foscos (matte), madeira mel saturada e iluminação nostálgica.
  */
 export const WORLD_PALETTE = {
-  sunlitBackdrop: '#EFE7DA',
-  woodFloorBase: '#B9804E',
-  woodFloorPlankAlt: '#A87040',
-  woodTrim: '#7D4E28',
-  woodFurniture: '#8A532B',
-  woodDark: '#4A2A14',
-  wallPlaster: '#F6EFE4',
-  wallAccent: '#E8DEC8',
-  rugCream: '#E9DFCF',
-  rugBorder: '#CBB99F',
-  sofaLinen: '#D9CEBE',
-  sofaCushionAlt: '#C7B9A3',
-  sofaWoodLegs: '#54361C',
-  tableTopGlass: '#E2F1F8',
-  tableWood: '#7C4B25',
-  plantPot: '#D97A53', // Cerâmica terracota
-  plantLeaves: '#2D6A4F', // Verde monstera natural
-  plantStem: '#1B4332',
-  bookSpines: ['#D64045', '#1D7874', '#F4A261', '#3D5A80'],
-  lampBrass: '#D4AF37',
-  lampShade: '#FFF9E6',
-  robotShell: '#F8F4EC',
-  robotCoral: '#E05A36',
-  robotCharcoal: '#231F1D',
-  sensorCyan: '#14B8A6',
-  ledEmerald: '#10B981',
+  sunlitBackdrop: '#D8B888',
+  fogWarm: '#C9A26B',
+  woodFloorBase: '#C87D32',
+  woodFloorPlankAlt: '#B36A22',
+  woodTrim: '#6E3B16',
+  woodFurniture: '#82461D',
+  woodDark: '#4D260D',
+  wallPlaster: '#DEC7A4',
+  wallWainscot: '#EBE0CC',
+  wallAccent: '#C9B08A',
+  armchairOlive: '#78862E',
+  armchairOliveDark: '#5C6820',
+  rugBurgundy: '#7D3228',
+  rugForest: '#2D5236',
+  rugMustard: '#C9933B',
+  rugCream: '#DFC9A6',
+  sofaLinen: '#78862E',
+  sofaCushionAlt: '#B84A39',
+  sofaWoodLegs: '#4D260D',
+  tableTopGlass: '#8C4E22',
+  tableWood: '#733D18',
+  plantPot: '#B85D38',
+  plantLeaves: '#386B34',
+  plantStem: '#264A23',
+  bookSpines: ['#D93829', '#2563EB', '#F2B705', '#16A34A'],
+  lampBrass: '#D99B26',
+  lampShade: '#F7E3B5',
+  crtTvCase: '#5C6652',
+  crtScreen: '#2B332B',
+  blockGrey: '#78756E',
+  robotShell: '#F5EFE0',
+  robotCoral: '#D93829',
+  robotYellow: '#F2B705',
+  robotBlue: '#2563EB',
+  robotCharcoal: '#24201D',
+  sensorCyan: '#38BDF8',
+  ledEmerald: '#22C55E',
   ledAmber: '#F59E0B',
-  dockBody: '#2D2622',
-  windowFrame: '#FFFFFF',
+  dockBody: '#2D3748',
+  windowFrame: '#F5EAD6',
+  sunbeamGlow: '#FFF3C4',
 } as const;
 
+function hexToRgb(hex: string): [number, number, number] {
+  const clean = hex.replace('#', '');
+  const num = parseInt(clean, 16);
+  return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+}
+
 /**
- * Materiais PBR compartilhados para evitar realocação por componente (`material-reuse`).
+ * Cria DataTexture low-res (64x64) de tábuas de madeira no estilo PS2 (NearestFilter).
+ */
+function createPs2WoodDataTexture(): THREE.DataTexture {
+  const size = 64;
+  const data = new Uint8Array(size * size * 4);
+  const plankColors = [
+    hexToRgb('#C87D32'),
+    hexToRgb('#BE732B'),
+    hexToRgb('#CF843A'),
+    hexToRgb('#B66B24'),
+  ];
+  const seamColor = hexToRgb('#592D0E');
+  const grainColor = hexToRgb('#9E5A1E');
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const plankIdx = Math.floor(x / 16) % 4;
+      const localX = x % 16;
+      const jointY = (plankIdx * 23 + 12) % size;
+
+      let rgb = plankColors[plankIdx];
+      if (localX === 0 || y === jointY) {
+        rgb = seamColor;
+      } else if (localX === 5 || localX === 11) {
+        rgb = grainColor;
+      }
+
+      const idx = (y * size + x) * 4;
+      data[idx] = rgb[0];
+      data[idx + 1] = rgb[1];
+      data[idx + 2] = rgb[2];
+      data[idx + 3] = 255;
+    }
+  }
+
+  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(8, 6);
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestFilter;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+/**
+ * Cria DataTexture low-res (64x64) de tapete redondo trançado concêntrico estilo PS2.
+ */
+function createPs2RugDataTexture(): THREE.DataTexture {
+  const size = 64;
+  const data = new Uint8Array(size * size * 4);
+  const center = size / 2;
+
+  const cBurgundy = hexToRgb('#7D3228');
+  const cRust = hexToRgb('#9C4B34');
+  const cForest = hexToRgb('#2D5236');
+  const cMoss = hexToRgb('#3B6946');
+  const cMustard = hexToRgb('#C9933B');
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const dist = Math.hypot(x - center, y - center);
+      let rgb = cBurgundy;
+      if (dist < 8) rgb = cMustard;
+      else if (dist < 15) rgb = cMoss;
+      else if (dist < 22) rgb = cForest;
+      else if (dist < 27) rgb = cRust;
+
+      const idx = (y * size + x) * 4;
+      data[idx] = rgb[0];
+      data[idx + 1] = rgb[1];
+      data[idx + 2] = rgb[2];
+      data[idx + 3] = 255;
+    }
+  }
+
+  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestFilter;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+/**
+ * Cria DataTexture low-res (32x32) de tecido tramado para a poltrona verde-oliva PS2.
+ */
+function createPs2FabricDataTexture(): THREE.DataTexture {
+  const size = 32;
+  const data = new Uint8Array(size * size * 4);
+  const base = hexToRgb('#78862E');
+  const weave = hexToRgb('#657224');
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const isLine = y % 3 === 0 || x % 6 === 0;
+      const rgb = isLine ? weave : base;
+      const idx = (y * size + x) * 4;
+      data[idx] = rgb[0];
+      data[idx + 1] = rgb[1];
+      data[idx + 2] = rgb[2];
+      data[idx + 3] = 255;
+    }
+  }
+
+  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(6, 6);
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestFilter;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+const woodTex = createPs2WoodDataTexture();
+const rugTex = createPs2RugDataTexture();
+const armchairTex = createPs2FabricDataTexture();
+
+/**
+ * Materiais compartilhados com acabamento Matte / Flat Low-Poly (PS2 Aesthetic).
  */
 export const sharedMaterials = {
-  floorWood: new THREE.MeshStandardMaterial({
-    color: WORLD_PALETTE.woodFloorBase,
-    roughness: 0.55,
-    metalness: 0.04,
-  }),
-  floorPlankAlt: new THREE.MeshStandardMaterial({
-    color: WORLD_PALETTE.woodFloorPlankAlt,
-    roughness: 0.58,
-    metalness: 0.04,
-  }),
-  floorTrim: new THREE.MeshStandardMaterial({
-    color: WORLD_PALETTE.woodTrim,
-    roughness: 0.5,
-    metalness: 0.05,
-  }),
-  wallPlaster: new THREE.MeshStandardMaterial({
-    color: WORLD_PALETTE.wallPlaster,
-    roughness: 0.88,
-    metalness: 0.01,
-  }),
-  wallAccent: new THREE.MeshStandardMaterial({
-    color: WORLD_PALETTE.wallAccent,
-    roughness: 0.85,
-    metalness: 0.01,
-  }),
-  rugFabric: new THREE.MeshStandardMaterial({
-    color: WORLD_PALETTE.rugCream,
-    roughness: 0.94,
-    metalness: 0.0,
-  }),
-  rugBorder: new THREE.MeshStandardMaterial({
-    color: WORLD_PALETTE.rugBorder,
-    roughness: 0.9,
-    metalness: 0.0,
-  }),
-  sofaLinen: new THREE.MeshStandardMaterial({
-    color: WORLD_PALETTE.sofaLinen,
-    roughness: 0.86,
-    metalness: 0.01,
-  }),
-  sofaCushionAlt: new THREE.MeshStandardMaterial({
-    color: WORLD_PALETTE.sofaCushionAlt,
-    roughness: 0.88,
-    metalness: 0.01,
-  }),
-  furnitureWood: new THREE.MeshStandardMaterial({
-    color: WORLD_PALETTE.woodFurniture,
-    roughness: 0.45,
-    metalness: 0.06,
-  }),
-  furnitureWoodDark: new THREE.MeshStandardMaterial({
-    color: WORLD_PALETTE.woodDark,
-    roughness: 0.5,
-    metalness: 0.05,
-  }),
-  plantPotCeramic: new THREE.MeshStandardMaterial({
-    color: WORLD_PALETTE.plantPot,
-    roughness: 0.62,
-    metalness: 0.05,
-  }),
-  plantFoliage: new THREE.MeshStandardMaterial({
-    color: WORLD_PALETTE.plantLeaves,
-    roughness: 0.42,
-    metalness: 0.02,
-    side: THREE.DoubleSide,
-  }),
-  plantSoil: new THREE.MeshStandardMaterial({
-    color: '#362215',
-    roughness: 0.95,
-    metalness: 0.0,
-  }),
-  windowGlass: new THREE.MeshPhysicalMaterial({
+  floorWood: new THREE.MeshLambertMaterial({
     color: '#FFFFFF',
-    transparent: true,
-    opacity: 0.28,
-    roughness: 0.1,
-    metalness: 0.05,
-    transmission: 0.85,
-    ior: 1.5,
+    map: woodTex,
   }),
-  windowFrame: new THREE.MeshStandardMaterial({
+  floorPlankAlt: new THREE.MeshLambertMaterial({
+    color: WORLD_PALETTE.woodFloorPlankAlt,
+  }),
+  floorTrim: new THREE.MeshLambertMaterial({
+    color: WORLD_PALETTE.woodTrim,
+  }),
+  wallPlaster: new THREE.MeshLambertMaterial({
+    color: WORLD_PALETTE.wallPlaster,
+  }),
+  wallWainscot: new THREE.MeshLambertMaterial({
+    color: WORLD_PALETTE.wallWainscot,
+  }),
+  wallAccent: new THREE.MeshLambertMaterial({
+    color: WORLD_PALETTE.wallAccent,
+  }),
+  rugFabric: new THREE.MeshLambertMaterial({
+    color: '#FFFFFF',
+    map: rugTex,
+  }),
+  rugBorder: new THREE.MeshLambertMaterial({
+    color: WORLD_PALETTE.rugBurgundy,
+  }),
+  sofaLinen: new THREE.MeshLambertMaterial({
+    color: '#FFFFFF',
+    map: armchairTex,
+  }),
+  sofaCushionAlt: new THREE.MeshLambertMaterial({
+    color: WORLD_PALETTE.sofaCushionAlt,
+  }),
+  furnitureWood: new THREE.MeshLambertMaterial({
+    color: WORLD_PALETTE.woodFurniture,
+  }),
+  furnitureWoodDark: new THREE.MeshLambertMaterial({
+    color: WORLD_PALETTE.woodDark,
+  }),
+  plantPotCeramic: new THREE.MeshLambertMaterial({
+    color: WORLD_PALETTE.plantPot,
+    flatShading: true,
+  }),
+  plantFoliage: new THREE.MeshLambertMaterial({
+    color: WORLD_PALETTE.plantLeaves,
+    side: THREE.DoubleSide,
+    flatShading: true,
+  }),
+  plantSoil: new THREE.MeshLambertMaterial({
+    color: '#3B2313',
+  }),
+  windowGlass: new THREE.MeshBasicMaterial({
+    color: '#FFF9D6',
+    transparent: true,
+    opacity: 0.88,
+  }),
+  windowFrame: new THREE.MeshLambertMaterial({
     color: WORLD_PALETTE.windowFrame,
-    roughness: 0.35,
-    metalness: 0.08,
   }),
-  metalBrass: new THREE.MeshStandardMaterial({
+  metalBrass: new THREE.MeshLambertMaterial({
     color: WORLD_PALETTE.lampBrass,
-    roughness: 0.28,
-    metalness: 0.75,
+    flatShading: true,
   }),
-  tableGlass: new THREE.MeshPhysicalMaterial({
-    color: WORLD_PALETTE.tableTopGlass,
-    transparent: true,
-    opacity: 0.45,
-    roughness: 0.15,
-    transmission: 0.8,
-    ior: 1.52,
+  tableGlass: new THREE.MeshLambertMaterial({
+    color: WORLD_PALETTE.tableWood,
   }),
-  tvScreenOff: new THREE.MeshStandardMaterial({
-    color: '#151312',
-    roughness: 0.15,
-    metalness: 0.85,
+  tvCaseRetro: new THREE.MeshLambertMaterial({
+    color: WORLD_PALETTE.crtTvCase,
+    flatShading: true,
   }),
-  robotShell: new THREE.MeshStandardMaterial({
+  tvScreenOff: new THREE.MeshLambertMaterial({
+    color: WORLD_PALETTE.crtScreen,
+  }),
+  blockGrey: new THREE.MeshLambertMaterial({
+    color: WORLD_PALETTE.blockGrey,
+    flatShading: true,
+  }),
+  robotShell: new THREE.MeshLambertMaterial({
     color: WORLD_PALETTE.robotShell,
-    roughness: 0.26,
-    metalness: 0.08,
+    flatShading: true,
   }),
-  robotCoralTrim: new THREE.MeshStandardMaterial({
+  robotCoralTrim: new THREE.MeshLambertMaterial({
     color: WORLD_PALETTE.robotCoral,
-    roughness: 0.34,
-    metalness: 0.12,
+    flatShading: true,
   }),
-  robotVisor: new THREE.MeshStandardMaterial({
+  robotYellowTrim: new THREE.MeshLambertMaterial({
+    color: WORLD_PALETTE.robotYellow,
+    flatShading: true,
+  }),
+  robotBlueTrim: new THREE.MeshLambertMaterial({
+    color: WORLD_PALETTE.robotBlue,
+    flatShading: true,
+  }),
+  robotVisor: new THREE.MeshLambertMaterial({
     color: WORLD_PALETTE.robotCharcoal,
-    roughness: 0.16,
-    metalness: 0.35,
+    flatShading: true,
   }),
-  dockBody: new THREE.MeshStandardMaterial({
+  dockBody: new THREE.MeshLambertMaterial({
     color: WORLD_PALETTE.dockBody,
-    roughness: 0.4,
-    metalness: 0.25,
+    flatShading: true,
   }),
 };

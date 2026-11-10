@@ -8,94 +8,110 @@ import type {
 import type { Vector2D } from '@/types/robot';
 import { isPointInsideBounds } from '@/utils/coordinates';
 
-export const INITIAL_DOCK_POSITION: Vector2D = { x: -3.8, z: -3.2 };
+export const INITIAL_DOCK_POSITION: Vector2D = { x: -0.15, z: 0.85 };
 
 export const INITIAL_ROOM_DIMENSIONS: RoomDimensions = {
   width: 10,
   depth: 8,
-  wallHeight: 3.2,
+  wallHeight: 4.6,
 };
 
 export const INITIAL_REGIONS: RoomRegion[] = [
   {
     id: 'all',
-    label: 'Sala Completa',
-    description: 'Cobertura integral da sala de estar',
+    label: 'Quarto Completo',
+    description: 'Cobertura integral do quarto/sala em escala gigante',
     bounds: { minX: -4.6, maxX: 4.6, minZ: -3.6, maxZ: 3.6 },
-    center: { x: 0, z: 0 },
+    center: { x: -0.4, z: 0.2 },
   },
   {
     id: 'living-center',
-    label: 'Tapete Central',
-    description: 'Área de convivência entre o sofá e a mesa de centro',
-    bounds: { minX: -2.2, maxX: 2.2, minZ: -1.6, maxZ: 1.8 },
-    center: { x: 0, z: 0.2 },
+    label: 'Tapete Redondo',
+    description: 'Área ensolarada entre a mesa de madeira e a poltrona verde',
+    bounds: { minX: -2.4, maxX: 0.6, minZ: -2.4, maxZ: 0.4 },
+    center: { x: -0.6, z: -1.1 },
   },
   {
     id: 'reading-nook',
-    label: 'Canto da Janela',
-    description: 'Zona iluminada próxima às janelas e plantas',
-    bounds: { minX: 1.8, maxX: 4.5, minZ: -3.5, maxZ: 2.5 },
-    center: { x: 3.1, z: -0.5 },
+    label: 'Lado da Estante',
+    description: 'Corredor direito próximo à estante de livros e cômoda',
+    bounds: { minX: 1.6, maxX: 3.6, minZ: -2.8, maxZ: 2.2 },
+    center: { x: 2.5, z: 0.2 },
   },
   {
     id: 'media-zone',
-    label: 'Área da Estante',
-    description: 'Corredor frontal próximo ao rack e base de recarga',
-    bounds: { minX: -4.5, maxX: 1.5, minZ: -3.5, maxZ: -1.2 },
-    center: { x: -1.5, z: -2.4 },
+    label: 'Canto da TV Tubo',
+    description: 'Zona próxima ao gabinete da TV CRT, lareira e blocos ABC',
+    bounds: { minX: -4.2, maxX: -0.4, minZ: -2.8, maxZ: 1.8 },
+    center: { x: -2.2, z: 0.4 },
   },
 ];
 
 export const INITIAL_OBSTACLES: EnvironmentObstacle[] = [
   {
     id: 'sofa-main',
-    label: 'Sofá de Linho',
+    label: 'Baú de Brinquedos',
     category: 'furniture',
-    bounds: { minX: -2.1, maxX: 2.1, minZ: 1.8, maxZ: 3.2 },
+    bounds: { minX: -1.5, maxX: 1.5, minZ: 2.0, maxZ: 3.2 },
     collidable: true,
-    height: 0.9,
+    height: 0.95,
+  },
+  {
+    id: 'armchair-olive',
+    label: 'Poltrona Verde',
+    category: 'furniture',
+    bounds: { minX: 0.4, maxX: 1.75, minZ: -1.75, maxZ: -0.35 },
+    collidable: true,
+    height: 1.8,
   },
   {
     id: 'coffee-table',
-    label: 'Mesa de Centro',
+    label: 'Mesa de Madeira',
     category: 'furniture',
-    bounds: { minX: -1.1, maxX: 1.1, minZ: -0.4, maxZ: 0.7 },
+    bounds: { minX: -2.15, maxX: -0.75, minZ: -1.6, maxZ: -0.7 },
     collidable: true,
-    height: 0.45,
+    height: 0.68,
+  },
+  {
+    id: 'grey-block',
+    label: 'Bloco Cinza',
+    category: 'decor',
+    bounds: { minX: 0.7, maxX: 1.4, minZ: 0.4, maxZ: 1.1 },
+    collidable: true,
+    height: 0.72,
   },
   {
     id: 'media-console',
-    label: 'Estante Principal',
+    label: 'Gabinete da TV CRT',
     category: 'furniture',
-    bounds: { minX: -1.8, maxX: 1.8, minZ: -3.85, maxZ: -3.1 },
+    bounds: { minX: -4.15, maxX: -2.25, minZ: -3.85, maxZ: -2.85 },
     collidable: true,
-    height: 1.4,
+    height: 2.4,
   },
   {
-    id: 'plant-monstera',
-    label: 'Vaso Decorativo',
-    category: 'decor',
-    bounds: { minX: 3.2, maxX: 4.1, minZ: -3.2, maxZ: -2.3 },
+    id: 'bookcase-east',
+    label: 'Estante e Cômoda',
+    category: 'furniture',
+    bounds: { minX: 3.65, maxX: 4.65, minZ: -2.9, maxZ: 0.4 },
     collidable: true,
-    height: 1.2,
+    height: 3.5,
   },
   {
     id: 'charging-dock',
-    label: 'Base de Carregamento',
+    label: 'Base Toy-Tech',
     category: 'dock',
-    bounds: { minX: -4.2, maxX: -3.4, minZ: -3.75, maxZ: -2.9 },
+    bounds: { minX: -4.2, maxX: -3.3, minZ: -2.05, maxZ: -1.15 },
     collidable: false,
-    height: 0.35,
+    height: 0.48,
   },
 ];
 
 const INITIAL_DUST_SPOTS: DustSpot[] = [
-  { id: 'dust-1', position: { x: -2.4, z: -0.8 }, radius: 0.45, intensity: 0.9, regionId: 'living-center' },
-  { id: 'dust-2', position: { x: 0.2, z: 1.15 }, radius: 0.4, intensity: 0.85, regionId: 'living-center' },
-  { id: 'dust-3', position: { x: 2.6, z: -1.1 }, radius: 0.5, intensity: 1.0, regionId: 'reading-nook' },
-  { id: 'dust-4', position: { x: 3.1, z: 1.4 }, radius: 0.42, intensity: 0.8, regionId: 'reading-nook' },
-  { id: 'dust-5', position: { x: -1.8, z: -2.1 }, radius: 0.4, intensity: 0.75, regionId: 'media-zone' },
+  { id: 'dust-1', position: { x: -0.4, z: 0.6 }, radius: 0.48, intensity: 0.95, regionId: 'living-center' },
+  { id: 'dust-2', position: { x: -0.2, z: -1.35 }, radius: 0.44, intensity: 0.9, regionId: 'living-center' },
+  { id: 'dust-3', position: { x: 2.3, z: -0.6 }, radius: 0.5, intensity: 1.0, regionId: 'reading-nook' },
+  { id: 'dust-4', position: { x: 2.4, z: 1.2 }, radius: 0.45, intensity: 0.85, regionId: 'reading-nook' },
+  { id: 'dust-5', position: { x: -2.2, z: 0.3 }, radius: 0.46, intensity: 0.85, regionId: 'media-zone' },
 ];
 
 export interface EnvironmentStoreState {
@@ -166,4 +182,3 @@ export const useEnvironmentStore = create<EnvironmentStoreState>((set, get) => (
       selectedRegionId: 'all',
     }),
 }));
-

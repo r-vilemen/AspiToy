@@ -1,5 +1,4 @@
 import { memo } from 'react';
-import { RoundedBox } from '@react-three/drei';
 import { sharedMaterials } from '../Environment/Materials';
 
 interface WallsProps {
@@ -9,199 +8,194 @@ interface WallsProps {
 }
 
 /**
- * Paredes arquitetônicas com cortes cinematográficos, esquadrias brancas,
- * vidro físico, cortina decorativa e porta de acesso para outro cômodo.
+ * Paredes em escala gigante (perspectiva de brinquedo no chão - Estilo PS2 Toy Story):
+ * - Parede esquerda com lambris (wainscoting) frisado creme e janela alta iluminada
+ * - Parede de fundo com lareira clássica (mantel) e janela vertical com divisórias
+ * - Parede direita com porta gigante e rodapés altos
  */
 export const Walls = memo(function Walls({
   width = 10,
   depth = 8,
-  height = 3.2,
+  height = 4.6,
 }: WallsProps) {
   const halfW = width / 2;
   const halfD = depth / 2;
-  const wallThick = 0.16;
+  const wallThick = 0.2;
+  const wainscotHeight = 1.85;
 
   return (
-    <group name="house-walls">
+    <group name="house-walls-ps2">
       {/* ======================================================== */}
-      {/* 1. PAREDE NORTE (FUNDO DA SALA)                          */}
+      {/* 1. PAREDE ESQUERDA (OESTE): Lambris + Janela Alta Solar  */}
       {/* ======================================================== */}
-      <group position={[0, height / 2, -halfD - wallThick / 2]}>
-        {/* Painel de alvenaria em gesso quente */}
+      <group position={[-halfW - wallThick / 2, 0, 0]}>
+        {/* Parede base completa */}
         <mesh
           castShadow
           receiveShadow
+          position={[0, height / 2, 0]}
+          material={sharedMaterials.wallPlaster}
+        >
+          <boxGeometry args={[wallThick, height, depth + wallThick * 2]} />
+        </mesh>
+
+        {/* Painel de Lambris (Wainscoting) inferior na face interna */}
+        <mesh
+          receiveShadow
+          position={[wallThick / 2 + 0.02, wainscotHeight / 2, 0]}
+          material={sharedMaterials.wallWainscot}
+        >
+          <boxGeometry args={[0.04, wainscotHeight, depth]} />
+        </mesh>
+
+        {/* Ripas verticais low-poly do lambris (como na imagem de referência) */}
+        {[-3.4, -2.8, -2.2, -1.6, -1.0, -0.4, 0.2, 0.8, 1.4, 2.0, 2.6, 3.2].map(
+          (zPos, idx) => (
+            <mesh
+              key={idx}
+              position={[wallThick / 2 + 0.045, wainscotHeight / 2, zPos]}
+              material={sharedMaterials.wallAccent}
+            >
+              <boxGeometry args={[0.02, wainscotHeight - 0.2, 0.04]} />
+            </mesh>
+          )
+        )}
+
+        {/* Moldura superior do lambris (Chair Rail) */}
+        <mesh
+          castShadow
+          position={[wallThick / 2 + 0.06, wainscotHeight, 0]}
+          material={sharedMaterials.wallWainscot}
+        >
+          <boxGeometry args={[0.1, 0.12, depth]} />
+        </mesh>
+
+        {/* Rodapé alto esculpido */}
+        <mesh
+          receiveShadow
+          position={[wallThick / 2 + 0.05, 0.12, 0]}
+          material={sharedMaterials.wallAccent}
+        >
+          <boxGeometry args={[0.08, 0.24, depth]} />
+        </mesh>
+
+        {/* Janela Alta Brilhante (Fonte principal da luz solar na parede esquerda) */}
+        <group position={[wallThick / 2 + 0.03, 3.15, -1.3]}>
+          <mesh material={sharedMaterials.windowFrame}>
+            <boxGeometry args={[0.08, 1.9, 1.9]} />
+          </mesh>
+          <mesh position={[0.03, 0, 0]} material={sharedMaterials.windowGlass}>
+            <boxGeometry args={[0.04, 1.7, 1.7]} />
+          </mesh>
+        </group>
+      </group>
+
+      {/* ======================================================== */}
+      {/* 2. PAREDE DO FUNDO (NORTE): Lareira + Janela Quadriculada*/}
+      {/* ======================================================== */}
+      <group position={[0, 0, -halfD - wallThick / 2]}>
+        <mesh
+          castShadow
+          receiveShadow
+          position={[0, height / 2, 0]}
           material={sharedMaterials.wallPlaster}
         >
           <boxGeometry args={[width + wallThick * 2, height, wallThick]} />
         </mesh>
 
-        {/* Boiserie / Painel decorativo em gesso no terço central */}
+        {/* Rodapé norte */}
         <mesh
-          position={[0, 0, wallThick / 2 + 0.006]}
+          receiveShadow
+          position={[0, 0.12, wallThick / 2 + 0.04]}
           material={sharedMaterials.wallAccent}
         >
-          <boxGeometry args={[6.2, height * 0.75, 0.012]} />
+          <boxGeometry args={[width, 0.24, 0.08]} />
         </mesh>
+
+        {/* Lareira Clássica (Fireplace Mantel ao fundo, como na referência) */}
+        <group position={[-0.2, 0, wallThick / 2 + 0.18]}>
+          {/* Colunas e cornija da lareira */}
+          <mesh castShadow receiveShadow position={[-0.75, 0.95, 0]} material={sharedMaterials.wallWainscot}>
+            <boxGeometry args={[0.32, 1.9, 0.36]} />
+          </mesh>
+          <mesh castShadow receiveShadow position={[0.75, 0.95, 0]} material={sharedMaterials.wallWainscot}>
+            <boxGeometry args={[0.32, 1.9, 0.36]} />
+          </mesh>
+          <mesh castShadow receiveShadow position={[0, 1.72, 0]} material={sharedMaterials.wallWainscot}>
+            <boxGeometry args={[1.82, 0.36, 0.38]} />
+          </mesh>
+          {/* Prateleira superior da lareira (Mantelpiece) */}
+          <mesh castShadow position={[0, 1.94, 0.04]} material={sharedMaterials.wallWainscot}>
+            <boxGeometry args={[2.05, 0.1, 0.48]} />
+          </mesh>
+          {/* Arco de tijolos avermelhados da lareira */}
+          <mesh position={[0, 0.78, -0.02]} material={sharedMaterials.sofaCushionAlt}>
+            <boxGeometry args={[1.2, 1.55, 0.28]} />
+          </mesh>
+          {/* Fundo escuro da fornalha */}
+          <mesh position={[0, 0.62, 0.06]} material={sharedMaterials.robotVisor}>
+            <boxGeometry args={[0.86, 1.15, 0.16]} />
+          </mesh>
+        </group>
+
+        {/* Janela Vertical Quadriculada ao Fundo (atrás da poltrona verde) */}
+        <group position={[1.95, 2.75, wallThick / 2 + 0.03]}>
+          <mesh material={sharedMaterials.windowFrame}>
+            <boxGeometry args={[1.25, 2.5, 0.08]} />
+          </mesh>
+          <mesh position={[0, 0, 0.02]} material={sharedMaterials.windowGlass}>
+            <boxGeometry args={[1.08, 2.3, 0.04]} />
+          </mesh>
+          {/* Divisórias da janela (Muntins) */}
+          <mesh position={[0, 0, 0.045]} material={sharedMaterials.windowFrame}>
+            <boxGeometry args={[0.05, 2.3, 0.03]} />
+          </mesh>
+          {[-0.55, 0, 0.55].map((yBar, i) => (
+            <mesh key={i} position={[0, yBar, 0.045]} material={sharedMaterials.windowFrame}>
+              <boxGeometry args={[1.08, 0.05, 0.03]} />
+            </mesh>
+          ))}
+        </group>
       </group>
 
       {/* ======================================================== */}
-      {/* 2. PAREDE OESTE COM PORTA DE ACESSO                      */}
+      {/* 3. PAREDE DIREITA (LESTE): Porta Gigante e Molduras      */}
       {/* ======================================================== */}
-      <group position={[-halfW - wallThick / 2, height / 2, 0]}>
-        {/* Seção norte da parede oeste */}
+      <group position={[halfW + wallThick / 2, 0, 0]}>
         <mesh
           castShadow
           receiveShadow
-          position={[0, 0, -2.1]}
+          position={[0, height / 2, 0]}
           material={sharedMaterials.wallPlaster}
         >
-          <boxGeometry args={[wallThick, height, 3.8]} />
+          <boxGeometry args={[wallThick, height, depth + wallThick * 2]} />
         </mesh>
 
-        {/* Verga superior acima da porta (vão livre: Z entre -0.2 e +1.2, altura 2.2m) */}
+        {/* Rodapé leste */}
         <mesh
-          castShadow
           receiveShadow
-          position={[0, (height - 2.2) / 2 + 2.2 / 2, 0.5]}
-          material={sharedMaterials.wallPlaster}
+          position={[-wallThick / 2 - 0.04, 0.12, 0]}
+          material={sharedMaterials.wallAccent}
         >
-          <boxGeometry args={[wallThick, height - 2.2, 1.4]} />
+          <boxGeometry args={[0.08, 0.24, depth]} />
         </mesh>
 
-        {/* Guarnição / Marco da porta de madeira escura */}
-        <group position={[0, 1.1 - height / 2, 0.5]}>
-          {/* Montante esquerdo */}
-          <mesh castShadow position={[0, 0, -0.68]} material={sharedMaterials.floorTrim}>
-            <boxGeometry args={[wallThick + 0.02, 2.2, 0.06]} />
+        {/* Porta Gigante do Quarto/Sala (Perspectiva de Brinquedo) */}
+        <group position={[-wallThick / 2 - 0.04, 1.65, 2.35]}>
+          {/* Batente da porta */}
+          <mesh castShadow material={sharedMaterials.floorTrim}>
+            <boxGeometry args={[0.1, 3.3, 1.65]} />
           </mesh>
-          {/* Montante direito */}
-          <mesh castShadow position={[0, 0, 0.68]} material={sharedMaterials.floorTrim}>
-            <boxGeometry args={[wallThick + 0.02, 2.2, 0.06]} />
+          {/* Folha da porta com almofadas esculpidas */}
+          <mesh castShadow position={[-0.03, 0, 0]} material={sharedMaterials.furnitureWood}>
+            <boxGeometry args={[0.06, 3.15, 1.48]} />
           </mesh>
-          {/* Travessa superior */}
-          <mesh castShadow position={[0, 1.07, 0]} material={sharedMaterials.floorTrim}>
-            <boxGeometry args={[wallThick + 0.02, 0.06, 1.42]} />
+          {/* Maçaneta redonda de latão no alto (escala gigante para o robô) */}
+          <mesh position={[-0.1, -0.25, -0.55]} material={sharedMaterials.metalBrass}>
+            <sphereGeometry args={[0.065, 8, 8]} />
           </mesh>
-          {/* Folha da porta semiaberta a 35 graus convidando o olhar */}
-          <group position={[0, 0, -0.65]} rotation={[0, -0.6, 0]}>
-            <mesh castShadow position={[0, 0, 0.6]} material={sharedMaterials.furnitureWood}>
-              <boxGeometry args={[0.04, 2.14, 1.2]} />
-            </mesh>
-            {/* Maçaneta em latão */}
-            <mesh position={[0.03, -0.05, 1.05]} material={sharedMaterials.metalBrass}>
-              <cylinderGeometry args={[0.015, 0.015, 0.12, 12]} />
-            </mesh>
-          </group>
-        </group>
-
-        {/* Seção sul da parede oeste */}
-        <mesh
-          castShadow
-          receiveShadow
-          position={[0, 0, 2.6]}
-          material={sharedMaterials.wallPlaster}
-        >
-          <boxGeometry args={[wallThick, height, 2.8]} />
-        </mesh>
-      </group>
-
-      {/* ======================================================== */}
-      {/* 3. PAREDE LESTE COM GRANDES JANELAS SOLARES              */}
-      {/* ======================================================== */}
-      <group position={[halfW + wallThick / 2, height / 2, 0]}>
-        {/* Peitoril / Parede inferior abaixo da janela (altura 0.85m) */}
-        <mesh
-          castShadow
-          receiveShadow
-          position={[0, -height / 2 + 0.425, 0]}
-          material={sharedMaterials.wallPlaster}
-        >
-          <boxGeometry args={[wallThick, 0.85, depth]} />
-        </mesh>
-
-        {/* Verga superior acima da janela (altura 0.65m) */}
-        <mesh
-          castShadow
-          receiveShadow
-          position={[0, height / 2 - 0.325, 0]}
-          material={sharedMaterials.wallPlaster}
-        >
-          <boxGeometry args={[wallThick, 0.65, depth]} />
-        </mesh>
-
-        {/* Pilar frontal norte da janela */}
-        <mesh
-          castShadow
-          receiveShadow
-          position={[0, 0, -halfD + 0.8]}
-          material={sharedMaterials.wallPlaster}
-        >
-          <boxGeometry args={[wallThick, height, 1.6]} />
-        </mesh>
-
-        {/* Pilar sul da janela */}
-        <mesh
-          castShadow
-          receiveShadow
-          position={[0, 0, halfD - 0.8]}
-          material={sharedMaterials.wallPlaster}
-        >
-          <boxGeometry args={[wallThick, height, 1.6]} />
-        </mesh>
-
-        {/* Montante central entre as duas grandes folhas de vidro */}
-        <mesh
-          castShadow
-          position={[0, -height / 2 + 0.85 + 0.85, 0]}
-          material={sharedMaterials.windowFrame}
-        >
-          <boxGeometry args={[wallThick + 0.02, 1.7, 0.12]} />
-        </mesh>
-
-        {/* Esquadrias e Vidro da Janela Norte */}
-        <group position={[0, -height / 2 + 0.85 + 0.85, -1.25]}>
-          {/* Moldura branca */}
-          <mesh material={sharedMaterials.windowFrame}>
-            <boxGeometry args={[0.08, 1.65, 2.38]} />
-          </mesh>
-          {/* Vidro translúcido físico */}
-          <mesh material={sharedMaterials.windowGlass}>
-            <boxGeometry args={[0.02, 1.55, 2.28]} />
-          </mesh>
-        </group>
-
-        {/* Esquadrias e Vidro da Janela Sul */}
-        <group position={[0, -height / 2 + 0.85 + 0.85, 1.25]}>
-          {/* Moldura branca */}
-          <mesh material={sharedMaterials.windowFrame}>
-            <boxGeometry args={[0.08, 1.65, 2.38]} />
-          </mesh>
-          {/* Vidro translúcido físico */}
-          <mesh material={sharedMaterials.windowGlass}>
-            <boxGeometry args={[0.02, 1.55, 2.28]} />
-          </mesh>
-        </group>
-
-        {/* Peitoril de madeira nobre para apoio decorativo */}
-        <mesh
-          position={[-0.04, -height / 2 + 0.86, 0]}
-          material={sharedMaterials.floorTrim}
-        >
-          <boxGeometry args={[0.26, 0.04, depth - 2.8]} />
-        </mesh>
-
-        {/* Cortina de linho estilizada recolhida na lateral norte da janela */}
-        <group position={[-0.14, 0.2, -halfD + 1.6]}>
-          <RoundedBox
-            args={[0.18, height * 0.75, 0.35]}
-            radius={0.06}
-            smoothness={3}
-            material={sharedMaterials.rugFabric}
-          />
         </group>
       </group>
     </group>
   );
 });
-

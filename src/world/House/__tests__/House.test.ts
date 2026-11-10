@@ -30,9 +30,9 @@ describe('Construção da Casa 3D e Coerência Espacial (Dia 2)', () => {
     expect(sharedMaterials.windowGlass).toBeDefined();
     expect(sharedMaterials.tableGlass).toBeDefined();
 
-    // Paleta de iluminação e ambiente
-    expect(WORLD_PALETTE.woodFloorBase).toBe('#B9804E');
-    expect(WORLD_PALETTE.sunlitBackdrop).toBe('#EFE7DA');
+    // Paleta de iluminação e ambiente PS2 Toy Story
+    expect(WORLD_PALETTE.woodFloorBase).toBe('#C87D32');
+    expect(WORLD_PALETTE.sunlitBackdrop).toBe('#D8B888');
   });
 
   it('valida cobertura de regiões da sala de estar', () => {

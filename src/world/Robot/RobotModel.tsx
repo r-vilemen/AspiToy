@@ -1,5 +1,4 @@
 import { forwardRef } from 'react';
-import { RoundedBox } from '@react-three/drei';
 import * as THREE from 'three';
 import { sharedMaterials, WORLD_PALETTE } from '../Environment/Materials';
 import type { RobotExpression, RobotOperationalState } from '@/types/robot';
@@ -15,14 +14,12 @@ interface RobotModelProps {
 }
 
 /**
- * Modelo 3D expressivo do AspiToy:
- * - Chassi circular chanfrado em marfim acetinado
- * - Para-choque frontal articulado com compressão
- * - Rodas laterais funcionais com pneus de borracha texturizada
- * - Rodízio frontal estabilizador
- * - Torre LIDAR de navegação com anel de status pulsante
- * - Visor com olhos digitais dinâmicos (reagem a humor/estado operacional)
- * - Escovas laterais giratórias
+ * Modelo 3D Low-Poly do AspiToy (Estética PS2 / 6ª Geração de Consoles):
+ * - Geometria facetada low-poly (12-14 segmentos) com acabamento plástico fosco (matte)
+ * - Sombra redonda simples (Blob Drop Shadow) projetada diretamente sob o brinquedo
+ * - Cores primárias vibrantes de brinquedo (Vermelho, Amarelo, Azul e Creme)
+ * - Antena plástica flexível com ponta luminosa no topo
+ * - Visor frontal com olhos expressivos estilo Toy Story PS2
  */
 export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function RobotModel(
   {
@@ -36,203 +33,181 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
   },
   ref
 ) {
-  // Cor do LED indicador central
   const statusColor =
     state === 'CLEANING'
       ? WORLD_PALETTE.robotCoral
-      : state === 'AVOIDING'
+      : state === 'AVOIDING' || state === 'PAUSED'
         ? WORLD_PALETTE.ledAmber
-        : state === 'PAUSED'
-          ? WORLD_PALETTE.ledAmber
-          : state === 'RETURNING'
-            ? WORLD_PALETTE.sensorCyan
-            : state === 'COMPLETED'
-              ? WORLD_PALETTE.ledEmerald
-              : WORLD_PALETTE.ledEmerald;
+        : state === 'RETURNING'
+          ? WORLD_PALETTE.sensorCyan
+          : WORLD_PALETTE.ledEmerald;
 
-  // Olhos digitais expressivos
   const eyeColor =
     state === 'AVOIDING'
       ? WORLD_PALETTE.ledAmber
       : state === 'CLEANING'
-        ? '#38BDF8'
+        ? '#7DD3FC'
         : WORLD_PALETTE.sensorCyan;
 
-  // Expressão dos olhos
-  const eyeScaleY = expression === 'sleepy' ? 0.25 : expression === 'focused' ? 0.7 : 1.0;
-  const eyeAngle = expression === 'alert' ? 0.25 : expression === 'curious' ? -0.15 : 0;
+  const eyeScaleY =
+    expression === 'sleepy' ? 0.28 : expression === 'focused' ? 0.72 : 1.0;
+  const eyeAngle =
+    expression === 'alert' ? 0.25 : expression === 'curious' ? -0.15 : 0;
 
   return (
-    <group ref={ref} name="aspitoy-model">
-      {/* Corpo articulado com bob e inclinação de aceleração */}
-      <group position={[0, 0.095 + bobY, 0]} rotation={[pitch, 0, roll]}>
-        {/* ======================================================== */}
-        {/* 1. CHASSI PRINCIPAL (Corpo arredondado chanfrado)        */}
-        {/* ======================================================== */}
+    <group ref={ref} name="aspitoy-ps2-model">
+      {/* ======================================================== */}
+      {/* SOMBRA REDONDA CLÁSSICA DE PS2 (Simple Round Drop Shadow)*/}
+      {/* ======================================================== */}
+      <group position={[0, 0.008, 0]}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[0.33, 14]} />
+          <meshBasicMaterial
+            color="#1F0E03"
+            transparent
+            opacity={0.55}
+            depthWrite={false}
+          />
+        </mesh>
+        <mesh position={[0, 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[0.22, 12]} />
+          <meshBasicMaterial
+            color="#120701"
+            transparent
+            opacity={0.45}
+            depthWrite={false}
+          />
+        </mesh>
+      </group>
+
+      {/* Corpo articulado low-poly do brinquedo */}
+      <group position={[0, 0.098 + bobY, 0]} rotation={[pitch, 0, roll]}>
+        {/* 1. CHASSI LOW-POLY EM PLÁSTICO FOSCO (12 faces) */}
         <mesh castShadow receiveShadow material={sharedMaterials.robotShell}>
-          <cylinderGeometry args={[0.27, 0.29, 0.13, 40]} />
+          <cylinderGeometry args={[0.26, 0.285, 0.13, 12]} />
         </mesh>
 
-        {/* Tampa superior com aro de ventilação estético */}
+        {/* Aro superior vermelho vibrante */}
         <mesh
           castShadow
           position={[0, 0.068, 0]}
           material={sharedMaterials.robotCoralTrim}
         >
-          <cylinderGeometry args={[0.22, 0.25, 0.022, 40]} />
+          <cylinderGeometry args={[0.21, 0.245, 0.026, 12]} />
         </mesh>
 
-        {/* Botão liga/desliga físico estilizado no topo */}
-        <group position={[0, 0.082, 0.12]}>
-          <mesh castShadow material={sharedMaterials.robotVisor}>
-            <cylinderGeometry args={[0.028, 0.028, 0.012, 20]} />
-          </mesh>
-          <mesh position={[0, 0.007, 0]}>
-            <ringGeometry args={[0.012, 0.018, 16]} />
-            <meshStandardMaterial color={statusColor} emissive={statusColor} emissiveIntensity={1.5} />
-          </mesh>
-        </group>
+        {/* Botão amarelo de brinquedo no topo */}
+        <mesh
+          castShadow
+          position={[0, 0.085, 0.11]}
+          material={sharedMaterials.robotYellowTrim}
+        >
+          <cylinderGeometry args={[0.036, 0.04, 0.018, 8]} />
+        </mesh>
 
-        {/* ======================================================== */}
-        {/* 2. PARA-CHOQUE FRONTAL (BUMPER ARTICULADO)              */}
-        {/* ======================================================== */}
-        <group position={[0, 0.005, 0.08 - bumperCompression]}>
-          <mesh castShadow receiveShadow material={sharedMaterials.robotShell}>
-            {/* Semicírculo frontal protetor */}
+        {/* 2. PARA-CHOQUE FRONTAL AZUL BRINQUEDO */}
+        <group position={[0, 0.002, 0.075 - bumperCompression]}>
+          <mesh castShadow material={sharedMaterials.robotBlueTrim}>
             <cylinderGeometry
-              args={[0.295, 0.295, 0.115, 28, 1, false, -Math.PI * 0.45, Math.PI * 0.9]}
-            />
-          </mesh>
-          {/* Fita de borracha protetora no meio do bumper */}
-          <mesh position={[0, -0.01, 0.21]}>
-            <boxGeometry args={[0.38, 0.03, 0.015]} />
-            <meshStandardMaterial color="#1C1816" roughness={0.9} />
-          </mesh>
-        </group>
-
-        {/* ======================================================== */}
-        {/* 3. TORRE DO SENSOR LIDAR / VISOR SUPERIOR                */}
-        {/* ======================================================== */}
-        <group position={[0, 0.082, -0.04]}>
-          <mesh castShadow material={sharedMaterials.robotVisor}>
-            <cylinderGeometry args={[0.075, 0.088, 0.044, 28]} />
-          </mesh>
-          {/* Fresta horizontal do scanner óptico 360 */}
-          <mesh position={[0, 0.005, 0]}>
-            <cylinderGeometry args={[0.079, 0.079, 0.015, 24]} />
-            <meshStandardMaterial color="#0A0807" roughness={0.1} metalness={0.8} />
-          </mesh>
-          {/* Anel luminoso com halo */}
-          <mesh position={[0, 0.023, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[0.042, 0.068, 28]} />
-            <meshStandardMaterial
-              color={statusColor}
-              emissive={statusColor}
-              emissiveIntensity={2.1}
+              args={[0.29, 0.29, 0.105, 10, 1, false, -Math.PI * 0.42, Math.PI * 0.84]}
             />
           </mesh>
         </group>
 
-        {/* ======================================================== */}
-        {/* 4. VISOR FRONTAL E OLHOS DIGITAIS EXPRESSIVOS            */}
-        {/* ======================================================== */}
-        <group position={[0, 0.018, 0.26]}>
-          {/* Vidro protetor curvo do visor */}
-          <RoundedBox
-            args={[0.24, 0.075, 0.04]}
-            radius={0.022}
-            smoothness={3}
-            material={sharedMaterials.robotVisor}
-          />
+        {/* 3. TORRE DO SENSOR E ANTENA DE BRINQUEDO */}
+        <group position={[0, 0.085, -0.04]}>
+          <mesh castShadow material={sharedMaterials.robotBlueTrim}>
+            <cylinderGeometry args={[0.072, 0.088, 0.048, 10]} />
+          </mesh>
+          {/* Haste da antena plástica */}
+          <mesh position={[0, 0.07, -0.01]} material={sharedMaterials.robotVisor}>
+            <cylinderGeometry args={[0.008, 0.012, 0.11, 6]} />
+          </mesh>
+          {/* Bolinha luminosa no topo da antena */}
+          <mesh position={[0, 0.13, -0.01]}>
+            <sphereGeometry args={[0.024, 8, 8]} />
+            <meshBasicMaterial color={statusColor} />
+          </mesh>
+        </group>
+
+        {/* 4. VISOR FRONTAL E OLHOS EXPRESSIVOS LOW-POLY */}
+        <group position={[0, 0.02, 0.255]}>
+          <mesh material={sharedMaterials.robotVisor}>
+            <boxGeometry args={[0.23, 0.078, 0.042]} />
+          </mesh>
           {/* Olho Esquerdo */}
-          <group position={[-0.052, 0.003, 0.021]} rotation={[0, 0, -eyeAngle]} scale={[1, eyeScaleY, 1]}>
+          <group
+            position={[-0.052, 0.003, 0.022]}
+            rotation={[0, 0, -eyeAngle]}
+            scale={[1, eyeScaleY, 1]}
+          >
             <mesh>
-              <capsuleGeometry args={[0.014, 0.016, 8, 14]} />
-              <meshStandardMaterial
-                color={eyeColor}
-                emissive={eyeColor}
-                emissiveIntensity={2.6}
-              />
+              <boxGeometry args={[0.034, 0.042, 0.008]} />
+              <meshBasicMaterial color={eyeColor} />
             </mesh>
           </group>
           {/* Olho Direito */}
-          <group position={[0.052, 0.003, 0.021]} rotation={[0, 0, eyeAngle]} scale={[1, eyeScaleY, 1]}>
+          <group
+            position={[0.052, 0.003, 0.022]}
+            rotation={[0, 0, eyeAngle]}
+            scale={[1, eyeScaleY, 1]}
+          >
             <mesh>
-              <capsuleGeometry args={[0.014, 0.016, 8, 14]} />
-              <meshStandardMaterial
-                color={eyeColor}
-                emissive={eyeColor}
-                emissiveIntensity={2.6}
-              />
+              <boxGeometry args={[0.034, 0.042, 0.008]} />
+              <meshBasicMaterial color={eyeColor} />
             </mesh>
           </group>
         </group>
 
-        {/* ======================================================== */}
-        {/* 5. RODAS LATERAIS FUNCIONAIS COM PNEUS DE BORRACHA       */}
-        {/* ======================================================== */}
-        {/* Roda Esquerda (X: -0.25) */}
-        <group position={[-0.26, -0.045, 0]} rotation={[wheelSpin, 0, 0]}>
-          <mesh castShadow rotation={[0, 0, Math.PI / 2]}>
-            <cylinderGeometry args={[0.052, 0.052, 0.038, 20]} />
-            <meshStandardMaterial color="#2B2623" roughness={0.88} />
+        {/* 5. RODAS ROBUSTAS DE BRINQUEDO COM CALOTAS AMARELAS */}
+        <group position={[-0.26, -0.042, 0]} rotation={[wheelSpin, 0, 0]}>
+          <mesh castShadow rotation={[0, 0, Math.PI / 2]} material={sharedMaterials.robotVisor}>
+            <cylinderGeometry args={[0.056, 0.056, 0.044, 10]} />
           </mesh>
-          {/* Calota com detalhe coral */}
-          <mesh position={[-0.02, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-            <cylinderGeometry args={[0.028, 0.028, 0.008, 16]} />
-            <meshStandardMaterial color={WORLD_PALETTE.robotCoral} roughness={0.4} />
+          <mesh
+            position={[-0.024, 0, 0]}
+            rotation={[0, 0, Math.PI / 2]}
+            material={sharedMaterials.robotYellowTrim}
+          >
+            <cylinderGeometry args={[0.032, 0.032, 0.008, 8]} />
           </mesh>
         </group>
 
-        {/* Roda Direita (X: +0.25) */}
-        <group position={[0.26, -0.045, 0]} rotation={[wheelSpin, 0, 0]}>
-          <mesh castShadow rotation={[0, 0, Math.PI / 2]}>
-            <cylinderGeometry args={[0.052, 0.052, 0.038, 20]} />
-            <meshStandardMaterial color="#2B2623" roughness={0.88} />
+        <group position={[0.26, -0.042, 0]} rotation={[wheelSpin, 0, 0]}>
+          <mesh castShadow rotation={[0, 0, Math.PI / 2]} material={sharedMaterials.robotVisor}>
+            <cylinderGeometry args={[0.056, 0.056, 0.044, 10]} />
           </mesh>
-          {/* Calota com detalhe coral */}
-          <mesh position={[0.02, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-            <cylinderGeometry args={[0.028, 0.028, 0.008, 16]} />
-            <meshStandardMaterial color={WORLD_PALETTE.robotCoral} roughness={0.4} />
+          <mesh
+            position={[0.024, 0, 0]}
+            rotation={[0, 0, Math.PI / 2]}
+            material={sharedMaterials.robotYellowTrim}
+          >
+            <cylinderGeometry args={[0.032, 0.032, 0.008, 8]} />
           </mesh>
         </group>
 
-        {/* Rodízio omnidirecional frontal central */}
-        <mesh position={[0, -0.07, 0.18]} castShadow>
-          <sphereGeometry args={[0.022, 16, 16]} />
-          <meshStandardMaterial color="#4A443F" metalness={0.7} roughness={0.3} />
-        </mesh>
-
-        {/* ======================================================== */}
-        {/* 6. ESCOVAS LATERAIS ROTATIVAS                            */}
-        {/* ======================================================== */}
-        {/* Escova Esquerda */}
-        <group position={[-0.18, -0.075, 0.19]} rotation={[0, -wheelSpin * 2.2, 0]}>
-          <mesh material={sharedMaterials.furnitureWoodDark}>
-            <cylinderGeometry args={[0.018, 0.018, 0.01, 12]} />
-          </mesh>
-          {[0, 1.2, 2.4, 3.6, 4.8].map((ang, i) => (
-            <mesh key={i} position={[Math.cos(ang) * 0.04, 0, Math.sin(ang) * 0.04]}>
-              <boxGeometry args={[0.06, 0.003, 0.006]} />
-              <meshStandardMaterial color="#F3EFE6" roughness={0.6} />
+        {/* 6. ESCOVAS LATERAIS GIRATÓRIAS */}
+        {[-0.18, 0.18].map((bx, idx) => (
+          <group
+            key={idx}
+            position={[bx, -0.074, 0.18]}
+            rotation={[0, (idx === 0 ? -1 : 1) * wheelSpin * 2.2, 0]}
+          >
+            <mesh material={sharedMaterials.robotYellowTrim}>
+              <cylinderGeometry args={[0.02, 0.02, 0.012, 8]} />
             </mesh>
-          ))}
-        </group>
-
-        {/* Escova Direita */}
-        <group position={[0.18, -0.075, 0.19]} rotation={[0, wheelSpin * 2.2, 0]}>
-          <mesh material={sharedMaterials.furnitureWoodDark}>
-            <cylinderGeometry args={[0.018, 0.018, 0.01, 12]} />
-          </mesh>
-          {[0, 1.2, 2.4, 3.6, 4.8].map((ang, i) => (
-            <mesh key={i} position={[Math.cos(ang) * 0.04, 0, Math.sin(ang) * 0.04]}>
-              <boxGeometry args={[0.06, 0.003, 0.006]} />
-              <meshStandardMaterial color="#F3EFE6" roughness={0.6} />
-            </mesh>
-          ))}
-        </group>
+            {[0, 1.57, 3.14, 4.71].map((ang, i) => (
+              <mesh
+                key={i}
+                position={[Math.cos(ang) * 0.04, 0, Math.sin(ang) * 0.04]}
+              >
+                <boxGeometry args={[0.06, 0.004, 0.008]} />
+                <meshBasicMaterial color="#FFFBEB" />
+              </mesh>
+            ))}
+          </group>
+        ))}
       </group>
     </group>
   );
 });
-

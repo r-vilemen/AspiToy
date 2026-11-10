@@ -8,14 +8,14 @@ import { FollowCamera } from './Camera/FollowCamera';
 
 export function Scene() {
   return (
-    <div className="relative h-full w-full overflow-hidden bg-[#EFE7DA]">
+    <div className="relative h-full w-full overflow-hidden bg-[#D8B888]">
       <Canvas
         shadows
-        dpr={[1, 2]}
-        camera={{ position: [-4.6, 4.4, 5.6], fov: 42, near: 0.1, far: 45 }}
+        dpr={[1, 1.5]}
+        camera={{ position: [-0.35, 0.92, 2.15], fov: 50, near: 0.1, far: 45 }}
       >
         <color attach="background" args={[WORLD_PALETTE.sunlitBackdrop]} />
-        <fog attach="fog" args={[WORLD_PALETTE.sunlitBackdrop, 14, 26]} />
+        <fog attach="fog" args={[WORLD_PALETTE.fogWarm, 11, 24]} />
 
         <Suspense fallback={null}>
           <Lighting />
