@@ -53,5 +53,23 @@ describe('Inteligência e Navegação com Grade e Algoritmo A* (Sprint 2)', () =
 
     expect(unvisitedAfter).toBeLessThan(unvisitedBefore);
   });
+
+  it('permite que o robô navegue livremente embaixo da mesa de centro', () => {
+    // Ponto central debaixo da mesa de centro
+    const underTablePoint = { x: -1.45, z: -1.15 };
+    const underTableCell = grid.getCellAtWorld(underTablePoint);
+    expect(underTableCell).not.toBeNull();
+    expect(grid.isWalkable(underTableCell!.col, underTableCell!.row)).toBe(true);
+
+    // Planeja rota partindo de fora da mesa diretamente para debaixo dela
+    const outsidePoint = { x: -3.0, z: -1.15 };
+    const pathToUnderTable = planner.findPath(outsidePoint, underTablePoint);
+    expect(pathToUnderTable.length).toBeGreaterThan(1);
+
+    // O último ponto da rota deve alcançar o destino embaixo da mesa
+    const destination = pathToUnderTable[pathToUnderTable.length - 1];
+    expect(Math.abs(destination.x - underTablePoint.x)).toBeLessThanOrEqual(0.35);
+    expect(Math.abs(destination.z - underTablePoint.z)).toBeLessThanOrEqual(0.35);
+  });
 });
 
