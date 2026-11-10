@@ -45,4 +45,16 @@ describe('Navegação Interativa por Clique no Chão da Casa Inteira', () => {
     expect(rooms.kitchen.bounds).toBeDefined();
     expect(rooms.bathroom.bounds).toBeDefined();
   });
+
+  it('assegura que ao selecionar o banheiro o robô permanece no cômodo sem migrar para outros ambientes', () => {
+    const dispatchCommand = useCommandStore.getState().dispatchCommand;
+    dispatchCommand('CLEAN_REGION', { regionId: 'bathroom' });
+
+    expect(useRobotStore.getState().state).toBe('CLEANING');
+    const target = useRobotStore.getState().targetPosition;
+    expect(target).not.toBeNull();
+    // Destino inicial deve ser o centro do banheiro
+    expect(getRoomAtPosition(target!)).toBe('bathroom');
+  });
 });
+

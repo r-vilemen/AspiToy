@@ -31,15 +31,21 @@ export class PriorityManager {
     }
 
     // 2. Filtra pontos que ainda precisam de limpeza (intensidade > 0.05)
-    const activeSpots = dustSpots.filter((s) => s.intensity > 0.05);
-    if (activeSpots.length === 0) {
-      return null; // Concluído: todas as manchas ativas foram limpas
+    let candidateSpots = dustSpots.filter((s) => s.intensity > 0.05);
+
+    // Se um cômodo/região específica foi selecionada, o robô atua EXCLUSIVAMENTE nela
+    if (selectedRegionId && selectedRegionId !== 'all') {
+      candidateSpots = candidateSpots.filter((s) => s.regionId === selectedRegionId);
+    }
+
+    if (candidateSpots.length === 0) {
+      return null; // Concluído: todas as manchas ativas deste cômodo foram limpas
     }
 
     let bestTarget: Vector2D | null = null;
     let highestScore = -Infinity;
 
-    for (const spot of activeSpots) {
+    for (const spot of candidateSpots) {
       const dist = Math.hypot(spot.position.x - currentPos.x, spot.position.z - currentPos.z);
       const isSelectedRegion = selectedRegionId === 'all' || spot.regionId === selectedRegionId;
 

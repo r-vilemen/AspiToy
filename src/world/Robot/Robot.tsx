@@ -21,17 +21,46 @@ import { useCommandStore } from '@/store/commandStore';
 import { AgentController } from '@/agent/AgentController';
 import { PriorityManager } from '@/agent/decision/PriorityManager';
 import { distance2D, damp } from '@/utils/math';
+import type { Vector2D } from '@/types/robot';
 
-const PATROL_POINTS = [
-  { x: -1.8, z: -0.2 },
-  { x: 2.3, z: -1.1 },
-  { x: -0.2, z: -2.6 },
-  { x: -2.2, z: 2.2 },
-  { x: 2.4, z: 1.8 },
-  { x: 6.3, z: 1.0 },   // Corredor
-  { x: 12.0, z: -0.5 }, // Sala de Estar
-  { x: 12.0, z: 5.5 },  // Cozinha
-  { x: 7.8, z: 10.5 },  // Banheiro
+const ROOM_PATROL_POINTS: Record<string, Vector2D[]> = {
+  bedroom: [
+    { x: -1.8, z: -0.2 },
+    { x: 2.3, z: -1.1 },
+    { x: -0.2, z: -2.6 },
+    { x: -2.2, z: 2.2 },
+    { x: 2.4, z: 1.8 },
+  ],
+  hallway: [
+    { x: 6.3, z: -1.5 },
+    { x: 6.3, z: 2.2 },
+    { x: 6.3, z: 6.5 },
+  ],
+  'living-room': [
+    { x: 10.5, z: -0.8 },
+    { x: 14.5, z: -1.2 },
+    { x: 11.5, z: 1.5 },
+    { x: 14.8, z: 1.8 },
+  ],
+  kitchen: [
+    { x: 10.5, z: 5.5 },
+    { x: 14.5, z: 5.8 },
+    { x: 12.8, z: 7.0 },
+  ],
+  bathroom: [
+    { x: 7.2, z: 9.8 },
+    { x: 8.5, z: 10.5 },
+    { x: 6.8, z: 11.8 },
+    { x: 8.2, z: 12.2 },
+  ],
+};
+
+const GLOBAL_HOUSE_PATROL_POINTS: Vector2D[] = [
+  { x: 0.0, z: 0.0 },
+  { x: 6.3, z: 1.5 },
+  { x: 12.0, z: -0.5 },
+  { x: 12.0, z: 5.5 },
+  { x: 7.8, z: 10.5 },
 ];
 
 /**
@@ -98,6 +127,12 @@ export function Robot() {
       loc.rotationY = robotMotionBridge.rotationY;
     }
 
+    const selectedId = envState.selectedRegionId;
+    const patrolPool =
+      selectedId !== 'all' && ROOM_PATROL_POINTS[selectedId]
+        ? ROOM_PATROL_POINTS[selectedId]
+        : GLOBAL_HOUSE_PATROL_POINTS;
+
     let targetPoint: { x: number; z: number } | null = null;
 
     if (
@@ -117,7 +152,7 @@ export function Robot() {
       targetPoint =
         robotState.targetPosition ??
         smartDustTarget ??
-        PATROL_POINTS[patrolIdxRef.current % PATROL_POINTS.length];
+        patrolPool[patrolIdxRef.current % patrolPool.length];
     } else if (robotState.state === 'RETURNING') {
       targetPoint = envState.dockPosition;
     }
@@ -189,7 +224,7 @@ export function Robot() {
           loc.rotationY,
           targetPoint,
           robotState.speed,
-          robotState.currentRegionId,
+          envState.selectedRegionId,
           delta,
           [dynamicCat]
         );
@@ -264,7 +299,7 @@ export function Robot() {
                 robotState.setTargetPosition(null);
               }
               patrolIdxRef.current =
-                (patrolIdxRef.current + 1) % PATROL_POINTS.length;
+                (patrolIdxRef.current + 1) % patrolPool.length;
             }
           }
         }

@@ -570,7 +570,7 @@ export const useEnvironmentStore = create<EnvironmentStoreState>((set, get) => (
   },
 
   cleanDustNearPoint: (point, reachRadius = 0.55, power = 0.35) => {
-    const { dustSpots } = get();
+    const { dustSpots, selectedRegionId } = get();
     let changed = false;
 
     const updated = dustSpots.map((spot) => {
@@ -588,9 +588,15 @@ export const useEnvironmentStore = create<EnvironmentStoreState>((set, get) => (
       set({ dustSpots: updated });
     }
 
-    const totalInitial = updated.length;
+    // Calcula progresso específico do cômodo selecionado (ou da casa toda se 'all')
+    const relevantSpots =
+      selectedRegionId && selectedRegionId !== 'all'
+        ? updated.filter((s) => s.regionId === selectedRegionId)
+        : updated;
+
+    const totalInitial = relevantSpots.length;
     if (totalInitial === 0) return 100;
-    const remaining = updated.reduce((acc, spot) => acc + spot.intensity, 0);
+    const remaining = relevantSpots.reduce((acc, spot) => acc + spot.intensity, 0);
     const cleanedRatio = 1 - remaining / totalInitial;
     return Math.round(Math.min(100, Math.max(0, cleanedRatio * 100)));
   },

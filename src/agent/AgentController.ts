@@ -6,6 +6,7 @@ import {
 import { GridMap } from './navigation/GridMap';
 import { PathPlanner } from './navigation/PathPlanner';
 import { globalRoomGraph } from './navigation/RoomGraph';
+import { getRoomAtPosition } from '@/world/House/FloorPlan';
 import type { EnvironmentObstacle } from '@/types/environment';
 import type { RobotOperationalState, Vector2D } from '@/types/robot';
 
@@ -176,7 +177,15 @@ export class AgentController {
     let goal: Vector2D | null = targetPosition;
 
     if (!goal) {
-      const unexplored = this.grid.getUnexploredCells();
+      let unexplored = this.grid.getUnexploredCells();
+
+      // Se um cômodo específico estiver selecionado, restringe busca de células inexploradas a ele
+      if (this.detector.isMultiRoom && currentRegionId && currentRegionId !== 'all') {
+        unexplored = unexplored.filter(
+          (c) => getRoomAtPosition(c.worldPos) === currentRegionId
+        );
+      }
+
       if (unexplored.length > 0) {
         let nearestDist = Infinity;
         let chosenCell = unexplored[0];
@@ -185,7 +194,7 @@ export class AgentController {
             cell.worldPos.x - position.x,
             cell.worldPos.z - position.z
           );
-          if (d < nearestDist && d > 0.85) {
+          if (d < nearestDist && d > 0.65) {
             nearestDist = d;
             chosenCell = cell;
           }
