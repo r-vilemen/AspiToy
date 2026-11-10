@@ -29,7 +29,14 @@ export function ControlPanel() {
     manualControlBridge.turn = turn;
     manualControlBridge.active = true;
     const currentRobot = useRobotStore.getState();
-    if (currentRobot.state === 'IDLE' || currentRobot.state === 'PAUSED') {
+    if (currentRobot.targetPosition) {
+      currentRobot.setTargetPosition(null);
+    }
+    if (
+      currentRobot.state === 'IDLE' ||
+      currentRobot.state === 'PAUSED' ||
+      currentRobot.state === 'RECHARGING'
+    ) {
       currentRobot.setOperationalState(
         'CLEANING',
         'Controle manual direto ativado'
