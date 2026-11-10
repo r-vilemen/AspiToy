@@ -506,38 +506,6 @@ export const Furniture = memo(function Furniture() {
         ))}
       </group>
 
-      {/* ======================================================== */}
-      {/* 7. CAIXA ORGANIZADORA CILÍNDRICA DE BRINQUEDOS           */}
-      {/* (Os bonecos Toy Story e brinquedos móveis do chão estão  */}
-      {/*  em ToyStoryFigures.tsx com física de empurrão em 60fps) */}
-      {/* ======================================================== */}
-      <group position={[2.35, 0, 2.45]}>
-        <mesh position={[0, 0.006, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <circleGeometry args={[0.26, 18]} />
-          <meshBasicMaterial
-            color="#1F0E03"
-            transparent
-            opacity={0.38}
-            depthWrite={false}
-          />
-        </mesh>
-        <mesh
-          castShadow
-          receiveShadow
-          position={[0, 0.21, 0]}
-          material={sharedMaterials.plantFoliage}
-        >
-          <cylinderGeometry args={[0.21, 0.17, 0.42, 20]} />
-        </mesh>
-        <mesh
-          castShadow
-          position={[0.18, 0.04, 0.12]}
-          rotation={[0.4, 0.2, 0.9]}
-          material={sharedMaterials.robotShell}
-        >
-          <cylinderGeometry args={[0.22, 0.22, 0.03, 20]} />
-        </mesh>
-      </group>
 
       {/* ======================================================== */}
       {/* 8. SOFÁ / BANCO ESTOFADO COM BAÚ (Parede Sul ~ Z: 2.6m)  */}
