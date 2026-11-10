@@ -23,12 +23,18 @@ export function CommandInput() {
       dispatchCommand('RESUME_CLEANING');
     } else if (query.includes('base') || query.includes('volt') || query.includes('carreg')) {
       dispatchCommand('RETURN_TO_BASE');
-    } else if (query.includes('tapete') || query.includes('centro')) {
-      dispatchCommand('CLEAN_REGION', { regionId: 'living-center' });
-    } else if (query.includes('janela') || query.includes('planta') || query.includes('canto')) {
-      dispatchCommand('CLEAN_REGION', { regionId: 'reading-nook' });
-    } else if (query.includes('estante') || query.includes('rack') || query.includes('tv')) {
-      dispatchCommand('CLEAN_REGION', { regionId: 'media-zone' });
+    } else if (query.includes('quarto') || query.includes('cama')) {
+      dispatchCommand('CLEAN_REGION', { regionId: 'bedroom' });
+    } else if (query.includes('corredor')) {
+      dispatchCommand('CLEAN_REGION', { regionId: 'hallway' });
+    } else if (query.includes('sala') || query.includes('sofa') || query.includes('tv')) {
+      dispatchCommand('CLEAN_REGION', { regionId: 'living-room' });
+    } else if (query.includes('cozinha') || query.includes('fogao') || query.includes('geladeira')) {
+      dispatchCommand('CLEAN_REGION', { regionId: 'kitchen' });
+    } else if (query.includes('banheiro') || query.includes('chuveiro') || query.includes('sanitario')) {
+      dispatchCommand('CLEAN_REGION', { regionId: 'bathroom' });
+    } else if (query.includes('casa') || query.includes('tudo') || query.includes('completa')) {
+      dispatchCommand('CLEAN_REGION', { regionId: 'all' });
     } else {
       pushNotification(
         'Comando interpretado',

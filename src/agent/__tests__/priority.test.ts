@@ -7,8 +7,8 @@ describe('Sprint 3 — Limpeza Inteligente e Priorização', () => {
   const manager = new PriorityManager();
 
   const mockSpots: DustSpot[] = [
-    { id: '1', position: { x: 0, z: 0 }, intensity: 0.9, radius: 0.4, regionId: 'living-center' },
-    { id: '2', position: { x: 3, z: 2 }, intensity: 0.8, radius: 0.4, regionId: 'reading-nook' },
+    { id: '1', position: { x: 0, z: 0 }, intensity: 0.9, radius: 0.4, regionId: 'bedroom' },
+    { id: '2', position: { x: 12, z: 5 }, intensity: 0.8, radius: 0.4, regionId: 'kitchen' },
   ];
 
   it('prioriza retorno à base quando bateria estiver em nível crítico (<= 18%)', () => {
@@ -28,13 +28,13 @@ describe('Sprint 3 — Limpeza Inteligente e Priorização', () => {
     const target = manager.selectBestTarget(
       { x: 0, z: 0 },
       mockSpots,
-      'reading-nook', // usuário escolheu o canto de leitura
+      'kitchen', // usuário escolheu a cozinha
       INITIAL_REGIONS,
       80,
       INITIAL_DOCK_POSITION
     );
 
-    expect(target).toEqual({ x: 3, z: 2 });
+    expect(target).toEqual({ x: 12, z: 5 });
   });
 });
 

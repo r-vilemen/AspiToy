@@ -35,11 +35,18 @@ describe('Construção da Casa 3D e Coerência Espacial (Dia 2)', () => {
     expect(WORLD_PALETTE.sunlitBackdrop).toBe('#D8B888');
   });
 
-  it('valida cobertura de regiões da sala de estar', () => {
+  it('valida cobertura de cômodos e regiões da residência', () => {
     const regionIds = INITIAL_REGIONS.map((r) => r.id);
-    expect(regionIds).toContain('all');
-    expect(regionIds).toContain('living-center');
-    expect(regionIds).toContain('reading-nook');
-    expect(regionIds).toContain('media-zone');
+    expect(regionIds).toEqual([
+      'all',
+      'bedroom',
+      'hallway',
+      'living-room',
+      'kitchen',
+      'bathroom',
+    ]);
+    expect(regionIds).not.toContain('living-center');
+    expect(regionIds).not.toContain('reading-nook');
+    expect(regionIds).not.toContain('media-zone');
   });
 });

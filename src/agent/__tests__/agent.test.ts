@@ -48,7 +48,7 @@ describe('Agente Inteligente, Colisão Física e Desvio do Gato Dinâmico', () =
   it('sensor simula raios ToF e identifica obstáculo frontal', () => {
     detector.setDynamicObstacles([]);
     const sensor = new SensorSystem(detector);
-    const scan = sensor.scan({ x: 0, z: 1.0 }, 0, 'living-center');
+    const scan = sensor.scan({ x: 0, z: 1.0 }, 0, 'bedroom');
     expect(scan.rays.length).toBeGreaterThan(0);
     expect(scan.nearestObstacleDistance).toBeLessThan(1.5);
   });
@@ -71,7 +71,7 @@ describe('Agente Inteligente, Colisão Física e Desvio do Gato Dinâmico', () =
       Math.PI, // olhando para -Z (direto para o gato)
       { x: 0.0, z: -2.0 },
       1.35,
-      'living-center',
+      'bedroom',
       0.016,
       [dynamicCat]
     );

@@ -75,7 +75,7 @@ const INITIAL_TELEMETRY: RobotTelemetry = {
   battery: 96,
   speed: 1.35,
   cleaningProgress: 0,
-  currentRegionId: 'media-zone',
+  currentRegionId: 'bedroom',
   currentRegionLabel: 'Base de Recarga',
   operationSeconds: 0,
   lastAction: 'Pronto na base de carregamento',

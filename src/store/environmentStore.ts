@@ -118,27 +118,6 @@ export const INITIAL_REGIONS: RoomRegion[] = [
     bounds: { minX: 5.0, maxX: 10.6, minZ: 8.5, maxZ: 13.5 },
     center: { x: 7.8, z: 11.0 },
   },
-  {
-    id: 'living-center',
-    label: 'Tapete Redondo',
-    description: 'Área ensolarada entre a mesa de madeira e a poltrona verde',
-    bounds: { minX: -2.4, maxX: 0.6, minZ: -2.4, maxZ: 0.4 },
-    center: { x: -0.15, z: -1.15 },
-  },
-  {
-    id: 'reading-nook',
-    label: 'Lado da Estante',
-    description: 'Corredor direito próximo à estante de livros e cômoda',
-    bounds: { minX: 1.6, maxX: 3.6, minZ: -2.8, maxZ: 2.2 },
-    center: { x: 2.5, z: 0.2 },
-  },
-  {
-    id: 'media-zone',
-    label: 'Canto da TV Tubo',
-    description: 'Zona próxima ao gabinete da TV CRT, lareira e blocos ABC',
-    bounds: { minX: -4.2, maxX: -0.4, minZ: -2.8, maxZ: 1.8 },
-    center: { x: -2.15, z: -2.25 },
-  },
 ];
 
 export const INITIAL_OBSTACLES: EnvironmentObstacle[] = INITIAL_BEDROOM_OBSTACLES;
