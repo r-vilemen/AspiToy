@@ -16,8 +16,8 @@ import { clamp } from '@/utils/math';
 export const robotMotionBridge: RobotMotionBridge = {
   x: INITIAL_DOCK_POSITION.x,
   z: INITIAL_DOCK_POSITION.z,
-  rotationY: Math.PI,
-  targetRotationY: Math.PI,
+  rotationY: Math.PI / 2,
+  targetRotationY: Math.PI / 2,
   currentSpeed: 0,
   wheelSpin: 0,
   bobPhase: 0,
@@ -71,7 +71,7 @@ const INITIAL_TELEMETRY: RobotTelemetry = {
   previousActiveState: null,
   expression: 'neutral',
   position: { ...INITIAL_DOCK_POSITION },
-  rotationY: Math.PI,
+  rotationY: Math.PI / 2,
   battery: 96,
   speed: 1.35,
   cleaningProgress: 0,
@@ -134,8 +134,8 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
   resetRobot: () => {
     robotMotionBridge.x = INITIAL_DOCK_POSITION.x;
     robotMotionBridge.z = INITIAL_DOCK_POSITION.z;
-    robotMotionBridge.rotationY = Math.PI;
-    robotMotionBridge.targetRotationY = Math.PI;
+    robotMotionBridge.rotationY = Math.PI / 2;
+    robotMotionBridge.targetRotationY = Math.PI / 2;
     robotMotionBridge.currentSpeed = 0;
     robotMotionBridge.wheelSpin = 0;
     robotMotionBridge.bobPhase = 0;

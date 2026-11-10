@@ -12,7 +12,7 @@ import type { Vector2D } from '@/types/robot';
 import { isPointInsideBounds } from '@/utils/coordinates';
 import { clamp } from '@/utils/math';
 
-export const INITIAL_DOCK_POSITION: Vector2D = { x: -0.15, z: 0.85 };
+export const INITIAL_DOCK_POSITION: Vector2D = { x: -4.0, z: 3.2 };
 
 export const INITIAL_CAT_POSITION: Vector2D = { x: -1.65, z: 0.35 };
 
@@ -232,7 +232,7 @@ export const INITIAL_OBSTACLES: EnvironmentObstacle[] = [
     id: 'charging-dock-tower',
     label: 'Torre de Energia Toy-Tech',
     category: 'furniture',
-    bounds: { minX: -3.85, maxX: -3.15, minZ: -2.0, maxZ: -1.2 },
+    bounds: { minX: -4.7, maxX: -4.35, minZ: 2.85, maxZ: 3.55 },
     collidable: true,
     height: 0.48,
   },
@@ -240,9 +240,9 @@ export const INITIAL_OBSTACLES: EnvironmentObstacle[] = [
     id: 'charging-dock',
     label: 'Base Toy-Tech',
     category: 'dock',
-    bounds: { minX: -0.45, maxX: 0.15, minZ: 0.55, maxZ: 1.15 },
+    bounds: { minX: -4.35, maxX: -3.7, minZ: 2.8, maxZ: 3.6 },
     collidable: false,
-    height: 0.02,
+    height: 0.04,
   },
 ];
 

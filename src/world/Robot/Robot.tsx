@@ -304,6 +304,8 @@ export function Robot() {
         if (dist < 0.28) {
           if (robotState.state === 'RETURNING') {
             loc.speed = 0;
+            loc.rotationY = -Math.PI / 2;
+            loc.targetRotationY = -Math.PI / 2;
             robotState.setTargetPosition(null);
             robotState.setOperationalState(
               'RECHARGING',

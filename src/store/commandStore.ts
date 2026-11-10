@@ -6,7 +6,7 @@ import type {
   UserCommandType,
 } from '@/types/commands';
 import type { Vector2D } from '@/types/robot';
-import { useRobotStore } from './robotStore';
+import { useRobotStore, manualControlBridge } from './robotStore';
 import { useEnvironmentStore } from './environmentStore';
 
 export type CameraPreset = 'follow' | 'overview' | 'closeup';
@@ -145,6 +145,9 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
           reason = 'O AspiToy já está acoplado na base.';
           break;
         }
+        manualControlBridge.active = false;
+        manualControlBridge.forward = 0;
+        manualControlBridge.turn = 0;
         label = 'Retornar à base de recarga';
         robot.setTargetPosition(env.dockPosition);
         robot.setOperationalState(
