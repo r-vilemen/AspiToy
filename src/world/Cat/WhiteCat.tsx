@@ -103,6 +103,9 @@ export function WhiteCat() {
   const startleCooldownRef = useRef(0);
   const outsideBedroomStepsRef = useRef(0);
   const waypointQueueRef = useRef<Vector2D[]>([]);
+  const walkPhaseRef = useRef(0);
+  const legActivityRef = useRef(0);
+  const blockedTimerRef = useRef(0);
 
   const obstacles = useEnvironmentStore((s) => s.obstacles);
   const roomDimensions = useEnvironmentStore((s) => s.roomDimensions);
@@ -270,11 +273,11 @@ export function WhiteCat() {
           perchCyclesRemainingRef.current -= 1;
           const nextState = pickRandomState(['SITTING', 'LYING', 'SLEEPING', 'GROOMING'], whiteCatMotionBridge.state);
           whiteCatMotionBridge.state = nextState;
-          whiteCatMotionBridge.stateTimer = 4.5 + Math.random() * 4.0;
+          whiteCatMotionBridge.stateTimer = 5.5 + Math.random() * 4.0;
         }
       } else {
-        // Chance de escolher subir em um móvel (com preferência pelo quarto)
-        const shouldClimb = Math.random() < 0.26;
+        // Chance comedida e realista de escolher subir em um móvel (~15%)
+        const shouldClimb = Math.random() < 0.15;
         if (shouldClimb) {
           const chosenPerch = pickWeightedCatPerch(outsideBedroomStepsRef.current);
           if (chosenPerch.room === 'bedroom') {
@@ -396,26 +399,56 @@ export function WhiteCat() {
           whiteCatMotionBridge.z +
           Math.cos(whiteCatMotionBridge.rotationY) * whiteCatMotionBridge.speed * delta;
 
+        let actualMovedDist = 0;
+
         if (whiteCatMotionBridge.isPerched) {
-          whiteCatMotionBridge.x = desiredX;
-          whiteCatMotionBridge.z = desiredZ;
+          actualMovedDist = 0;
         } else {
           const resolved = catObstacleDetector.resolveSafeMovement(
             currentPos,
             { x: desiredX, z: desiredZ },
             0.28
           );
+
+          actualMovedDist = Math.hypot(
+            resolved.position.x - currentPos.x,
+            resolved.position.z - currentPos.z
+          );
+
           whiteCatMotionBridge.x = resolved.position.x;
           whiteCatMotionBridge.z = resolved.position.z;
 
-          if (resolved.collided && !climbingTargetPerchRef.current) {
-            const altTarget = pickFreeFloorTarget();
-            whiteCatMotionBridge.targetX = altTarget.x;
-            whiteCatMotionBridge.targetZ = altTarget.z;
-            whiteCatMotionBridge.rotationY += 1.8 * delta;
+          if (resolved.collided) {
+            blockedTimerRef.current += delta;
+            if (blockedTimerRef.current > 0.35 && !climbingTargetPerchRef.current) {
+              blockedTimerRef.current = 0;
+              whiteCatMotionBridge.speed = 0;
+              whiteCatMotionBridge.state = Math.random() < 0.5 ? 'STANDING' : 'SITTING';
+              whiteCatMotionBridge.stateTimer = 2.5 + Math.random() * 2.0;
+              const altTarget = pickFreeFloorTarget();
+              whiteCatMotionBridge.targetX = altTarget.x;
+              whiteCatMotionBridge.targetZ = altTarget.z;
+            }
+          } else {
+            blockedTimerRef.current = 0;
           }
         }
+
+        const actualSpeed = actualMovedDist / Math.max(delta, 0.0001);
+        if (actualSpeed > 0.04) {
+          walkPhaseRef.current += actualMovedDist * 14.0;
+        }
+
+        const targetLegActivity = actualSpeed > 0.04 ? 1.0 : 0.0;
+        legActivityRef.current = damp(
+          legActivityRef.current,
+          targetLegActivity,
+          14.0,
+          delta
+        );
       }
+    } else {
+      legActivityRef.current = damp(legActivityRef.current, 0, 16.0, delta);
     }
 
     // Posição vertical efetiva (considerando saltos e pulos de susto)
@@ -471,10 +504,10 @@ export function WhiteCat() {
       legBRRef.current
     ) {
       if (state === 'WALKING' || state === 'RUNNING') {
-        const freq = state === 'RUNNING' ? 15.0 : 8.5;
-        const stride = state === 'RUNNING' ? 0.68 : 0.42;
         const bounce =
-          Math.abs(Math.sin(t * freq)) * (state === 'RUNNING' ? 0.038 : 0.015);
+          Math.abs(Math.sin(walkPhaseRef.current)) *
+          (state === 'RUNNING' ? 0.038 : 0.015) *
+          legActivityRef.current;
 
         bodyRef.current.position.y = damp(
           bodyRef.current.position.y,
@@ -483,8 +516,11 @@ export function WhiteCat() {
           delta
         );
         bodyRef.current.rotation.x =
-          state === 'RUNNING' ? Math.sin(t * freq) * 0.14 : 0;
-        bodyRef.current.rotation.z = Math.sin(t * freq) * 0.03;
+          state === 'RUNNING'
+            ? Math.sin(walkPhaseRef.current) * 0.14 * legActivityRef.current
+            : 0;
+        bodyRef.current.rotation.z =
+          Math.sin(walkPhaseRef.current) * 0.03 * legActivityRef.current;
 
         headRef.current.position.y = damp(headRef.current.position.y, 0.1, 8, delta);
         headRef.current.rotation.x = damp(headRef.current.rotation.x, 0, 8, delta);
@@ -496,12 +532,19 @@ export function WhiteCat() {
           8,
           delta
         );
-        tailRef.current.rotation.z = Math.sin(t * (freq * 0.5)) * 0.25;
+        tailRef.current.rotation.z = Math.sin(walkPhaseRef.current * 0.5) * 0.35;
 
-        legFLRef.current.rotation.set(Math.sin(t * freq) * stride, 0, 0);
-        legBRRef.current.rotation.set(Math.sin(t * freq) * stride, 0, 0);
-        legFRRef.current.rotation.set(-Math.sin(t * freq) * stride, 0, 0);
-        legBLRef.current.rotation.set(-Math.sin(t * freq) * stride, 0, 0);
+        legFLRef.current.position.set(-0.068, -0.07, 0.14);
+        legFRRef.current.position.set(0.068, -0.07, 0.14);
+        legBLRef.current.position.set(-0.068, -0.07, -0.14);
+        legBRRef.current.position.set(0.068, -0.07, -0.14);
+
+        const stride =
+          (state === 'RUNNING' ? 0.68 : 0.42) * legActivityRef.current;
+        legFLRef.current.rotation.set(Math.sin(walkPhaseRef.current) * stride, 0, 0);
+        legBRRef.current.rotation.set(Math.sin(walkPhaseRef.current) * stride, 0, 0);
+        legFRRef.current.rotation.set(-Math.sin(walkPhaseRef.current) * stride, 0, 0);
+        legBLRef.current.rotation.set(-Math.sin(walkPhaseRef.current) * stride, 0, 0);
       } else if (state === 'STANDING') {
         bodyRef.current.position.y = damp(bodyRef.current.position.y, 0.22, 8, delta);
         bodyRef.current.rotation.set(0, 0, 0);

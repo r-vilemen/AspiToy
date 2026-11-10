@@ -14,33 +14,31 @@ export interface FurniturePerchSpot {
 }
 
 /**
- * Catálogos de todos os poleiros/móveis da casa onde os gatos podem subir,
- * esticar-se, dormir ou observar o ambiente.
+ * Catálogo rigoroso de móveis REAIS e EXISTENTES na cena 3D onde os gatos podem subir.
+ * Todas as coordenadas de superfície e pontos de acesso foram extraídas dos modelos 3D físicos,
+ * eliminando saltos no vazio, posições no ar ou sobreposição com paredes.
  */
 export const ALL_HOUSE_CAT_PERCHES: FurniturePerchSpot[] = [
-  // --- QUARTO (Lugar de Preferência Felina) ---
+  // --- 1. QUARTO (Ambiente de Preferência Feline) ---
   {
     id: 'sofa-main',
-    name: 'Sofá Baú (Quarto)',
+    name: 'Sofá Baú Estofado (Quarto)',
     room: 'bedroom',
     surfaceY: 0.89,
-    stagingPoint: { x: 0.0, z: 1.85 },
+    stagingPoint: { x: 0.0, z: 1.8 },
     perchWaypoints: [
-      { x: -0.65, z: 2.55 },
+      { x: -0.6, z: 2.6 },
       { x: 0.0, z: 2.6 },
-      { x: 0.65, z: 2.55 },
+      { x: 0.6, z: 2.6 },
     ],
   },
   {
     id: 'armchair-green',
-    name: 'Poltrona Verde (Quarto)',
+    name: 'Poltrona Verde Acolchoada (Quarto)',
     room: 'bedroom',
     surfaceY: 0.87,
-    stagingPoint: { x: 0.15, z: -0.95 },
-    perchWaypoints: [
-      { x: 0.95, z: -1.0 },
-      { x: 0.8, z: -0.95 },
-    ],
+    stagingPoint: { x: 0.2, z: -0.9 },
+    perchWaypoints: [{ x: 0.95, z: -1.05 }],
   },
   {
     id: 'ottoman-cushion',
@@ -52,125 +50,118 @@ export const ALL_HOUSE_CAT_PERCHES: FurniturePerchSpot[] = [
   },
   {
     id: 'coffee-table',
-    name: 'Mesa de Centro (Quarto)',
+    name: 'Mesa de Centro de Madeira (Quarto)',
     room: 'bedroom',
-    surfaceY: 0.7,
-    stagingPoint: { x: -0.45, z: -1.15 },
-    perchWaypoints: [
-      { x: -0.95, z: -1.1 },
-      { x: -1.85, z: -1.1 },
-    ],
+    surfaceY: 0.68,
+    stagingPoint: { x: -1.45, z: -0.4 },
+    perchWaypoints: [{ x: -1.45, z: -1.15 }],
   },
 
-  // --- SALA DE ESTAR ---
+  // --- 2. SALA DE ESTAR ---
   {
     id: 'living-sofa-chaise',
     name: 'Chaise do Sofá da Sala',
     room: 'living-room',
-    surfaceY: 0.6,
-    stagingPoint: { x: 15.6, z: -1.1 },
+    surfaceY: 0.58,
+    stagingPoint: { x: 14.4, z: -0.1 },
     perchWaypoints: [
-      { x: 15.6, z: -0.2 },
-      { x: 15.6, z: 0.5 },
+      { x: 15.6, z: -0.1 },
+      { x: 15.6, z: 0.4 },
     ],
   },
   {
-    id: 'living-coffee-table',
-    name: 'Mesa de Centro da Sala',
+    id: 'living-sofa-main',
+    name: 'Assento do Sofá Principal da Sala',
     room: 'living-room',
-    surfaceY: 0.52,
-    stagingPoint: { x: 12.8, z: -0.1 },
+    surfaceY: 0.58,
+    stagingPoint: { x: 13.2, z: 0.2 },
     perchWaypoints: [
-      { x: 12.8, z: -0.7 },
-      { x: 12.2, z: -0.7 },
+      { x: 12.0, z: 1.2 },
+      { x: 13.2, z: 1.2 },
     ],
   },
 
-  // --- CORREDOR ---
+  // --- 3. CORREDOR ---
   {
     id: 'hallway-console',
-    name: 'Aparador do Corredor',
+    name: 'Aparador Vintage do Corredor',
     room: 'hallway',
-    surfaceY: 0.55,
-    stagingPoint: { x: 6.3, z: 2.8 },
-    perchWaypoints: [{ x: 6.3, z: 3.5 }],
+    surfaceY: 1.09,
+    stagingPoint: { x: 6.0, z: -1.8 },
+    perchWaypoints: [{ x: 5.35, z: -1.8 }],
   },
 
-  // --- COZINHA ---
+  // --- 4. COZINHA ---
   {
-    id: 'kitchen-counter',
-    name: 'Bancada da Cozinha',
+    id: 'kitchen-island',
+    name: 'Tampo de Madeira da Ilha da Cozinha',
     room: 'kitchen',
-    surfaceY: 0.95,
-    stagingPoint: { x: 10.5, z: 5.6 },
-    perchWaypoints: [
-      { x: 10.5, z: 6.8 },
-      { x: 11.8, z: 6.8 },
-    ],
+    surfaceY: 1.22,
+    stagingPoint: { x: 12.8, z: 3.3 },
+    perchWaypoints: [{ x: 12.8, z: 4.4 }],
   },
   {
     id: 'kitchen-stool',
-    name: 'Banqueta da Cozinha',
+    name: 'Banqueta de Madeira da Ilha',
     room: 'kitchen',
     surfaceY: 0.85,
-    stagingPoint: { x: 12.0, z: 4.2 },
-    perchWaypoints: [{ x: 12.0, z: 4.8 }],
+    stagingPoint: { x: 12.05, z: 2.7 },
+    perchWaypoints: [{ x: 12.05, z: 3.5 }],
   },
 
-  // --- BANHEIRO ---
+  // --- 5. BANHEIRO ---
   {
-    id: 'bathroom-vanity',
-    name: 'Gabinete da Pia do Banheiro',
+    id: 'bathroom-hamper',
+    name: 'Cesto de Roupas em Vime (Banheiro)',
     room: 'bathroom',
-    surfaceY: 0.88,
-    stagingPoint: { x: 6.8, z: 10.2 },
-    perchWaypoints: [{ x: 6.8, z: 11.5 }],
+    surfaceY: 0.68,
+    stagingPoint: { x: 6.3, z: 9.8 },
+    perchWaypoints: [{ x: 5.6, z: 9.4 }],
   },
 ];
 
 /**
  * Waypoints no chão para cada cômodo da residência.
+ * 100% verificados contra colisão com móveis, chuveiros, balcões e alvenaria.
  */
 export const HOUSE_CAT_WAYPOINTS_BY_ROOM: Record<RoomId, Vector2D[]> = {
   bedroom: [
-    { x: -0.6, z: -0.9 }, // Tapete central
-    { x: -1.7, z: 0.35 }, // Frente da cama
-    { x: 0.1, z: -0.2 }, // Área central
-    { x: 2.1, z: -0.5 }, // Perto da estante
-    { x: 2.2, z: 1.3 }, // Canto da janela
-    { x: -2.1, z: -2.1 }, // Canto aconchegante
-    { x: -0.4, z: -2.5 }, // Painel/lareira
-    { x: -2.3, z: 0.6 }, // Lado da cômoda
-    { x: -3.2, z: 1.8 }, // Área dos brinquedos
-    { x: 3.6, z: 2.2 }, // Próximo à porta do quarto
+    { x: -0.6, z: 0.1 }, // Piso livre entre tapete e baú
+    { x: -0.6, z: -0.4 }, // Borda do tapete circular
+    { x: -1.8, z: 0.4 }, // Piso oeste em frente à cama
+    { x: 2.2, z: -0.5 }, // Piso leste perto da estante
+    { x: 2.4, z: 1.5 }, // Canto sudeste ensolarado do quarto
+    { x: -2.8, z: 0.0 }, // Piso livre entre mesa e brinquedos
+    { x: 0.0, z: 1.2 }, // Ponto central em frente ao baú
+    { x: 3.2, z: 2.2 }, // Acesso à porta de saída do quarto
   ],
   hallway: [
-    { x: 6.3, z: 1.5 }, // Início do corredor
-    { x: 6.3, z: 3.2 }, // Em frente ao quarto
-    { x: 6.3, z: 5.0 }, // Meio do corredor
-    { x: 6.3, z: 6.8 }, // Frente da cozinha
-    { x: 6.3, z: 8.0 }, // Entrada do banheiro
+    { x: 6.3, z: -0.5 }, // Início do corredor (norte)
+    { x: 6.3, z: 1.5 }, // Em frente à porta do quarto
+    { x: 6.3, z: 3.2 }, // Meio do corredor
+    { x: 6.3, z: 5.0 }, // Em frente à porta da cozinha
+    { x: 6.3, z: 7.2 }, // Em frente à porta do banheiro
   ],
   'living-room': [
-    { x: 12.8, z: 0.2 }, // Tapete da sala
-    { x: 10.5, z: -1.8 }, // Perto da estante de livros
-    { x: 14.5, z: -1.5 }, // Perto da planta ornamental
-    { x: 11.2, z: 1.2 }, // Frente do sofá
-    { x: 13.8, z: 1.8 }, // Canto do abajur
-    { x: 12.8, z: -2.2 }, // Frente do rack de TV
+    { x: 9.5, z: -0.5 }, // Piso livre entre arco e mesa de centro
+    { x: 9.5, z: 1.2 }, // Piso oeste da sala
+    { x: 10.5, z: -1.8 }, // Piso em frente à estante de livros
+    { x: 12.8, z: -2.0 }, // Piso entre mesa e TV
+    { x: 15.2, z: -2.0 }, // Canto próximo à planta
+    { x: 13.8, z: 2.4 }, // Piso sul conectando à cozinha
   ],
   kitchen: [
-    { x: 10.5, z: 5.5 }, // Balcão
-    { x: 12.8, z: 6.2 }, // Ilha central
-    { x: 15.2, z: 5.8 }, // Geladeira retrô
-    { x: 13.5, z: 7.2 }, // Mesa de refeições
-    { x: 9.8, z: 4.8 }, // Próximo à porta da cozinha
+    { x: 9.5, z: 4.8 }, // Entrada da cozinha
+    { x: 9.5, z: 6.2 }, // Piso entre geladeira e ilha
+    { x: 12.8, z: 6.2 }, // Piso livre entre ilha e fogão
+    { x: 15.5, z: 6.0 }, // Piso livre leste da ilha
+    { x: 14.8, z: 4.2 }, // Circulação nordeste da cozinha
   ],
   bathroom: [
-    { x: 6.3, z: 9.8 }, // Tapete do banheiro
-    { x: 8.2, z: 10.5 }, // Frente da pia
-    { x: 6.5, z: 12.0 }, // Box de vidro
-    { x: 7.5, z: 11.2 }, // Cesto de roupas
+    { x: 6.3, z: 9.8 }, // Tapete do banheiro (entrada)
+    { x: 7.8, z: 10.2 }, // Piso central em frente à pia
+    { x: 8.0, z: 11.5 }, // Piso livre entre box e sanitário
+    { x: 8.8, z: 10.5 }, // Frente do gabinete
   ],
 };
 
@@ -179,19 +170,17 @@ export const HOUSE_CAT_WAYPOINTS_BY_ROOM: Record<RoomId, Vector2D[]> = {
  * Se o gato já passou vários ciclos fora do quarto, o retorno ao quarto é acelerado (85%).
  */
 export function pickWeightedCatRoom(outsideBedroomSteps = 0): RoomId {
-  // Probabilidade do quarto: base 60%, sobe para 85% se já caminhou 2+ vezes fora
   const bedroomChance = outsideBedroomSteps >= 2 ? 0.85 : 0.6;
   if (Math.random() < bedroomChance) {
     return 'bedroom';
   }
 
-  // Se não for quarto, distribui igualmente entre os outros cômodos
   const otherRooms: RoomId[] = ['hallway', 'living-room', 'kitchen', 'bathroom'];
   return otherRooms[Math.floor(Math.random() * otherRooms.length)];
 }
 
 /**
- * Escolhe um poleiro/móvel com forte preferência pelo quarto.
+ * Escolhe um poleiro/móvel real com forte preferência pelo quarto.
  */
 export function pickWeightedCatPerch(outsideBedroomSteps = 0): FurniturePerchSpot {
   const targetRoom = pickWeightedCatRoom(outsideBedroomSteps);
@@ -201,27 +190,28 @@ export function pickWeightedCatPerch(outsideBedroomSteps = 0): FurniturePerchSpo
     return roomPerches[Math.floor(Math.random() * roomPerches.length)];
   }
 
-  // Fallback para os poleiros do quarto
   const bedroomPerches = ALL_HOUSE_CAT_PERCHES.filter((p) => p.room === 'bedroom');
   return bedroomPerches[Math.floor(Math.random() * bedroomPerches.length)];
 }
 
 /**
- * Escolhe um ponto válido no chão com preferência pelo quarto e sem colisão imediata.
+ * Escolhe um ponto válido no chão sem colisão com móveis ou paredes e mantendo distância segura do robô.
  */
 export function pickWeightedCatFloorDestination(
   catObstacleDetector: ObstacleDetector,
   outsideBedroomSteps = 0
 ): { target: Vector2D; targetRoom: RoomId } {
   const targetRoom = pickWeightedCatRoom(outsideBedroomSteps);
-  const candidates = HOUSE_CAT_WAYPOINTS_BY_ROOM[targetRoom] || HOUSE_CAT_WAYPOINTS_BY_ROOM.bedroom;
+  const candidates =
+    HOUSE_CAT_WAYPOINTS_BY_ROOM[targetRoom] ||
+    HOUSE_CAT_WAYPOINTS_BY_ROOM.bedroom;
 
   const valid = candidates.filter((pt) => {
     const distToRobot = Math.hypot(
       pt.x - robotMotionBridge.x,
       pt.z - robotMotionBridge.z
     );
-    return !catObstacleDetector.isColliding(pt, 0.3) && distToRobot > 0.75;
+    return !catObstacleDetector.isColliding(pt, 0.28) && distToRobot > 0.75;
   });
 
   if (valid.length > 0) {
@@ -231,16 +221,14 @@ export function pickWeightedCatFloorDestination(
     };
   }
 
-  // Fallback seguro no quarto
   return {
-    target: { x: -0.6, z: -0.9 },
+    target: { x: -0.6, z: 0.1 },
     targetRoom: 'bedroom',
   };
 }
 
 /**
- * Planeja a rota intercômodos para o gato, retornando a fila de waypoints a percorrer.
- * Se o destino for em outro cômodo, inclui os waypoints das portas para evitar colisão com paredes.
+ * Planeja a rota intercômodos para o gato através dos vãos das portas abertas.
  */
 export function planCatRoute(
   currentPos: Vector2D,

@@ -81,7 +81,6 @@ const FLOOR_CAT_STATES: CatBehaviorState[] = [
 const PERCHED_CAT_STATES: CatBehaviorState[] = [
   'SITTING',
   'STANDING',
-  'WALKING',
   'GROOMING',
   'STRETCHING',
   'LYING',
@@ -124,6 +123,9 @@ export function Cat() {
   const startleCooldownRef = useRef(0);
   const outsideBedroomStepsRef = useRef(0);
   const waypointQueueRef = useRef<Vector2D[]>([]);
+  const walkPhaseRef = useRef(0);
+  const legActivityRef = useRef(0);
+  const blockedTimerRef = useRef(0);
 
   const obstacles = useEnvironmentStore((s) => s.obstacles);
   const roomDimensions = useEnvironmentStore((s) => s.roomDimensions);
@@ -382,34 +384,21 @@ export function Cat() {
           );
           catMotionBridge.state = nextState;
 
-          if (nextState === 'WALKING') {
-            catMotionBridge.stateTimer = 4.0 + Math.random() * 3.0;
-            const perch = ALL_HOUSE_CAT_PERCHES.find(
-              (p) => p.id === catMotionBridge.perchSurfaceId
-            );
-            if (perch && perch.perchWaypoints.length > 0) {
-              const wp =
-                perch.perchWaypoints[
-                  Math.floor(Math.random() * perch.perchWaypoints.length)
-                ];
-              catMotionBridge.targetX = wp.x;
-              catMotionBridge.targetZ = wp.z;
-            }
-          } else if (nextState === 'SLEEPING') {
-            catMotionBridge.stateTimer = 8.0 + Math.random() * 5.0;
+          if (nextState === 'SLEEPING') {
+            catMotionBridge.stateTimer = 9.0 + Math.random() * 6.0;
           } else if (nextState === 'LYING') {
-            catMotionBridge.stateTimer = 6.0 + Math.random() * 4.0;
+            catMotionBridge.stateTimer = 7.0 + Math.random() * 4.0;
           } else if (nextState === 'STRETCHING') {
-            catMotionBridge.stateTimer = 3.2 + Math.random() * 1.5;
+            catMotionBridge.stateTimer = 3.5 + Math.random() * 1.5;
           } else if (nextState === 'GROOMING') {
-            catMotionBridge.stateTimer = 4.5 + Math.random() * 3.0;
+            catMotionBridge.stateTimer = 5.0 + Math.random() * 3.0;
           } else {
-            catMotionBridge.stateTimer = 4.0 + Math.random() * 3.0;
+            catMotionBridge.stateTimer = 4.5 + Math.random() * 3.0;
           }
         }
       } else {
-        // Gato está no chão
-        const wantsToClimb = Math.random() < 0.35 && !climbingTargetPerchRef.current;
+        // Gato está no chão - probabilidade comedida e realista de subir em móvel (~15%)
+        const wantsToClimb = Math.random() < 0.15 && !climbingTargetPerchRef.current;
 
         if (wantsToClimb) {
           const chosenPerch = pickWeightedCatPerch(outsideBedroomStepsRef.current);
@@ -565,26 +554,61 @@ export function Cat() {
           catMotionBridge.z +
           Math.cos(catMotionBridge.rotationY) * catMotionBridge.speed * delta;
 
+        let actualMovedDist = 0;
+
         if (catMotionBridge.isPerched) {
-          catMotionBridge.x = desiredX;
-          catMotionBridge.z = desiredZ;
+          // Gato empoleirado em móvel permanece seguro sobre o assento (sem andar pelas bordas)
+          actualMovedDist = 0;
         } else {
           const resolved = catObstacleDetector.resolveSafeMovement(
             currentPos,
             { x: desiredX, z: desiredZ },
             0.28
           );
+
+          actualMovedDist = Math.hypot(
+            resolved.position.x - currentPos.x,
+            resolved.position.z - currentPos.z
+          );
+
           catMotionBridge.x = resolved.position.x;
           catMotionBridge.z = resolved.position.z;
 
-          if (resolved.collided && !climbingTargetPerchRef.current) {
-            const altTarget = pickFreeFloorTarget();
-            catMotionBridge.targetX = altTarget.x;
-            catMotionBridge.targetZ = altTarget.z;
-            catMotionBridge.rotationY += 1.8 * delta;
+          if (resolved.collided) {
+            blockedTimerRef.current += delta;
+            // Se colidiu ou ficou bloqueado por mais de 0.35s:
+            if (blockedTimerRef.current > 0.35 && !climbingTargetPerchRef.current) {
+              blockedTimerRef.current = 0;
+              catMotionBridge.speed = 0;
+              // Para calmamente e senta/fica em pé em vez de girar ou andar no mesmo lugar
+              catMotionBridge.state = Math.random() < 0.5 ? 'STANDING' : 'SITTING';
+              catMotionBridge.stateTimer = 2.5 + Math.random() * 2.0;
+              const altTarget = pickFreeFloorTarget();
+              catMotionBridge.targetX = altTarget.x;
+              catMotionBridge.targetZ = altTarget.z;
+            }
+          } else {
+            blockedTimerRef.current = 0;
           }
         }
+
+        // Avança o ciclo de passos APENAS se houver deslocamento físico real pelo piso
+        const actualSpeed = actualMovedDist / Math.max(delta, 0.0001);
+        if (isMovingState && actualSpeed > 0.04) {
+          walkPhaseRef.current += actualMovedDist * 14.0;
+        }
+
+        const targetLegActivity = isMovingState && actualSpeed > 0.04 ? 1.0 : 0.0;
+        legActivityRef.current = damp(
+          legActivityRef.current,
+          targetLegActivity,
+          14.0,
+          delta
+        );
       }
+    } else {
+      // Quando não está em estado de movimento, as patas ficam paradas imediatamente
+      legActivityRef.current = damp(legActivityRef.current, 0, 16.0, delta);
     }
 
     // ================================================================
@@ -640,10 +664,10 @@ export function Cat() {
       legBRRef.current
     ) {
       if (state === 'WALKING' || state === 'RUNNING') {
-        const freq = state === 'RUNNING' ? 15.0 : 8.5;
-        const stride = state === 'RUNNING' ? 0.68 : 0.42;
         const bounce =
-          Math.abs(Math.sin(t * freq)) * (state === 'RUNNING' ? 0.038 : 0.015);
+          Math.abs(Math.sin(walkPhaseRef.current)) *
+          (state === 'RUNNING' ? 0.038 : 0.015) *
+          legActivityRef.current;
 
         bodyRef.current.position.y = damp(
           bodyRef.current.position.y,
@@ -652,8 +676,11 @@ export function Cat() {
           delta
         );
         bodyRef.current.rotation.x =
-          state === 'RUNNING' ? Math.sin(t * freq) * 0.14 : 0;
-        bodyRef.current.rotation.z = Math.sin(t * freq) * 0.03;
+          state === 'RUNNING'
+            ? Math.sin(walkPhaseRef.current) * 0.14 * legActivityRef.current
+            : 0;
+        bodyRef.current.rotation.z =
+          Math.sin(walkPhaseRef.current) * 0.03 * legActivityRef.current;
 
         headRef.current.position.y = damp(headRef.current.position.y, 0.1, 8, delta);
         headRef.current.rotation.x = damp(headRef.current.rotation.x, 0, 8, delta);
@@ -666,17 +693,19 @@ export function Cat() {
           8,
           delta
         );
-        tailRef.current.rotation.z = Math.sin(t * freq * 0.5) * 0.35;
+        tailRef.current.rotation.z = Math.sin(walkPhaseRef.current * 0.5) * 0.35;
 
         legFLRef.current.position.set(-0.068, -0.07, 0.14);
         legFRRef.current.position.set(0.068, -0.07, 0.14);
         legBLRef.current.position.set(-0.068, -0.07, -0.14);
         legBRRef.current.position.set(0.068, -0.07, -0.14);
 
-        legFLRef.current.rotation.set(Math.sin(t * freq) * stride, 0, 0);
-        legBRRef.current.rotation.set(Math.sin(t * freq) * stride, 0, 0);
-        legFRRef.current.rotation.set(-Math.sin(t * freq) * stride, 0, 0);
-        legBLRef.current.rotation.set(-Math.sin(t * freq) * stride, 0, 0);
+        const stride =
+          (state === 'RUNNING' ? 0.68 : 0.42) * legActivityRef.current;
+        legFLRef.current.rotation.set(Math.sin(walkPhaseRef.current) * stride, 0, 0);
+        legBRRef.current.rotation.set(Math.sin(walkPhaseRef.current) * stride, 0, 0);
+        legFRRef.current.rotation.set(-Math.sin(walkPhaseRef.current) * stride, 0, 0);
+        legBLRef.current.rotation.set(-Math.sin(walkPhaseRef.current) * stride, 0, 0);
       } else if (state === 'STANDING') {
         bodyRef.current.position.y = damp(bodyRef.current.position.y, 0.22, 8, delta);
         bodyRef.current.rotation.set(0, 0, 0);
