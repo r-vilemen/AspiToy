@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { IntroAnimation } from '../IntroAnimation';
-import { TutorialModal } from '../TutorialModal';
+import { InGameTour } from '../InGameTour';
 import { useOnboardingStore } from '@/store/onboardingStore';
 
-describe('Componentes de Onboarding (IntroAnimation e TutorialModal)', () => {
+describe('Componentes de Onboarding (IntroAnimation e InGameTour)', () => {
   beforeEach(() => {
     localStorage.clear();
     useOnboardingStore.setState({
@@ -28,22 +28,27 @@ describe('Componentes de Onboarding (IntroAnimation e TutorialModal)', () => {
     expect(useOnboardingStore.getState().showTutorial).toBe(true);
   });
 
-  it('renderiza os passos do tutorial e avança até concluir', () => {
+  it('renderiza os passos do tutorial em jogo com spotlight e avança até concluir', () => {
+    // Simula elemento de alvo no DOM
+    const target1 = document.createElement('div');
+    target1.id = 'tour-cleaning-button';
+    document.body.appendChild(target1);
+
     useOnboardingStore.setState({
       showIntro: false,
       showTutorial: true,
       tutorialStep: 0,
     });
 
-    render(<TutorialModal />);
+    render(<InGameTour />);
 
     // Passo 1
-    expect(screen.getByText(/Explore a Sala de Estar 3D/i)).toBeDefined();
+    expect(screen.getByText(/Iniciar \/ Pausar Limpeza/i)).toBeDefined();
     const nextBtn = screen.getByRole('button', { name: /Próximo/i });
     fireEvent.click(nextBtn);
 
     // Passo 2
-    expect(screen.getByText(/Pilotagem Manual e Limpeza/i)).toBeDefined();
+    expect(screen.getByText(/Pilotagem Manual/i)).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: /Próximo/i }));
 
     // Passo 3
@@ -51,11 +56,13 @@ describe('Componentes de Onboarding (IntroAnimation e TutorialModal)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Próximo/i }));
 
     // Passo 4 (último)
-    expect(screen.getByText(/Gato Autônomo e Brinquedos/i)).toBeDefined();
+    expect(screen.getByText(/Câmeras e Exploração 3D/i)).toBeDefined();
     const finishBtn = screen.getByRole('button', { name: /Começar a Brincar!/i });
     expect(finishBtn).toBeDefined();
 
     fireEvent.click(finishBtn);
     expect(useOnboardingStore.getState().showTutorial).toBe(false);
+
+    document.body.removeChild(target1);
   });
 });
