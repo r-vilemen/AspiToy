@@ -80,12 +80,12 @@ describe('Agente Inteligente, Colisão Física e Desvio do Gato Dinâmico', () =
     expect(decision.detectedObstacleLabel).toBe('Gato Laranja');
   });
 
-  it('alterna entre todos os estados de comportamento do gato (andando, correndo, em pé, deitado, dormindo)', () => {
+  it('alterna entre todos os estados de comportamento do gato (andando, correndo, em pé, deitado, dormindo, sentado, alongando e banho)', () => {
     useEnvironmentStore.getState().resetEnvironment();
     const seenStates = new Set<string>();
     seenStates.add(useEnvironmentStore.getState().catState);
 
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 8; i++) {
       const next = useEnvironmentStore.getState().cycleCatBehavior();
       seenStates.add(next);
     }
@@ -95,6 +95,31 @@ describe('Agente Inteligente, Colisão Física e Desvio do Gato Dinâmico', () =
     expect(seenStates.has('STANDING')).toBe(true);
     expect(seenStates.has('LYING')).toBe(true);
     expect(seenStates.has('SLEEPING')).toBe(true);
+    expect(seenStates.has('SITTING')).toBe(true);
+    expect(seenStates.has('STRETCHING')).toBe(true);
+    expect(seenStates.has('GROOMING')).toBe(true);
+  });
+
+  it('desativa colisão no piso quando o gato sobe em móveis (sofá, poltrona, mesa)', () => {
+    useEnvironmentStore.getState().resetEnvironment();
+
+    // No chão: collidable = true
+    catMotionBridge.y = 0;
+    catMotionBridge.isPerched = false;
+    expect(getDynamicCatObstacle().collidable).toBe(true);
+
+    // No topo do sofá (y = 0.89m): collidable = false
+    catMotionBridge.y = 0.89;
+    catMotionBridge.isPerched = true;
+    expect(getDynamicCatObstacle().collidable).toBe(false);
+
+    // No topo da mesa de centro (y = 0.70m): collidable = false
+    catMotionBridge.y = 0.70;
+    expect(getDynamicCatObstacle().collidable).toBe(false);
+
+    // Reset restaura colisão no piso
+    useEnvironmentStore.getState().resetEnvironment();
+    expect(getDynamicCatObstacle().collidable).toBe(true);
   });
 
   it('empurra brinquedos e bonecos pequenos no chão para o robô passar livremente', () => {
