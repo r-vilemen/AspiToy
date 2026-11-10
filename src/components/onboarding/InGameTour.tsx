@@ -222,13 +222,13 @@ export function InGameTour() {
 
       {/* CARTÃO EXPLICATIVO FLUTUANTE POSICIONADO PRÓXIMO AO ELEMENTO */}
       <div
-        className={`absolute z-50 p-4 transition-all duration-300 ease-out ${
+        className={`absolute z-50 p-2.5 sm:p-4 transition-all duration-300 ease-out w-full max-w-[calc(100vw-24px)] sm:max-w-md ${
           isTargetOnRight
-            ? 'left-4 sm:left-auto sm:right-[380px] top-1/2 -translate-y-1/2'
+            ? 'left-1/2 -translate-x-1/2 sm:left-auto sm:right-[380px] sm:translate-x-0 top-1/2 -translate-y-1/2'
             : isTargetOnTop
-            ? 'left-1/2 -translate-x-1/2 top-[120px]'
-            : 'left-1/2 -translate-x-1/2 bottom-8'
-        } w-full max-w-sm sm:max-w-md`}
+            ? 'left-1/2 -translate-x-1/2 top-[80px] sm:top-[120px]'
+            : 'left-1/2 -translate-x-1/2 bottom-4 sm:bottom-8'
+        }`}
       >
         <div className="rounded-3xl border-3 border-[#2A211B] bg-[#FFFDF8] p-5 sm:p-6 shadow-[6px_6px_0px_#2A211B] text-[#2A211B] space-y-4 animate-scale-in">
           {/* Cabeçalho no Estilo Cartucho / Missão de Jogo */}

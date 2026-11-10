@@ -107,7 +107,7 @@ export function IntroAnimation() {
 
           {/* O Emblema / Rosto da Logo com animação fluida de escala e entrada */}
           <div
-            className={`relative h-36 w-36 drop-shadow-2xl transition-all duration-700 ease-out transform ${
+            className={`relative h-28 w-28 sm:h-36 sm:w-36 drop-shadow-2xl transition-all duration-700 ease-out transform ${
               animStage >= 1
                 ? 'scale-100 translate-y-0 opacity-100'
                 : 'scale-50 -translate-y-8 opacity-0'
@@ -201,7 +201,7 @@ export function IntroAnimation() {
           >
             <h1
               aria-label="AspiToy"
-              className="font-display text-5xl sm:text-6xl font-black tracking-tight text-[#2A211B] drop-shadow-xs"
+              className="font-display text-4xl sm:text-6xl font-black tracking-tight text-[#2A211B] drop-shadow-xs"
             >
               Aspi<span className="text-[#E05A36]">Toy</span>
             </h1>
@@ -209,16 +209,16 @@ export function IntroAnimation() {
 
           {/* 3. TAGLINE E BADGE DE IDENTIDADE DO PROJETO (sem estrelas) */}
           <div
-            className={`space-y-3 transition-all duration-700 ease-out transform ${
+            className={`space-y-2 sm:space-y-3 transition-all duration-700 ease-out transform ${
               animStage >= 3 ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
             }`}
           >
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#E05A36]/15 px-4 py-1.5 text-xs font-semibold tracking-wider uppercase text-[#C2410C] border border-[#E05A36]/25 shadow-xs">
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#E05A36]/15 px-3.5 sm:px-4 py-1 sm:py-1.5 text-[11px] sm:text-xs font-semibold tracking-wider uppercase text-[#C2410C] border border-[#E05A36]/25 shadow-xs">
               <span className="h-2 w-2 rounded-full bg-[#E05A36] animate-pulse" aria-hidden="true" />
               <span>Agente Inteligente de Limpeza 3D</span>
             </div>
 
-            <p className="text-base font-medium text-[#6E5D4F] max-w-md mx-auto leading-relaxed">
+            <p className="text-sm sm:text-base font-medium text-[#6E5D4F] max-w-md mx-auto leading-relaxed px-2">
               Exploração robótica autônoma em escala de brinquedo.
             </p>
           </div>
@@ -227,13 +227,13 @@ export function IntroAnimation() {
 
       {/* DICA DE RODAPÉ / CALL TO ACTION COM TEMPO DE LEITURA SUAVE */}
       <footer
-        className={`text-center space-y-3 transition-all duration-700 ${
+        className={`text-center space-y-2.5 sm:space-y-3 transition-all duration-700 ${
           animStage >= 4 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
         }`}
       >
         <p className="text-xs font-medium text-[#8C6D4F]">
-          Clique em qualquer lugar ou pressione{' '}
-          <kbd className="rounded border border-[#8C6D4F]/30 bg-[#FFFDF8] px-2 py-0.5 font-mono text-[11px] font-bold text-[#2A211B] shadow-xs">
+          Toque na tela ou pressione{' '}
+          <kbd className="hidden sm:inline-block rounded border border-[#8C6D4F]/30 bg-[#FFFDF8] px-2 py-0.5 font-mono text-[11px] font-bold text-[#2A211B] shadow-xs">
             ENTER
           </kbd>{' '}
           para entrar

@@ -149,7 +149,7 @@ export function ControlPanel() {
             )}
           </span>
         </div>
-        <div className="mt-2.5 grid grid-cols-3 gap-2 max-w-[190px] mx-auto">
+        <div className="mt-2.5 grid grid-cols-3 gap-2.5 sm:gap-2 max-w-[210px] sm:max-w-[190px] mx-auto select-none touch-none">
           <div />
           <button
             type="button"
@@ -158,12 +158,12 @@ export function ControlPanel() {
             onPointerUp={stopManualMove}
             onPointerLeave={stopManualMove}
             onPointerCancel={stopManualMove}
-            className={`flex h-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_3px_0px_#2A211B] transition cursor-pointer ${keys.forward
+            className={`flex h-11 sm:h-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_3px_0px_#2A211B] transition cursor-pointer select-none touch-none ${keys.forward
                 ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
                 : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
               }`}
           >
-            <ArrowUp className="h-4.5 w-4.5 stroke-[2.5]" />
+            <ArrowUp className="h-5 w-5 sm:h-4.5 sm:w-4.5 stroke-[2.5]" />
           </button>
           <div />
           <button
@@ -173,12 +173,12 @@ export function ControlPanel() {
             onPointerUp={stopManualMove}
             onPointerLeave={stopManualMove}
             onPointerCancel={stopManualMove}
-            className={`flex h-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_3px_0px_#2A211B] transition cursor-pointer ${keys.left
+            className={`flex h-11 sm:h-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_3px_0px_#2A211B] transition cursor-pointer select-none touch-none ${keys.left
                 ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
                 : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
               }`}
           >
-            <ArrowLeft className="h-4.5 w-4.5 stroke-[2.5]" />
+            <ArrowLeft className="h-5 w-5 sm:h-4.5 sm:w-4.5 stroke-[2.5]" />
           </button>
           <button
             type="button"
@@ -187,12 +187,12 @@ export function ControlPanel() {
             onPointerUp={stopManualMove}
             onPointerLeave={stopManualMove}
             onPointerCancel={stopManualMove}
-            className={`flex h-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_3px_0px_#2A211B] transition cursor-pointer ${keys.backward
+            className={`flex h-11 sm:h-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_3px_0px_#2A211B] transition cursor-pointer select-none touch-none ${keys.backward
                 ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
                 : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
               }`}
           >
-            <ArrowDown className="h-4.5 w-4.5 stroke-[2.5]" />
+            <ArrowDown className="h-5 w-5 sm:h-4.5 sm:w-4.5 stroke-[2.5]" />
           </button>
           <button
             type="button"
@@ -201,12 +201,12 @@ export function ControlPanel() {
             onPointerUp={stopManualMove}
             onPointerLeave={stopManualMove}
             onPointerCancel={stopManualMove}
-            className={`flex h-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_3px_0px_#2A211B] transition cursor-pointer ${keys.right
+            className={`flex h-11 sm:h-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_3px_0px_#2A211B] transition cursor-pointer select-none touch-none ${keys.right
                 ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
                 : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
               }`}
           >
-            <ArrowRight className="h-4.5 w-4.5 stroke-[2.5]" />
+            <ArrowRight className="h-5 w-5 sm:h-4.5 sm:w-4.5 stroke-[2.5]" />
           </button>
         </div>
       </div>
