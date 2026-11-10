@@ -113,4 +113,34 @@ describe('Agente Inteligente, Colisão Física e Desvio do Gato Dinâmico', () =
     expect(result.pushedToyLabel).not.toBeNull();
     expect(cowboy.x).toBeGreaterThan(initialX);
   });
+
+  it('aplica física e rolamento 2D na bola sem afundar ou atravessar paredes/móveis', () => {
+    resetPushableToys();
+    const ball = pushableToysBridge.find((t) => t.id === 'push-ball')!;
+    const initX = ball.x;
+    const initZ = ball.z;
+
+    // Empurra a bola para frente (+Z)
+    stepPushableToysPhysics({ x: initX, z: initZ - 0.22 }, 0.32, 0.016);
+    expect(ball.z).toBeGreaterThan(initZ);
+    expect(ball.vz).toBeGreaterThan(0);
+
+    // Avança simulação de rolamento
+    stepPushableToysPhysics({ x: 0, z: -4 }, 0.1, 0.05);
+    expect(ball.rollPitch).toBeGreaterThan(0);
+
+    // Testa colisão física de todos os objetos do chão garantindo que ficam dentro dos limites da sala
+    for (let frame = 0; frame < 60; frame++) {
+      stepPushableToysPhysics({ x: ball.x, z: ball.z - 0.1 }, 0.32, 0.016);
+    }
+
+    for (const toy of pushableToysBridge) {
+      expect(toy.x).toBeGreaterThan(-5);
+      expect(toy.x).toBeLessThan(5);
+      expect(toy.z).toBeGreaterThan(-4);
+      expect(toy.z).toBeLessThan(4);
+      expect(Number.isNaN(toy.x)).toBe(false);
+      expect(Number.isNaN(toy.z)).toBe(false);
+    }
+  });
 });
