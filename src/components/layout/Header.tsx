@@ -38,6 +38,7 @@ export function Header() {
       {/* Ações da barra superior: Câmeras e Tutorial */}
       <div className="pointer-events-auto inline-flex items-center gap-2">
         <nav
+          id="tour-camera-modes"
           aria-label="Modos de câmera"
           className="inline-flex items-center gap-1 rounded-2xl border border-[#8C6D4F]/20 bg-[#FBF7F0]/88 p-1.5 shadow-sm backdrop-blur-md"
         >
