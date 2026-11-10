@@ -17,6 +17,7 @@ export const INITIAL_DOCK_POSITION: Vector2D = { x: -4.15, z: 3.2 };
 
 export const INITIAL_CAT_POSITION: Vector2D = { x: -1.65, z: 0.35 };
 export const INITIAL_WHITE_CAT_POSITION: Vector2D = { x: 12.8, z: 0.2 };
+export const INITIAL_TUXEDO_CAT_POSITION: Vector2D = { x: 10.5, z: 5.5 };
 
 export const INITIAL_ROOM_DIMENSIONS: RoomDimensions = {
   width: 10,
@@ -120,10 +121,57 @@ export function getDynamicWhiteCatObstacle(): EnvironmentObstacle {
 }
 
 /**
+ * Bridge mutável de 60 FPS para o Gato Mesclado Preto e Branco (Frajola) de Olhos Verdes.
+ */
+export const tuxedoCatMotionBridge: CatMotionBridge = {
+  x: INITIAL_TUXEDO_CAT_POSITION.x,
+  y: 0,
+  z: INITIAL_TUXEDO_CAT_POSITION.z,
+  rotationY: 2.1,
+  targetRotationY: 2.1,
+  speed: 0.65,
+  state: 'WALKING',
+  animPhase: 2.8,
+  stateTimer: 4.0,
+  targetX: 11.5,
+  targetY: 0,
+  targetZ: 6.2,
+  radius: 0.34,
+  isPerched: false,
+  perchSurfaceId: null,
+  jumpProgress: 0,
+};
+
+/**
+ * Retorna o obstáculo dinâmico representando a posição instantânea do gato mesclado (Frajola).
+ */
+export function getDynamicTuxedoCatObstacle(): EnvironmentObstacle {
+  const r = tuxedoCatMotionBridge.radius;
+  const isPerched = (tuxedoCatMotionBridge.y ?? 0) > 0.35 || tuxedoCatMotionBridge.isPerched;
+  return {
+    id: 'dynamic-tuxedo-cat',
+    label: 'Gato Mesclado',
+    category: 'pet',
+    bounds: {
+      minX: tuxedoCatMotionBridge.x - r,
+      maxX: tuxedoCatMotionBridge.x + r,
+      minZ: tuxedoCatMotionBridge.z - r,
+      maxZ: tuxedoCatMotionBridge.z + r,
+    },
+    collidable: !isPerched,
+    height: 0.42,
+  };
+}
+
+/**
  * Retorna os obstáculos dinâmicos de todos os gatos da residência.
  */
 export function getDynamicAllCatsObstacles(): EnvironmentObstacle[] {
-  return [getDynamicCatObstacle(), getDynamicWhiteCatObstacle()];
+  return [
+    getDynamicCatObstacle(),
+    getDynamicWhiteCatObstacle(),
+    getDynamicTuxedoCatObstacle(),
+  ];
 }
 
 export const INITIAL_REGIONS: RoomRegion[] = [
@@ -400,6 +448,7 @@ export function stepPushableToysPhysics(
     { x: robotPos.x, z: robotPos.z, r: robotRadius, isRobot: true },
     { x: catMotionBridge.x, z: catMotionBridge.z, r: 0.26, isRobot: false },
     { x: whiteCatMotionBridge.x, z: whiteCatMotionBridge.z, r: 0.26, isRobot: false },
+    { x: tuxedoCatMotionBridge.x, z: tuxedoCatMotionBridge.z, r: 0.26, isRobot: false },
   ];
 
   for (const toy of pushableToysBridge) {
@@ -668,6 +717,21 @@ export const useEnvironmentStore = create<EnvironmentStoreState>((set, get) => (
     whiteCatMotionBridge.isPerched = false;
     whiteCatMotionBridge.perchSurfaceId = null;
     whiteCatMotionBridge.jumpProgress = 0;
+
+    tuxedoCatMotionBridge.x = INITIAL_TUXEDO_CAT_POSITION.x;
+    tuxedoCatMotionBridge.y = 0;
+    tuxedoCatMotionBridge.z = INITIAL_TUXEDO_CAT_POSITION.z;
+    tuxedoCatMotionBridge.targetX = 11.5;
+    tuxedoCatMotionBridge.targetY = 0;
+    tuxedoCatMotionBridge.targetZ = 6.2;
+    tuxedoCatMotionBridge.rotationY = 2.1;
+    tuxedoCatMotionBridge.targetRotationY = 2.1;
+    tuxedoCatMotionBridge.speed = 0.65;
+    tuxedoCatMotionBridge.state = 'WALKING';
+    tuxedoCatMotionBridge.stateTimer = 4.0;
+    tuxedoCatMotionBridge.isPerched = false;
+    tuxedoCatMotionBridge.perchSurfaceId = null;
+    tuxedoCatMotionBridge.jumpProgress = 0;
 
     resetPushableToys();
 

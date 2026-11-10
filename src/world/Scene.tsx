@@ -6,6 +6,7 @@ import { House } from './House/House';
 import { Robot } from './Robot/Robot';
 import { Cat } from './Cat/Cat';
 import { WhiteCat } from './Cat/WhiteCat';
+import { TuxedoCat } from './Cat/TuxedoCat';
 import { FollowCamera } from './Camera/FollowCamera';
 
 export function Scene() {
@@ -24,6 +25,7 @@ export function Scene() {
           <House />
           <Cat />
           <WhiteCat />
+          <TuxedoCat />
           <Robot />
           <FollowCamera />
         </Suspense>
