@@ -3,65 +3,54 @@
 ## Status Geral por Sprint
 
 - [x] **Planejamento Técnico Inicial (Seção 19)** — Concluído
-- [ ] **Sprint 1 — Fundação Visual e Interação** (Em andamento: Dias 1 e 2 concluídos)
-- [ ] **Sprint 2 — Inteligência e Navegação** (Pendente)
+- [x] **Sprint 1 — Fundação Visual e Interação** — CONCLUÍDO COM SUCESSO
+- [ ] **Sprint 2 — Inteligência e Navegação** (Próximo Sprint a iniciar)
 - [ ] **Sprint 3 — Limpeza Inteligente** (Pendente)
 - [ ] **Sprint 4 — Interação Avançada** (Pendente)
 - [ ] **Sprint 5 — Refinamento e Entrega** (Pendente)
 
 ---
 
-## Sprint 1 — Detalhamento de Tarefas
+## Sprint 1 — Fundação Visual e Interação (100% Concluído)
 
-### [x] Dia 1 — Setup e Arquitetura (CONCLUÍDO)
-- [x] 1. Verificar o ambiente de desenvolvimento (`Node v24.14.0`, `npm 11.19.0`).
-- [x] 2. Criar projeto React 19 com Vite 6 e TypeScript 5.8.
-- [x] 3. Configurar dependências (`three`, `@react-three/fiber`, `@react-three/drei`, `zustand`, `lucide-react`, `vitest`).
-- [x] 4. Configurar Tailwind CSS v4 (`@tailwindcss/vite`) e tokens tipográficos/cromáticos.
-- [x] 5. Configurar Zustand (`robotStore`, `environmentStore`, `commandStore`) com `robotMotionBridge` para 60 FPS sem re-renderizações por frame.
-- [x] 6. Criar estrutura modular de pastas (`app`, `components`, `world`, `store`, `types`, `hooks`, `utils`, `styles`, `docs`).
-- [x] 7. Criar aplicação principal (`App.tsx`, `Dashboard.tsx`, `Header.tsx`).
-- [x] 8. Configurar `Canvas` R3F com sombras, iluminação cinematográfica inicial e palco 3D base (`Scene.tsx`, `Lighting.tsx`, `Materials.ts`).
-- [x] 9. Criar layout inicial tátil (`StatusCard.tsx`, `ControlPanel.tsx`, `BatteryIndicator.tsx`, `ProgressBar.tsx`).
-- [x] 10. Validar execução com testes automatizados (`vitest`) e build de produção (`tsc -b && vite build`).
+### [x] Dia 1 — Setup e Arquitetura
+- [x] Projeto React 19 + Vite 6 + TypeScript 5.8 + Tailwind CSS v4 + Vitest configurado.
+- [x] Documentação arquitetural em `docs/` (`ARCHITECTURE.md`, `PRODUCT_SPEC.md`, `DECISIONS.md`, `SPRINT_PLAN.md`, `PROGRESS.md`).
+- [x] Stores Zustand (`robotStore`, `environmentStore`, `commandStore`) com `robotMotionBridge` para 60 FPS sem re-renderizações por frame.
+- [x] Componentes de HUD tátil (`StatusCard`, `ControlPanel`, `BatteryIndicator`, `ProgressBar`).
 
-### [x] Dia 2 — Construção da Casa (CONCLUÍDO)
-- [x] 1. Criar piso detalhado de madeira com tábuas alternadas e ranhuras de relevo (`src/world/House/Floor.tsx`).
-- [x] 2. Criar paredes com acabamento em gesso, painel boiserie e rodapés (`src/world/House/Walls.tsx`).
-- [x] 3. Criar sofá de linho de 3 lugares com almofadas macias e pés de madeira inclinados (`src/world/House/Furniture.tsx`).
-- [x] 4. Criar mesa de centro com tampo de vidro, revistas, livros de arte e xícara de cerâmica.
-- [x] 5. Criar tapete central amplo texturizado com orla geométrica.
-- [x] 6. Criar estante/rack de entretenimento com nichos, livros coloridos e televisão de perfil fino.
-- [x] 7. Criar janelas amplas com moldura branca, vidro físico, entrada solar e porta de acesso semiaberta.
-- [x] 8. Implementar planta decorativa Monstera Deliciosa em vaso cerâmico e luminária de piso em latão.
-- [x] 9. Configurar iluminação cinematográfica com sombras direcionais nítidas, sombras de contato (`ContactShadows`) e luzes pontuais de realce (`Lighting.tsx`).
-- [x] 10. Configurar enquadramento e módulo unificado da casa (`src/world/House/House.tsx`, `Scene.tsx`).
+### [x] Dia 2 — Construção da Casa
+- [x] Piso de madeira laminada com variação de tábuas em *running bond* (`src/world/House/Floor.tsx`).
+- [x] Paredes arquitetônicas com cortes cinematográficos, esquadrias brancas, vidro físico translúcido e porta semiaberta (`src/world/House/Walls.tsx`).
+- [x] Mobiliário estilizado: sofá de linho cru com almofadas, mesa de centro contemporânea com tampo de vidro, tapete central, estante/rack de TV, vaso com planta *Monstera Deliciosa*, luminária em latão e base de recarga detalhada (`src/world/House/Furniture.tsx`).
+- [x] Iluminação cinematográfica com sombras direcionais nítidas, luz hemisférica e sombras de contato suaves (`src/world/Environment/Lighting.tsx`).
 
-### [ ] Dia 3 — Aspirador (PRÓXIMA TAREFA PENDENTE)
-- [ ] 1. Criar corpo detalhado do aspirador (`src/world/Robot/RobotModel.tsx`).
-- [ ] 2. Criar rodas funcionais animadas.
-- [ ] 3. Criar sensores visíveis e bumper frontal.
-- [ ] 4. Criar olhos digitais expressivos reativos ao estado.
-- [ ] 5. Implementar movimentação suave com aceleração e desaceleração (`src/world/Robot/Robot.tsx`).
-- [ ] 6. Implementar rotação amortecida.
-- [ ] 7. Criar animações e efeitos (`src/world/Robot/RobotAnimations.ts`, `src/world/Robot/RobotEffects.tsx`).
-- [ ] 8. Implementar câmera dedicada em terceira pessoa (`src/world/Camera/FollowCamera.tsx`).
+### [x] Dia 3 — Aspirador
+- [x] Modelo 3D de alta expressividade `RobotModel.tsx`: chassi chanfrado, bumper frontal articulado, rodas funcionais com pneus de borracha, rodízio frontal, torre LIDAR 360 e visor frontal com olhos digitais dinâmicos.
+- [x] Locomoção orgânica `RobotAnimations.ts`: oscilação natural (*bobbing*), rotação suave amortecida, pitch ao acelerar/frear e roll em curvas acentuadas.
+- [x] Efeitos visuais `RobotEffects.tsx` com anel luminoso e pulso de aspiração.
+- [x] Câmera em terceira pessoa amortecida `FollowCamera.tsx` com 3 presets (`Acompanhar`, `Visão geral`, `Personagem`).
 
-### [ ] Dia 4 — Interação (Pendente)
-- [ ] 1. Consolidar máquina de estados completa e transições seguras.
-- [ ] 2. Implementar comando iniciar com feedback completo.
-- [ ] 3. Implementar comando pausar.
-- [ ] 4. Implementar comando retomar.
-- [ ] 5. Implementar comando de retorno à base.
-- [ ] 6. Sincronizar painel lateral e `CommandInput.tsx`.
-- [ ] 7. Implementar sistema de notificações contextuais e histórico.
+### [x] Dia 4 — Interação
+- [x] Máquina de estados completa (`IDLE`, `EXPLORING`, `CLEANING`, `AVOIDING`, `RETURNING`, `RECHARGING`, `PAUSED`, `COMPLETED`).
+- [x] Controles de Iniciar, Pausar, Retomar, Retornar à Base e Reiniciar Simulação com validação de estados incompatíveis.
+- [x] Caixa de entrada por linguagem natural `CommandInput.tsx` (interpreta instruções de texto como "limpar tapete", "ir à base", "pausar").
+- [x] Sistema de notificações contextuais na UI com histórico e descarte interativo.
 
-### [ ] Dia 5 — Autonomia Inicial (Pendente)
-- [ ] 1. Criar obstáculos identificáveis sincronizados com a geometria da sala (`src/agent/navigation/ObstacleDetector.ts`).
-- [ ] 2. Implementar sensores simulados (`src/agent/perception/SensorSystem.ts`, `EnvironmentScanner.ts`).
-- [ ] 3. Implementar desvio básico de obstáculos.
-- [ ] 4. Implementar movimentação autônoma (`src/agent/AgentController.ts`).
-- [ ] 5. Sincronizar agente e cena 3D.
-- [ ] 6. Executar bateria de testes automatizados.
-- [ ] 7. Corrigir eventuais problemas.
-- [ ] 8. Documentar a entrega final do Sprint 1.
+### [x] Dia 5 — Autonomia Inicial
+- [x] Detector de obstáculos puro TypeScript `src/agent/navigation/ObstacleDetector.ts` com cálculo de proximidade e colisão em bounding boxes 2D.
+- [x] Sistema de sensores simulados ToF / LIDAR `src/agent/perception/SensorSystem.ts` com varredura em leque angular frontal.
+- [x] Controlador autônomo desacoplado `src/agent/AgentController.ts` que calcula velocidade e manobra evasiva em tempo real.
+- [x] Integração completa entre o agente e a cena 3D.
+- [x] Bateria de testes de unidade e componentes (13 testes aprovados, build 100% verde).
+
+---
+
+## Próximo Passo: Início do Sprint 2 — Inteligência e Navegação
+
+### Entregas previstas do Sprint 2:
+1. **Grade de Ocupação (`GridMap.ts`)**: Mapeamento discreto do piso da sala em células navegáveis, bloqueadas e exploradas.
+2. **Algoritmo A\* (`PathPlanner.ts`)**: Planejamento de rotas ótimas sem colisão com móveis ou paredes.
+3. **Replanejamento Dinâmico de Trajetória**: Recálculo automático quando o caminho for obstruído.
+4. **Sistema de Exploração Autônoma**: Identificação e cobertura metódica de regiões desconhecidas.
+5. **Sincronização Visual de Rota**: Representação visual sutil do trajeto planejado no piso.

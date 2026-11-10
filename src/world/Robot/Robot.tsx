@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { RobotModel } from './RobotModel';
@@ -7,6 +7,7 @@ import { updateRobotLocomotion, type RobotLocomotionState } from './RobotAnimati
 import { robotMotionBridge, useRobotStore } from '@/store/robotStore';
 import { useEnvironmentStore } from '@/store/environmentStore';
 import { useCommandStore } from '@/store/commandStore';
+import { AgentController } from '@/agent/AgentController';
 import { clamp, distance2D } from '@/utils/math';
 
 const PATROL_POINTS = [
@@ -30,6 +31,14 @@ export function Robot() {
 
   const state = useRobotStore((s) => s.state);
   const expression = useRobotStore((s) => s.expression);
+  const obstacles = useEnvironmentStore((s) => s.obstacles);
+  const roomDimensions = useEnvironmentStore((s) => s.roomDimensions);
+
+  // Instância do controlador desacoplado
+  const agent = useMemo(
+    () => new AgentController(obstacles, roomDimensions.width, roomDimensions.depth),
+    [obstacles, roomDimensions]
+  );
 
   // Estado interno de locomoção em ref mutável
   const locomotionRef = useRef<RobotLocomotionState>({
@@ -53,21 +62,32 @@ export function Robot() {
     const cmdState = useCommandStore.getState();
 
     let targetPoint: { x: number; z: number } | null = null;
-    let targetSpeed = 0;
 
     if (robotState.state === 'CLEANING' || robotState.state === 'EXPLORING') {
       targetPoint =
         robotState.targetPosition ??
         PATROL_POINTS[patrolIdxRef.current % PATROL_POINTS.length];
-      targetSpeed = robotState.speed;
     } else if (robotState.state === 'RETURNING') {
       targetPoint = envState.dockPosition;
-      targetSpeed = robotState.speed * 1.1;
     }
 
-    let desiredHeading: number | null = null;
+    // Consulta de tomada de decisão autônoma do agente desacoplado
+    const decision = agent.decide(
+      robotState.state,
+      { x: loc.x, z: loc.z },
+      loc.rotationY,
+      targetPoint,
+      robotState.speed,
+      robotState.currentRegionId,
+      delta
+    );
 
-    if (targetPoint && targetSpeed > 0) {
+    // Se o agente detectar colisão e transicionar para desvio
+    if (decision.nextState !== robotState.state && decision.nextState === 'AVOIDING') {
+      robotState.setOperationalState('AVOIDING', decision.logAction);
+    }
+
+    if (targetPoint && decision.desiredSpeed > 0) {
       const currentPos = { x: loc.x, z: loc.z };
       const dist = distance2D(currentPos, targetPoint);
 
@@ -89,16 +109,11 @@ export function Robot() {
           }
           patrolIdxRef.current = (patrolIdxRef.current + 1) % PATROL_POINTS.length;
         }
-      } else {
-        desiredHeading = Math.atan2(
-          targetPoint.x - currentPos.x,
-          targetPoint.z - currentPos.z
-        );
       }
     }
 
-    // Atualiza locomoção física
-    updateRobotLocomotion(loc, targetSpeed, desiredHeading, delta);
+    // Atualiza locomoção física com base nas diretrizes do AgentController
+    updateRobotLocomotion(loc, decision.desiredSpeed, decision.desiredHeading, delta);
 
     // Avança posição linear no plano horizontal
     if (loc.speed > 0.001) {
