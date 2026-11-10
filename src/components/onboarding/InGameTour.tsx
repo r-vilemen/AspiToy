@@ -220,26 +220,6 @@ export function InGameTour() {
         />
       </svg>
 
-      {/* MÃOZINHA APONTANDO ANIMADA (Estilo do vídeo do usuário) */}
-      <div
-        className="absolute pointer-events-none z-50 transition-all duration-300 ease-out"
-        style={{
-          left: `${spotlight.cx}px`,
-          top: `${spotlight.cy}px`,
-          transform: 'translate(-50%, -50%)',
-        }}
-      >
-        <div className="relative animate-bounce">
-          {/* Ícone de mão apontando estilo luva branca com contorno escuro */}
-          <svg
-            viewBox="0 0 24 24"
-            className="h-10 w-10 drop-shadow-lg text-white fill-white stroke-[#1E1A17] stroke-[1.8]"
-          >
-            <path d="M9 3a1.5 1.5 0 0 1 3 0v6.2l.8-.7a2.1 2.1 0 0 1 3 0 2 2 0 0 1 .4 2.2l-2.4 5.3a4.5 4.5 0 0 1-4.1 2.8H8.5A4.5 4.5 0 0 1 4 14.3v-4.5a1.5 1.5 0 0 1 3 0V11h2V3z" />
-          </svg>
-        </div>
-      </div>
-
       {/* CARTÃO EXPLICATIVO FLUTUANTE POSICIONADO PRÓXIMO AO ELEMENTO */}
       <div
         className={`absolute z-50 p-4 transition-all duration-300 ease-out ${
