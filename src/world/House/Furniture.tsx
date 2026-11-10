@@ -194,18 +194,189 @@ export const Furniture = memo(function Furniture() {
       </group>
 
       {/* ======================================================== */}
-      {/* 7. BRINQUEDOS LOW-POLY ESPALHADOS PELO CHÃO              */}
+      {/* 7. BRINQUEDOS LOW-POLY ESPALHADOS PELO QUARTO (PS2 STYLE)*/}
       {/* ======================================================== */}
-      {/* Blocos ABC empilhados perto do lambris esquerdo */}
-      <group position={[-3.3, 0, 1.55]}>
-        <mesh castShadow receiveShadow position={[0, 0.16, 0]} material={sharedMaterials.robotCoralTrim}>
+      {/* 7.1. Blocos ABC empilhados perto do lambris esquerdo */}
+      <group position={[-3.2, 0, 1.6]}>
+        <mesh position={[0.1, 0.008, 0.05]} rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[0.42, 12]} />
+          <meshBasicMaterial color="#1F0E03" transparent opacity={0.44} depthWrite={false} />
+        </mesh>
+        <mesh castShadow receiveShadow position={[-0.14, 0.16, 0]} material={sharedMaterials.robotCoralTrim}>
           <boxGeometry args={[0.32, 0.32, 0.32]} />
         </mesh>
-        <mesh castShadow receiveShadow position={[0.34, 0.16, 0.12]} rotation={[0, 0.3, 0]} material={sharedMaterials.robotBlueTrim}>
+        <mesh castShadow receiveShadow position={[0.2, 0.16, 0.12]} rotation={[0, 0.3, 0]} material={sharedMaterials.robotBlueTrim}>
           <boxGeometry args={[0.32, 0.32, 0.32]} />
         </mesh>
-        <mesh castShadow receiveShadow position={[0.15, 0.48, 0.05]} rotation={[0, -0.25, 0]} material={sharedMaterials.robotYellowTrim}>
+        <mesh castShadow receiveShadow position={[0.02, 0.47, 0.05]} rotation={[0, -0.25, 0]} material={sharedMaterials.robotYellowTrim}>
           <boxGeometry args={[0.3, 0.3, 0.3]} />
+        </mesh>
+      </group>
+
+      {/* 7.2. Bola Amarela Clássica com Faixa Azul e Estrela Vermelha (Luxo Ball PS2) */}
+      <group position={[-1.38, 0, 0.52]}>
+        {/* Blob shadow */}
+        <mesh position={[0, 0.008, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[0.24, 12]} />
+          <meshBasicMaterial color="#1F0E03" transparent opacity={0.48} depthWrite={false} />
+        </mesh>
+        {/* Esfera amarela low-poly */}
+        <mesh castShadow receiveShadow position={[0, 0.21, 0]} material={sharedMaterials.robotYellowTrim}>
+          <sphereGeometry args={[0.21, 12, 10]} />
+        </mesh>
+        {/* Faixa equatorial azul */}
+        <mesh position={[0, 0.21, 0]} rotation={[0.25, 0, 0.18]} material={sharedMaterials.robotBlueTrim}>
+          <cylinderGeometry args={[0.214, 0.214, 0.065, 12]} />
+        </mesh>
+        {/* Estrela / emblema vermelho no topo */}
+        <mesh position={[0, 0.415, 0.03]} rotation={[0.15, 0.4, 0]} material={sharedMaterials.robotCoralTrim}>
+          <cylinderGeometry args={[0.075, 0.075, 0.015, 5]} />
+        </mesh>
+      </group>
+
+      {/* 7.3. Trenzinho de Madeira Colorido Low-Poly */}
+      <group position={[1.62, 0, -2.68]} rotation={[0, -0.35, 0]}>
+        <mesh position={[0, 0.008, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[0.72, 0.38]} />
+          <meshBasicMaterial color="#1F0E03" transparent opacity={0.44} depthWrite={false} />
+        </mesh>
+        {/* Base da locomotiva */}
+        <mesh castShadow position={[-0.14, 0.09, 0]} material={sharedMaterials.robotCoralTrim}>
+          <boxGeometry args={[0.36, 0.08, 0.2]} />
+        </mesh>
+        {/* Cabine azul */}
+        <mesh castShadow position={[-0.22, 0.22, 0]} material={sharedMaterials.robotBlueTrim}>
+          <boxGeometry args={[0.18, 0.18, 0.19]} />
+        </mesh>
+        {/* Teto amarelo da cabine */}
+        <mesh castShadow position={[-0.22, 0.33, 0]} material={sharedMaterials.robotYellowTrim}>
+          <boxGeometry args={[0.21, 0.04, 0.22]} />
+        </mesh>
+        {/* Caldeira cilíndrica */}
+        <mesh castShadow position={[-0.04, 0.18, 0]} rotation={[0, 0, Math.PI / 2]} material={sharedMaterials.robotCoralTrim}>
+          <cylinderGeometry args={[0.075, 0.075, 0.2, 8]} />
+        </mesh>
+        {/* Chaminé */}
+        <mesh castShadow position={[0.01, 0.28, 0]} material={sharedMaterials.robotYellowTrim}>
+          <cylinderGeometry args={[0.032, 0.024, 0.1, 8]} />
+        </mesh>
+        {/* Vagão traseiro verde */}
+        <mesh castShadow position={[0.2, 0.12, 0]} material={sharedMaterials.plantFoliage}>
+          <boxGeometry args={[0.24, 0.14, 0.18]} />
+        </mesh>
+        {/* Rodinhas do trem */}
+        {[-0.24, -0.05, 0.14, 0.26].map((wx, i) => (
+          <group key={i} position={[wx, 0.045, 0]}>
+            <mesh position={[0, 0, 0.11]} rotation={[Math.PI / 2, 0, 0]} material={sharedMaterials.robotVisor}>
+              <cylinderGeometry args={[0.042, 0.042, 0.025, 8]} />
+            </mesh>
+            <mesh position={[0, 0, -0.11]} rotation={[Math.PI / 2, 0, 0]} material={sharedMaterials.robotVisor}>
+              <cylinderGeometry args={[0.042, 0.042, 0.025, 8]} />
+            </mesh>
+          </group>
+        ))}
+      </group>
+
+      {/* 7.4. Torre de Argolas Coloridas (Ring Stacker Toy) */}
+      <group position={[-0.94, 0, -2.7]}>
+        <mesh position={[0, 0.008, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[0.24, 12]} />
+          <meshBasicMaterial color="#1F0E03" transparent opacity={0.45} depthWrite={false} />
+        </mesh>
+        {/* Base branca */}
+        <mesh castShadow position={[0, 0.03, 0]} material={sharedMaterials.robotShell}>
+          <cylinderGeometry args={[0.2, 0.22, 0.06, 10]} />
+        </mesh>
+        {/* Pino central */}
+        <mesh position={[0, 0.22, 0]} material={sharedMaterials.furnitureWood}>
+          <cylinderGeometry args={[0.028, 0.032, 0.38, 8]} />
+        </mesh>
+        {/* Argolas empilhadas */}
+        {[
+          { y: 0.085, r: 0.175, mat: sharedMaterials.robotBlueTrim },
+          { y: 0.145, r: 0.15, mat: sharedMaterials. plantFoliage },
+          { y: 0.205, r: 0.125, mat: sharedMaterials.robotYellowTrim },
+          { y: 0.265, r: 0.1, mat: sharedMaterials.robotCoralTrim },
+        ].map((ring, idx) => (
+          <mesh key={idx} castShadow position={[0, ring.y, 0]} material={ring.mat}>
+            <cylinderGeometry args={[ring.r, ring.r, 0.055, 10]} />
+          </mesh>
+        ))}
+      </group>
+
+      {/* 7.5. Carrinho de Controle Remoto (RC Buggy Verde/Azul estilo Toy Story) */}
+      <group position={[3.0, 0, 1.95]} rotation={[0, -2.2, 0]}>
+        <mesh position={[0, 0.008, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[0.62, 0.46]} />
+          <meshBasicMaterial color="#1F0E03" transparent opacity={0.46} depthWrite={false} />
+        </mesh>
+        {/* Chassi esportivo verde */}
+        <mesh castShadow position={[0, 0.1, 0]} material={sharedMaterials.plantFoliage}>
+          <boxGeometry args={[0.48, 0.1, 0.26]} />
+        </mesh>
+        {/* Capota azul inclinada */}
+        <mesh castShadow position={[-0.04, 0.18, 0]} material={sharedMaterials.robotBlueTrim}>
+          <boxGeometry args={[0.22, 0.09, 0.2]} />
+        </mesh>
+        {/* Aerofólio traseiro vermelho */}
+        <mesh castShadow position={[-0.22, 0.22, 0]} material={sharedMaterials.robotCoralTrim}>
+          <boxGeometry args={[0.06, 0.08, 0.28]} />
+        </mesh>
+        {/* Antena longa de controle remoto */}
+        <mesh position={[-0.18, 0.34, 0.08]} material={sharedMaterials.robotVisor}>
+          <cylinderGeometry args={[0.006, 0.008, 0.32, 6]} />
+        </mesh>
+        {/* 4 Pneus largos off-road */}
+        {[
+          [0.16, 0.075, 0.16],
+          [0.16, 0.075, -0.16],
+          [-0.16, 0.085, 0.16],
+          [-0.16, 0.085, -0.16],
+        ].map(([wx, wy, wz], idx) => (
+          <mesh key={idx} castShadow position={[wx, wy, wz]} rotation={[Math.PI / 2, 0, 0]} material={sharedMaterials.robotVisor}>
+            <cylinderGeometry args={[wy, wy, 0.07, 10]} />
+          </mesh>
+        ))}
+      </group>
+
+      {/* 7.6. Pinos de Boliche de Plástico (Brancos com Listras Vermelhas) */}
+      <group position={[-2.85, 0, -0.65]}>
+        <mesh position={[0, 0.008, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[0.3, 12]} />
+          <meshBasicMaterial color="#1F0E03" transparent opacity={0.42} depthWrite={false} />
+        </mesh>
+        {[
+          [-0.11, -0.08],
+          [0.11, -0.06],
+          [0.0, 0.11],
+        ].map(([px, pz], idx) => (
+          <group key={idx} position={[px, 0, pz]}>
+            <mesh castShadow position={[0, 0.14, 0]} material={sharedMaterials.robotShell}>
+              <cylinderGeometry args={[0.042, 0.068, 0.28, 8]} />
+            </mesh>
+            <mesh castShadow position={[0, 0.32, 0]} material={sharedMaterials.robotShell}>
+              <sphereGeometry args={[0.052, 8, 8]} />
+            </mesh>
+            <mesh position={[0, 0.24, 0]} material={sharedMaterials.robotCoralTrim}>
+              <cylinderGeometry args={[0.046, 0.048, 0.035, 8]} />
+            </mesh>
+          </group>
+        ))}
+      </group>
+
+      {/* 7.7. Baldinho Verde de Soldadinhos (Army Men Bucket) */}
+      <group position={[2.35, 0, 2.45]}>
+        <mesh position={[0, 0.008, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[0.26, 12]} />
+          <meshBasicMaterial color="#1F0E03" transparent opacity={0.45} depthWrite={false} />
+        </mesh>
+        {/* Corpo cilíndrico verde-militar */}
+        <mesh castShadow receiveShadow position={[0, 0.21, 0]} material={sharedMaterials.plantFoliage}>
+          <cylinderGeometry args={[0.21, 0.17, 0.42, 10]} />
+        </mesh>
+        {/* Tampa branca encostada ao lado */}
+        <mesh castShadow position={[0.18, 0.04, 0.12]} rotation={[0.4, 0.2, 0.9]} material={sharedMaterials.robotShell}>
+          <cylinderGeometry args={[0.22, 0.22, 0.03, 10]} />
         </mesh>
       </group>
 

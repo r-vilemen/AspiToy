@@ -530,3 +530,4 @@ export function Cat() {
     </group>
   );
 }
+
