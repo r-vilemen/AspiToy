@@ -138,4 +138,20 @@ describe('Responsividade Mobile e Desktop da Interface', () => {
       })
     ).toBeNull();
   });
+
+  it('Dashboard renderiza rodapé fixo e compacto com créditos e link para o LinkedIn da RVACODE', () => {
+    render(<Dashboard />);
+
+    expect(screen.getByText(/Projeto desenvolvido por/i)).toBeDefined();
+
+    const link = screen.getByRole('link', {
+      name: /Perfil no LinkedIn de Rodrigo Vilemen \(RVACODE\)/i,
+    });
+    expect(link).toBeDefined();
+    expect(link.getAttribute('href')).toBe(
+      'https://www.linkedin.com/in/rodrigo-vilemen/'
+    );
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('rel')).toContain('noopener');
+  });
 });

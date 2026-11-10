@@ -64,7 +64,7 @@ export function Dashboard() {
       <div className="pointer-events-none relative z-10 flex h-full flex-col justify-between">
         <Header />
 
-        <div className="flex flex-1 flex-col justify-end gap-2 p-2.5 sm:gap-3 sm:flex-row sm:items-end sm:justify-between sm:p-6">
+        <div className="flex flex-1 flex-col justify-end gap-2 p-2.5 pb-8 sm:pb-6 sm:gap-3 sm:flex-row sm:items-end sm:justify-between sm:p-6">
           {/* Notificação de Evento no Estilo Alerta de Jogo */}
           <div className="pointer-events-auto w-full max-w-sm sm:max-w-md">
             {latestNotification && (
@@ -225,6 +225,22 @@ export function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Rodapé fixo e compacto com créditos do desenvolvedor */}
+      <footer className="pointer-events-auto fixed bottom-1.5 sm:bottom-2 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center">
+        <div className="flex items-center gap-1 rounded-full border border-[#2A211B]/25 bg-[#FFFDF8]/90 px-3 py-0.5 text-[10px] sm:text-[11px] font-bold text-[#6E5D4F] shadow-[1.5px_1.5px_0px_#2A211B] backdrop-blur-xs transition hover:bg-[#FFFDF8]">
+          <span>Projeto desenvolvido por</span>
+          <a
+            href="https://www.linkedin.com/in/rodrigo-vilemen/"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Perfil no LinkedIn de Rodrigo Vilemen (RVACODE)"
+            className="font-black text-[#E05A36] hover:text-[#C2410C] hover:underline underline-offset-2 transition"
+          >
+            RVACODE
+          </a>
+        </div>
+      </footer>
     </div>
   );
 }
