@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { GridMap } from '../navigation/GridMap';
 import { PathPlanner } from '../navigation/PathPlanner';
-import { INITIAL_OBSTACLES, INITIAL_ROOM_DIMENSIONS } from '@/store/environmentStore';
+import { INITIAL_DOCK_POSITION, INITIAL_OBSTACLES, INITIAL_ROOM_DIMENSIONS } from '@/store/environmentStore';
 
 describe('Inteligência e Navegação com Grade e Algoritmo A* (Sprint 2)', () => {
   const grid = new GridMap(
@@ -70,6 +70,22 @@ describe('Inteligência e Navegação com Grade e Algoritmo A* (Sprint 2)', () =
     const destination = pathToUnderTable[pathToUnderTable.length - 1];
     expect(Math.abs(destination.x - underTablePoint.x)).toBeLessThanOrEqual(0.35);
     expect(Math.abs(destination.z - underTablePoint.z)).toBeLessThanOrEqual(0.35);
+  });
+
+  it('permite que o robô navegue até a base de carregamento localizada no canto do quarto', () => {
+    // A base no canto sudoeste (INITIAL_DOCK_POSITION) deve ser navegável no GridMap
+    const dockCell = grid.getCellAtWorld(INITIAL_DOCK_POSITION);
+    expect(dockCell).not.toBeNull();
+    expect(grid.isWalkable(dockCell!.col, dockCell!.row)).toBe(true);
+
+    // Rota de retorno à base partindo do centro da sala
+    const startPos = { x: 0, z: 0 };
+    const pathToDock = planner.findPath(startPos, INITIAL_DOCK_POSITION);
+    expect(pathToDock.length).toBeGreaterThan(1);
+
+    const endPoint = pathToDock[pathToDock.length - 1];
+    expect(Math.abs(endPoint.x - INITIAL_DOCK_POSITION.x)).toBeLessThanOrEqual(0.35);
+    expect(Math.abs(endPoint.z - INITIAL_DOCK_POSITION.z)).toBeLessThanOrEqual(0.35);
   });
 });
 
