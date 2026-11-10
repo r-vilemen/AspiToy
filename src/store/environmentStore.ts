@@ -156,7 +156,7 @@ export const INITIAL_OBSTACLES: EnvironmentObstacle[] = [
   },
   {
     id: 'toy-luxo-ball',
-    label: 'Bola Estrela Toy',
+    label: 'Bola Planeta Toy',
     category: 'decor',
     bounds: { minX: -1.62, maxX: -1.14, minZ: 0.28, maxZ: 0.76 },
     collidable: true,
