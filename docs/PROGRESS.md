@@ -3,7 +3,7 @@
 ## Status Geral por Sprint
 
 - [x] **Planejamento Técnico Inicial (Seção 19)** — Concluído
-- [ ] **Sprint 1 — Fundação Visual e Interação** (Em andamento: Dia 1 concluído)
+- [ ] **Sprint 1 — Fundação Visual e Interação** (Em andamento: Dias 1 e 2 concluídos)
 - [ ] **Sprint 2 — Inteligência e Navegação** (Pendente)
 - [ ] **Sprint 3 — Limpeza Inteligente** (Pendente)
 - [ ] **Sprint 4 — Interação Avançada** (Pendente)
@@ -25,19 +25,19 @@
 - [x] 9. Criar layout inicial tátil (`StatusCard.tsx`, `ControlPanel.tsx`, `BatteryIndicator.tsx`, `ProgressBar.tsx`).
 - [x] 10. Validar execução com testes automatizados (`vitest`) e build de produção (`tsc -b && vite build`).
 
-### [ ] Dia 2 — Construção da Casa (PRÓXIMA TAREFA PENDENTE)
-- [ ] 1. Criar piso detalhado (`src/world/House/Floor.tsx`).
-- [ ] 2. Criar paredes com acabamentos e rodapés (`src/world/House/Walls.tsx`).
-- [ ] 3. Criar sofá detalhado com almofadas e pés de madeira.
-- [ ] 4. Criar mesa de centro com objetos decorativos.
-- [ ] 5. Criar tapete texturizado com borda.
-- [ ] 6. Criar estante/rack com objetos, livros e tela.
-- [ ] 7. Criar janelas com molduras, vidro e entrada de luz natural + porta de acesso.
-- [ ] 8. Refinar iluminação cinematográfica e plantas decorativas (`src/world/House/Furniture.tsx`, `src/world/House/House.tsx`).
-- [ ] 9. Configurar sombras suaves e contato.
-- [ ] 10. Configurar enquadramento de câmera para valorizar profundidade e escala.
+### [x] Dia 2 — Construção da Casa (CONCLUÍDO)
+- [x] 1. Criar piso detalhado de madeira com tábuas alternadas e ranhuras de relevo (`src/world/House/Floor.tsx`).
+- [x] 2. Criar paredes com acabamento em gesso, painel boiserie e rodapés (`src/world/House/Walls.tsx`).
+- [x] 3. Criar sofá de linho de 3 lugares com almofadas macias e pés de madeira inclinados (`src/world/House/Furniture.tsx`).
+- [x] 4. Criar mesa de centro com tampo de vidro, revistas, livros de arte e xícara de cerâmica.
+- [x] 5. Criar tapete central amplo texturizado com orla geométrica.
+- [x] 6. Criar estante/rack de entretenimento com nichos, livros coloridos e televisão de perfil fino.
+- [x] 7. Criar janelas amplas com moldura branca, vidro físico, entrada solar e porta de acesso semiaberta.
+- [x] 8. Implementar planta decorativa Monstera Deliciosa em vaso cerâmico e luminária de piso em latão.
+- [x] 9. Configurar iluminação cinematográfica com sombras direcionais nítidas, sombras de contato (`ContactShadows`) e luzes pontuais de realce (`Lighting.tsx`).
+- [x] 10. Configurar enquadramento e módulo unificado da casa (`src/world/House/House.tsx`, `Scene.tsx`).
 
-### [ ] Dia 3 — Aspirador (Pendente)
+### [ ] Dia 3 — Aspirador (PRÓXIMA TAREFA PENDENTE)
 - [ ] 1. Criar corpo detalhado do aspirador (`src/world/Robot/RobotModel.tsx`).
 - [ ] 2. Criar rodas funcionais animadas.
 - [ ] 3. Criar sensores visíveis e bumper frontal.
@@ -65,4 +65,3 @@
 - [ ] 6. Executar bateria de testes automatizados.
 - [ ] 7. Corrigir eventuais problemas.
 - [ ] 8. Documentar a entrega final do Sprint 1.
-

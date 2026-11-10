@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { Lighting } from './Environment/Lighting';
 import { sharedMaterials, WORLD_PALETTE } from './Environment/Materials';
+import { House } from './House/House';
 import { robotMotionBridge, useRobotStore } from '@/store/robotStore';
 import { useEnvironmentStore } from '@/store/environmentStore';
 import { useCommandStore } from '@/store/commandStore';
@@ -18,204 +19,6 @@ const WAYPOINTS = [
   { x: 0.2, z: 1.1 },
   { x: -2.2, z: 0.8 },
 ];
-
-function InitialRoomStage() {
-  const dockPosition = useEnvironmentStore((s) => s.dockPosition);
-  const dustSpots = useEnvironmentStore((s) => s.dustSpots);
-
-  return (
-    <group name="initial-living-room">
-      {/* Base do Piso de Madeira */}
-      <mesh
-        receiveShadow
-        position={[0, -0.06, 0]}
-        material={sharedMaterials.floorWood}
-      >
-        <boxGeometry args={[10, 0.12, 8]} />
-      </mesh>
-
-      {/* Moldura externa do piso */}
-      <mesh
-        receiveShadow
-        position={[0, -0.09, 0]}
-        material={sharedMaterials.floorTrim}
-      >
-        <boxGeometry args={[10.28, 0.08, 8.28]} />
-      </mesh>
-
-      {/* Parede Norte (Fundo) */}
-      <mesh
-        castShadow
-        receiveShadow
-        position={[0, 1.5, -4.06]}
-        material={sharedMaterials.wallPlaster}
-      >
-        <boxGeometry args={[10.2, 3.0, 0.14]} />
-      </mesh>
-
-      {/* Parede Leste com Abertura de Janela Solar */}
-      <group position={[5.06, 0, 0]}>
-        {/* Parte inferior da janela */}
-        <mesh
-          castShadow
-          receiveShadow
-          position={[0, 0.45, 0]}
-          material={sharedMaterials.wallPlaster}
-        >
-          <boxGeometry args={[0.14, 0.9, 8.14]} />
-        </mesh>
-        {/* Parte superior da janela */}
-        <mesh
-          castShadow
-          receiveShadow
-          position={[0, 2.65, 0]}
-          material={sharedMaterials.wallPlaster}
-        >
-          <boxGeometry args={[0.14, 0.7, 8.14]} />
-        </mesh>
-        {/* Coluna esquerda da parede leste */}
-        <mesh
-          castShadow
-          receiveShadow
-          position={[0, 1.6, -2.8]}
-          material={sharedMaterials.wallPlaster}
-        >
-          <boxGeometry args={[0.14, 1.4, 2.5]} />
-        </mesh>
-        {/* Coluna direita da parede leste */}
-        <mesh
-          castShadow
-          receiveShadow
-          position={[0, 1.6, 2.8]}
-          material={sharedMaterials.wallPlaster}
-        >
-          <boxGeometry args={[0.14, 1.4, 2.5]} />
-        </mesh>
-      </group>
-
-      {/* Rodapés de Madeira */}
-      <mesh
-        receiveShadow
-        position={[0, 0.06, -3.97]}
-        material={sharedMaterials.floorTrim}
-      >
-        <boxGeometry args={[9.95, 0.12, 0.04]} />
-      </mesh>
-      <mesh
-        receiveShadow
-        position={[4.97, 0.06, 0]}
-        material={sharedMaterials.floorTrim}
-      >
-        <boxGeometry args={[0.04, 0.12, 7.95]} />
-      </mesh>
-
-      {/* Tapete Central Texturizado */}
-      <group position={[0, 0.01, 0.2]}>
-        <RoundedBox
-          receiveShadow
-          args={[4.4, 0.025, 3.2]}
-          radius={0.01}
-          smoothness={2}
-          material={sharedMaterials.rugBorder}
-        />
-        <RoundedBox
-          receiveShadow
-          position={[0, 0.006, 0]}
-          args={[4.1, 0.022, 2.9]}
-          radius={0.008}
-          smoothness={2}
-          material={sharedMaterials.rugFabric}
-        />
-      </group>
-
-      {/* Estante / Rack Frontal (Referência Espacial Inicial) */}
-      <group position={[0, 0.28, -3.5]}>
-        <RoundedBox
-          castShadow
-          receiveShadow
-          args={[3.2, 0.42, 0.62]}
-          radius={0.04}
-          smoothness={3}
-          material={sharedMaterials.floorTrim}
-        />
-      </group>
-
-      {/* Sofá Principal (Referência Espacial Inicial) */}
-      <group position={[0, 0, 2.45]}>
-        <RoundedBox
-          castShadow
-          receiveShadow
-          position={[0, 0.24, 0]}
-          args={[3.8, 0.34, 1.15]}
-          radius={0.08}
-          smoothness={3}
-        >
-          <meshStandardMaterial color={WORLD_PALETTE.sofaLinen} roughness={0.85} />
-        </RoundedBox>
-        <RoundedBox
-          castShadow
-          receiveShadow
-          position={[0, 0.58, 0.42]}
-          args={[3.8, 0.48, 0.28]}
-          radius={0.08}
-          smoothness={3}
-        >
-          <meshStandardMaterial color={WORLD_PALETTE.sofaLinen} roughness={0.85} />
-        </RoundedBox>
-      </group>
-
-      {/* Base de Carregamento do AspiToy */}
-      <group position={[dockPosition.x, 0, dockPosition.z]}>
-        {/* Plataforma de acoplamento */}
-        <RoundedBox
-          receiveShadow
-          position={[0, 0.015, 0]}
-          args={[0.76, 0.03, 0.82]}
-          radius={0.012}
-          smoothness={2}
-          material={sharedMaterials.dockBody}
-        />
-        {/* Torre da estação */}
-        <RoundedBox
-          castShadow
-          receiveShadow
-          position={[0, 0.22, -0.32]}
-          args={[0.52, 0.42, 0.16]}
-          radius={0.05}
-          smoothness={3}
-          material={sharedMaterials.dockBody}
-        />
-        {/* LED indicador da base */}
-        <mesh position={[0, 0.35, -0.235]}>
-          <boxGeometry args={[0.22, 0.025, 0.01]} />
-          <meshStandardMaterial
-            color={WORLD_PALETTE.ledEmerald}
-            emissive={WORLD_PALETTE.ledEmerald}
-            emissiveIntensity={1.6}
-          />
-        </mesh>
-      </group>
-
-      {/* Pontos de Sujeira Discretos no Piso */}
-      {dustSpots.map(
-        (spot) =>
-          spot.intensity > 0.05 && (
-            <group key={spot.id} position={[spot.position.x, 0.022, spot.position.z]}>
-              <mesh rotation={[-Math.PI / 2, 0, 0]}>
-                <ringGeometry args={[0.06, spot.radius * spot.intensity, 20]} />
-                <meshStandardMaterial
-                  color="#8C6D4F"
-                  transparent
-                  opacity={0.42 * spot.intensity}
-                  roughness={1}
-                />
-              </mesh>
-            </group>
-          )
-      )}
-    </group>
-  );
-}
 
 function InitialRobotActor() {
   const groupRef = useRef<THREE.Group>(null);
@@ -496,7 +299,7 @@ function CameraDirector() {
       enableDamping
       dampingFactor={0.06}
       minDistance={1.6}
-      maxDistance={11.5}
+      maxDistance={12.5}
       minPolarAngle={0.28}
       maxPolarAngle={Math.PI / 2 - 0.06}
     />
@@ -509,14 +312,14 @@ export function Scene() {
       <Canvas
         shadows
         dpr={[1, 2]}
-        camera={{ position: [-4.2, 4.1, 5.2], fov: 42, near: 0.1, far: 45 }}
+        camera={{ position: [-4.6, 4.4, 5.6], fov: 42, near: 0.1, far: 45 }}
       >
         <color attach="background" args={[WORLD_PALETTE.sunlitBackdrop]} />
-        <fog attach="fog" args={[WORLD_PALETTE.sunlitBackdrop, 13, 25]} />
+        <fog attach="fog" args={[WORLD_PALETTE.sunlitBackdrop, 14, 26]} />
 
         <Suspense fallback={null}>
           <Lighting />
-          <InitialRoomStage />
+          <House />
           <InitialRobotActor />
           <CameraDirector />
         </Suspense>
@@ -524,4 +327,3 @@ export function Scene() {
     </div>
   );
 }
-

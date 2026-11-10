@@ -3,48 +3,55 @@ import { ContactShadows } from '@react-three/drei';
 export function Lighting() {
   return (
     <group name="cinematic-lighting">
-      {/* Iluminação hemisférica natural: céu matinal quente + rebote de madeira */}
+      {/* 1. Iluminação hemisférica natural: sol matinal quente + rebote da madeira */}
       <hemisphereLight
-        args={['#FFF8EB', '#9C734B', 0.85]}
+        args={['#FFF7EB', '#8F6642', 0.95]}
         position={[0, 6, 0]}
       />
 
-      {/* Luz solar principal entrando pela janela lateral direita */}
+      {/* 2. Luz solar direta principal entrando pelas janelas laterais */}
       <directionalLight
         castShadow
-        position={[6.5, 7.5, 3.5]}
-        intensity={2.1}
-        color="#FFF1D6"
+        position={[7.2, 7.8, 3.8]}
+        intensity={2.35}
+        color="#FFF2D9"
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
         shadow-camera-near={1}
-        shadow-camera-far={22}
-        shadow-camera-left={-6.5}
-        shadow-camera-right={6.5}
-        shadow-camera-top={6.5}
-        shadow-camera-bottom={-6.5}
-        shadow-bias={-0.0004}
+        shadow-camera-far={24}
+        shadow-camera-left={-7}
+        shadow-camera-right={7}
+        shadow-camera-top={7}
+        shadow-camera-bottom={-7}
+        shadow-bias={-0.0003}
       />
 
-      {/* Preenchimento indireto suave do interior da sala */}
+      {/* 3. Luz suave de preenchimento indireto no interior */}
       <pointLight
-        position={[-3.2, 2.8, -1.8]}
-        intensity={0.65}
-        distance={11}
-        color="#FFE4B8"
+        position={[-3.5, 3.0, -1.8]}
+        intensity={0.55}
+        distance={12}
+        color="#FFE5BF"
       />
 
-      {/* Sombras de contato suaves junto ao piso para ancorar os objetos */}
+      {/* 4. Luz de realce quente da luminária de piso */}
+      <pointLight
+        position={[-2.2, 1.6, 2.7]}
+        intensity={0.4}
+        distance={4.5}
+        color="#FFDA9E"
+      />
+
+      {/* 5. Sombras de contato suaves junto ao piso */}
       <ContactShadows
         position={[0, 0.005, 0]}
-        opacity={0.32}
-        scale={13}
-        blur={2.1}
-        far={2.5}
+        opacity={0.35}
+        scale={14}
+        blur={2.0}
+        far={2.8}
         resolution={512}
-        color="#3D2614"
+        color="#342010"
       />
     </group>
   );
 }
-
