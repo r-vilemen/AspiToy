@@ -1,24 +1,12 @@
-import { Clock, MapPin, Sparkles } from 'lucide-react';
+import { Clock, MapPin } from 'lucide-react';
 import { useRobotStore } from '@/store/robotStore';
-import type { RobotExpression } from '@/types/robot';
 import { formatDuration, STATE_DESCRIPTORS } from '@/hooks/useRobotState';
 import { BatteryIndicator } from './BatteryIndicator';
 import { ProgressBar } from './ProgressBar';
 
-const EXPRESSION_LABELS: Record<RobotExpression, string> = {
-  neutral: 'Atento / Pronto',
-  curious: 'Curioso (Explorando)',
-  focused: 'Concentrado (Limpando)',
-  alert: 'Surpreso (Desviando)',
-  happy: 'Satisfeito (Missão cumprida)',
-  worried: 'Preocupado (Retornando)',
-  sleepy: 'Aliviado (Recarregando)',
-};
-
 export function StatusCard() {
   const name = useRobotStore((s) => s.name);
   const state = useRobotStore((s) => s.state);
-  const expression = useRobotStore((s) => s.expression);
   const currentRegionLabel = useRobotStore((s) => s.currentRegionLabel);
   const operationSeconds = useRobotStore((s) => s.operationSeconds);
   const lastAction = useRobotStore((s) => s.lastAction);
@@ -30,23 +18,11 @@ export function StatusCard() {
       aria-label="Estado atual do AspiToy"
       className="space-y-3"
     >
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <h2 className="font-display text-lg font-semibold tracking-tight text-[#2A211B]">
-            {name}
-          </h2>
-          <p className="text-xs text-[#6E5D4F]">{descriptor.shortNote}</p>
-        </div>
-
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${descriptor.badgeClass}`}
-        >
-          <span
-            className={`h-2 w-2 rounded-full ${descriptor.dotColorClass}`}
-            aria-hidden="true"
-          />
-          {descriptor.label}
-        </span>
+      <div>
+        <h2 className="font-display text-lg font-semibold tracking-tight text-[#2A211B]">
+          {name}
+        </h2>
+        <p className="text-xs text-[#6E5D4F]">{descriptor.shortNote}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-2.5">
@@ -73,16 +49,6 @@ export function StatusCard() {
           <dd className="mt-0.5 font-mono font-semibold tabular-nums text-[#2A211B]">
             {formatDuration(operationSeconds)}
           </dd>
-        </div>
-
-        <div className="col-span-2 pt-1.5 border-t border-[#8C6D4F]/12 flex items-center justify-between">
-          <span className="inline-flex items-center gap-1 text-[#6E5D4F]">
-            <Sparkles className="h-3.5 w-3.5 text-[#0F766E]" aria-hidden="true" />
-            Expressão facial
-          </span>
-          <span className="text-[11px] font-semibold text-[#2A211B]">
-            {EXPRESSION_LABELS[expression]}
-          </span>
         </div>
       </dl>
 

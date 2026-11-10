@@ -23,7 +23,7 @@ describe('Componentes de Interface e Controles (Dia 1)', () => {
 
     expect(screen.getByText('AspiToy')).toBeDefined();
     expect(screen.getByText('AspiToy MK-I')).toBeDefined();
-    expect(screen.getByText('Aguardando comando')).toBeDefined();
+    expect(screen.getByText('Pronto para iniciar na base')).toBeDefined();
     expect(screen.getByText('Iniciar limpeza')).toBeDefined();
   });
 
@@ -37,19 +37,22 @@ describe('Componentes de Interface e Controles (Dia 1)', () => {
 
     const startBtn = screen.getByRole('button', { name: /Iniciar limpeza/i });
     fireEvent.click(startBtn);
-    expect(screen.getByText('Limpando ambiente')).toBeDefined();
+    expect(screen.getByText('Aspiração e sensores ativos')).toBeDefined();
+    expect(useRobotStore.getState().state).toBe('CLEANING');
 
     const pauseBtn = screen.getByRole('button', { name: /Pausar operação/i });
     fireEvent.click(pauseBtn);
-    expect(screen.getByText('Operação pausada')).toBeDefined();
+    expect(useRobotStore.getState().state).toBe('PAUSED');
 
     const resumeBtn = screen.getByRole('button', { name: /Retomar limpeza/i });
     fireEvent.click(resumeBtn);
-    expect(screen.getByText('Limpando ambiente')).toBeDefined();
+    expect(screen.getByText('Aspiração e sensores ativos')).toBeDefined();
+    expect(useRobotStore.getState().state).toBe('CLEANING');
 
     const returnBtn = screen.getByRole('button', { name: /Retornar à base/i });
     fireEvent.click(returnBtn);
-    expect(screen.getByText('Retornando à base')).toBeDefined();
+    expect(screen.getByText('Rota direta para acoplamento')).toBeDefined();
+    expect(useRobotStore.getState().state).toBe('RETURNING');
   });
 });
 
