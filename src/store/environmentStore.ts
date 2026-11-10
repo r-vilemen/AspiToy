@@ -16,6 +16,7 @@ import { ALL_HOUSE_OBSTACLES, INITIAL_BEDROOM_OBSTACLES } from '@/world/House/Ho
 export const INITIAL_DOCK_POSITION: Vector2D = { x: -4.15, z: 3.2 };
 
 export const INITIAL_CAT_POSITION: Vector2D = { x: -1.65, z: 0.35 };
+export const INITIAL_WHITE_CAT_POSITION: Vector2D = { x: 12.8, z: 0.2 };
 
 export const INITIAL_ROOM_DIMENSIONS: RoomDimensions = {
   width: 10,
@@ -53,7 +54,7 @@ export const catMotionBridge: CatMotionBridge = {
 };
 
 /**
- * Retorna o obstáculo dinâmico representando a posição instantânea do gato.
+ * Retorna o obstáculo dinâmico representando a posição instantânea do gato laranja.
  * Quando o gato está empoleirado nos móveis (sofá, poltrona, mesa com y > 0.35m),
  * ele deixa de ser um obstáculo no piso para o robô.
  */
@@ -73,6 +74,56 @@ export function getDynamicCatObstacle(): EnvironmentObstacle {
     collidable: !isPerched,
     height: 0.42,
   };
+}
+
+/**
+ * Bridge mutável de 60 FPS para o Gato Branco de Olhos Azuis.
+ */
+export const whiteCatMotionBridge: CatMotionBridge = {
+  x: INITIAL_WHITE_CAT_POSITION.x,
+  y: 0,
+  z: INITIAL_WHITE_CAT_POSITION.z,
+  rotationY: -1.2,
+  targetRotationY: -1.2,
+  speed: 0.6,
+  state: 'SITTING',
+  animPhase: 1.5,
+  stateTimer: 5.0,
+  targetX: 12.8,
+  targetY: 0,
+  targetZ: 0.2,
+  radius: 0.34,
+  isPerched: false,
+  perchSurfaceId: null,
+  jumpProgress: 0,
+};
+
+/**
+ * Retorna o obstáculo dinâmico representando a posição instantânea do gato branco.
+ */
+export function getDynamicWhiteCatObstacle(): EnvironmentObstacle {
+  const r = whiteCatMotionBridge.radius;
+  const isPerched = (whiteCatMotionBridge.y ?? 0) > 0.35 || whiteCatMotionBridge.isPerched;
+  return {
+    id: 'dynamic-white-cat',
+    label: 'Gato Branco',
+    category: 'pet',
+    bounds: {
+      minX: whiteCatMotionBridge.x - r,
+      maxX: whiteCatMotionBridge.x + r,
+      minZ: whiteCatMotionBridge.z - r,
+      maxZ: whiteCatMotionBridge.z + r,
+    },
+    collidable: !isPerched,
+    height: 0.42,
+  };
+}
+
+/**
+ * Retorna os obstáculos dinâmicos de todos os gatos da residência.
+ */
+export function getDynamicAllCatsObstacles(): EnvironmentObstacle[] {
+  return [getDynamicCatObstacle(), getDynamicWhiteCatObstacle()];
 }
 
 export const INITIAL_REGIONS: RoomRegion[] = [
@@ -344,10 +395,11 @@ export function stepPushableToysPhysics(
   const halfD = INITIAL_ROOM_DIMENSIONS.depth / 2 - 0.28;
   const solidFurniture = INITIAL_OBSTACLES.filter((o) => o.collidable);
 
-  // 1. Empurrão causado pelo Robô e pelo Gato
+  // 1. Empurrão causado pelo Robô e pelos Gatos
   const pushers = [
     { x: robotPos.x, z: robotPos.z, r: robotRadius, isRobot: true },
     { x: catMotionBridge.x, z: catMotionBridge.z, r: 0.26, isRobot: false },
+    { x: whiteCatMotionBridge.x, z: whiteCatMotionBridge.z, r: 0.26, isRobot: false },
   ];
 
   for (const toy of pushableToysBridge) {
@@ -601,6 +653,22 @@ export const useEnvironmentStore = create<EnvironmentStoreState>((set, get) => (
     catMotionBridge.isPerched = false;
     catMotionBridge.perchSurfaceId = null;
     catMotionBridge.jumpProgress = 0;
+
+    whiteCatMotionBridge.x = INITIAL_WHITE_CAT_POSITION.x;
+    whiteCatMotionBridge.y = 0;
+    whiteCatMotionBridge.z = INITIAL_WHITE_CAT_POSITION.z;
+    whiteCatMotionBridge.targetX = 12.8;
+    whiteCatMotionBridge.targetY = 0;
+    whiteCatMotionBridge.targetZ = 0.2;
+    whiteCatMotionBridge.rotationY = -1.2;
+    whiteCatMotionBridge.targetRotationY = -1.2;
+    whiteCatMotionBridge.speed = 0.6;
+    whiteCatMotionBridge.state = 'SITTING';
+    whiteCatMotionBridge.stateTimer = 5.0;
+    whiteCatMotionBridge.isPerched = false;
+    whiteCatMotionBridge.perchSurfaceId = null;
+    whiteCatMotionBridge.jumpProgress = 0;
+
     resetPushableToys();
 
     set({

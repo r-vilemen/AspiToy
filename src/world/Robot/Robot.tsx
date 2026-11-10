@@ -13,7 +13,7 @@ import {
   useRobotStore,
 } from '@/store/robotStore';
 import {
-  getDynamicCatObstacle,
+  getDynamicAllCatsObstacles,
   stepPushableToysPhysics,
   useEnvironmentStore,
 } from '@/store/environmentStore';
@@ -157,12 +157,12 @@ export function Robot() {
       targetPoint = envState.dockPosition;
     }
 
-    // Obstáculo dinâmico em tempo real do gato andando/dormindo pela casa
-    const dynamicCat = getDynamicCatObstacle();
+    // Obstáculos dinâmicos em tempo real dos gatos (Laranja e Branco) andando/dormindo pela casa
+    const dynamicCats = getDynamicAllCatsObstacles();
 
     if (manualControlBridge.active) {
       // Controle manual direto (WASD / Setas / D-Pad)
-      agent.setDynamicObstacles([dynamicCat]);
+      agent.setDynamicObstacles(dynamicCats);
       const manualTurn = manualControlBridge.turn * 3.2 * delta;
       loc.rotationY += manualTurn;
       loc.targetRotationY = loc.rotationY;
@@ -226,7 +226,7 @@ export function Robot() {
           robotState.speed,
           envState.selectedRegionId,
           delta,
-          [dynamicCat]
+          dynamicCats
         );
 
         if (decision.nextState !== robotState.state) {

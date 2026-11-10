@@ -5,6 +5,7 @@ import { WORLD_PALETTE } from './Environment/Materials';
 import { House } from './House/House';
 import { Robot } from './Robot/Robot';
 import { Cat } from './Cat/Cat';
+import { WhiteCat } from './Cat/WhiteCat';
 import { FollowCamera } from './Camera/FollowCamera';
 
 export function Scene() {
@@ -22,6 +23,7 @@ export function Scene() {
           <Lighting />
           <House />
           <Cat />
+          <WhiteCat />
           <Robot />
           <FollowCamera />
         </Suspense>
