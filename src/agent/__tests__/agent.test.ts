@@ -122,6 +122,20 @@ describe('Agente Inteligente, Colisão Física e Desvio do Gato Dinâmico', () =
     expect(getDynamicCatObstacle().collidable).toBe(true);
   });
 
+  it('suporta estados reativos de susto (STARTLED) e desorientação ao acordar (DISORIENTED)', () => {
+    useEnvironmentStore.getState().resetEnvironment();
+
+    // Estado STARTLED
+    catMotionBridge.state = 'STARTLED';
+    catMotionBridge.stateTimer = 0.65;
+    expect(catMotionBridge.state).toBe('STARTLED');
+
+    // Estado DISORIENTED
+    catMotionBridge.state = 'DISORIENTED';
+    catMotionBridge.stateTimer = 1.4;
+    expect(catMotionBridge.state).toBe('DISORIENTED');
+  });
+
   it('empurra brinquedos e bonecos pequenos no chão para o robô passar livremente', () => {
     resetPushableToys();
     const cowboy = pushableToysBridge.find((t) => t.id === 'push-cowboy')!;
