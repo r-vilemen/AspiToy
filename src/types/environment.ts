@@ -80,6 +80,8 @@ export interface RoomDimensions {
   width: number;
   depth: number;
   wallHeight: number;
+  minX?: number;
+  minZ?: number;
 }
 
 export type PushableToyKind =

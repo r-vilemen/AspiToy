@@ -3,15 +3,43 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
+  Bath,
+  Bed,
+  Compass,
   Home,
   Pause,
   Play,
   RotateCcw,
+  Sofa,
+  Sparkles,
+  Tv,
+  Utensils,
 } from 'lucide-react';
 import { manualControlBridge, useRobotStore } from '@/store/robotStore';
 import { useEnvironmentStore } from '@/store/environmentStore';
 import { useCommandStore } from '@/store/commandStore';
 import { useKeyboardControls } from '@/hooks/useKeyboardControls';
+
+function getRegionIcon(id: string) {
+  switch (id) {
+    case 'all':
+      return Home;
+    case 'bedroom':
+      return Bed;
+    case 'hallway':
+      return Compass;
+    case 'living-room':
+      return Sofa;
+    case 'kitchen':
+      return Utensils;
+    case 'bathroom':
+      return Bath;
+    case 'tv-corner':
+      return Tv;
+    default:
+      return Sparkles;
+  }
+}
 
 export function ControlPanel() {
   const state = useRobotStore((s) => s.state);
@@ -187,17 +215,23 @@ export function ControlPanel() {
         </div>
       </div>
 
-      {/* Seleção rápida de região */}
-      <div className="space-y-1.5 pt-1">
-        <label
-          htmlFor="region-select"
-          className="block text-xs font-black uppercase tracking-wider text-[#2A211B]"
-        >
-          Priorizar região da sala
-        </label>
+      {/* Seleção rápida de cômodos e regiões da residência */}
+      <div className="space-y-2 pt-1">
+        <div className="flex items-center justify-between">
+          <label
+            htmlFor="region-select"
+            className="block text-xs font-black uppercase tracking-wider text-[#2A211B]"
+          >
+            Cômodos e Regiões
+          </label>
+          <span className="font-mono text-[10px] font-bold text-[#8C6D4F]">
+            {regions.length} ÁREAS
+          </span>
+        </div>
         <div className="grid grid-cols-2 gap-2" id="region-select">
           {regions.map((region) => {
             const active = selectedRegionId === region.id;
+            const RegionIcon = getRegionIcon(region.id);
             return (
               <button
                 key={region.id}
@@ -205,13 +239,19 @@ export function ControlPanel() {
                 onClick={() =>
                   dispatchCommand('CLEAN_REGION', { regionId: region.id })
                 }
-                className={`rounded-xl px-2.5 py-2 text-left text-xs font-bold transition cursor-pointer border-2 ${
+                className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-left text-xs font-bold transition cursor-pointer border-2 ${
                   active
-                    ? 'border-[#2A211B] bg-[#E05A36] text-white shadow-[2px_2px_0px_#2A211B]'
-                    : 'border-[#2A211B]/25 bg-[#F5ECE0] text-[#54463B] shadow-[1px_1px_0px_#2A211B]/20 hover:border-[#2A211B] hover:text-[#2A211B]'
+                    ? 'border-[#2A211B] bg-[#E05A36] text-white shadow-[2px_2px_0px_#2A211B] translate-y-0.5'
+                    : 'border-[#2A211B]/25 bg-[#F5ECE0] text-[#54463B] shadow-[2px_2px_0px_#2A211B]/15 hover:border-[#2A211B] hover:text-[#2A211B] hover:bg-[#EBDDCB]'
                 }`}
               >
-                {region.label}
+                <RegionIcon
+                  className={`h-3.5 w-3.5 shrink-0 stroke-[2.2] ${
+                    active ? 'text-white' : 'text-[#8C6D4F]'
+                  }`}
+                  aria-hidden="true"
+                />
+                <span className="truncate">{region.label}</span>
               </button>
             );
           })}

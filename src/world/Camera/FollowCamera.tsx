@@ -86,13 +86,13 @@ export function FollowCamera() {
         );
         const desiredCamX = clamp(
           nextRobotX - Math.sin(robotMotionBridge.rotationY) * 2.2,
-          -4.4,
-          4.4
+          -4.5,
+          17.2
         );
         const desiredCamZ = clamp(
           nextRobotZ - Math.cos(robotMotionBridge.rotationY) * 2.2,
-          -3.4,
-          3.4
+          -3.5,
+          13.0
         );
         state.camera.position.set(
           damp(state.camera.position.x, desiredCamX, 5.5, delta),
@@ -139,13 +139,13 @@ export function FollowCamera() {
 
         const desiredCamX = clamp(
           nextRobotX - Math.sin(robotMotionBridge.rotationY) * 1.45,
-          -4.5,
-          4.5
+          -4.6,
+          17.2
         );
         const desiredCamZ = clamp(
           nextRobotZ - Math.cos(robotMotionBridge.rotationY) * 1.45,
-          -3.5,
-          3.5
+          -3.6,
+          13.1
         );
         state.camera.position.set(
           damp(state.camera.position.x, desiredCamX, 4.8, delta),
@@ -159,28 +159,28 @@ export function FollowCamera() {
         state.camera.position.z += dz;
       }
     } else {
-      // Visão Geral ("overview"): posiciona a câmera no alto mostrando o quarto inteiro visto de cima
+      // Visão Geral ("overview"): posiciona a câmera no alto mostrando a residência inteira vista de cima
       // e libera o controle do mouse assim que a transição termina ou o usuário interage.
       if (transitionTimerRef.current > 0 && !isUserInteractingRef.current) {
         controls.target.set(
-          damp(controls.target.x, 0, 6.5, delta),
+          damp(controls.target.x, 6.3, 6.5, delta),
           damp(controls.target.y, 0, 6.5, delta),
-          damp(controls.target.z, 0, 6.5, delta)
+          damp(controls.target.z, 4.75, 6.5, delta)
         );
         state.camera.position.set(
-          damp(state.camera.position.x, 0, 6.5, delta),
-          damp(state.camera.position.y, 12.2, 6.5, delta),
-          damp(state.camera.position.z, 0.25, 6.5, delta)
+          damp(state.camera.position.x, 6.3, 6.5, delta),
+          damp(state.camera.position.y, 23.5, 6.5, delta),
+          damp(state.camera.position.z, 5.5, 6.5, delta)
         );
       }
     }
 
     controls.update();
 
-    // Evita que a câmera atravesse as paredes externas quando posicionada dentro da sala
+    // Evita que a câmera atravesse os limites externos da casa quando posicionada em baixa altitude
     if (state.camera.position.y < 4.2) {
-      state.camera.position.x = clamp(state.camera.position.x, -4.65, 4.65);
-      state.camera.position.z = clamp(state.camera.position.z, -3.65, 3.65);
+      state.camera.position.x = clamp(state.camera.position.x, -4.75, 17.35);
+      state.camera.position.z = clamp(state.camera.position.z, -3.75, 13.25);
     }
   });
 
@@ -196,7 +196,7 @@ export function FollowCamera() {
       keyPanSpeed={0}
       keys={{ LEFT: '', UP: '', RIGHT: '', BOTTOM: '' }}
       minDistance={0.9}
-      maxDistance={16.5}
+      maxDistance={36.0}
       minPolarAngle={0.02}
       maxPolarAngle={Math.PI / 2 - 0.04}
     />

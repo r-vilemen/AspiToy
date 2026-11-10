@@ -56,7 +56,9 @@ export function Robot() {
       new AgentController(
         obstacles,
         roomDimensions.width,
-        roomDimensions.depth
+        roomDimensions.depth,
+        roomDimensions.minX,
+        roomDimensions.minZ
       ),
     [obstacles, roomDimensions]
   );

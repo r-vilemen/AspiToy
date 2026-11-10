@@ -1,6 +1,7 @@
 import { Bot, Eye, HelpCircle, Scan, Video } from 'lucide-react';
 import { useCommandStore, type CameraPreset } from '@/store/commandStore';
 import { useOnboardingStore } from '@/store/onboardingStore';
+import { useRobotStore } from '@/store/robotStore';
 
 const CAMERA_OPTIONS: { id: CameraPreset; label: string; icon: typeof Video }[] = [
   { id: 'follow', label: 'Acompanhar', icon: Video },
@@ -12,6 +13,7 @@ export function Header() {
   const cameraPreset = useCommandStore((s) => s.cameraPreset);
   const setCameraPreset = useCommandStore((s) => s.setCameraPreset);
   const openTutorial = useOnboardingStore((s) => s.openTutorial);
+  const currentRegionLabel = useRobotStore((s) => s.currentRegionLabel);
 
   return (
     <header className="pointer-events-none flex items-center justify-between gap-4 px-4 pt-4 sm:px-6 sm:pt-5">
@@ -21,7 +23,7 @@ export function Header() {
           <Bot className="h-5 w-5 stroke-[2.2]" aria-hidden="true" />
           <span
             title="Jogador 1 Ativo"
-            className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-[#10B981] border-2 border-[#2A211B] shadow-xs"
+            className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-[#10B981] border-2 border-[#2A211B] shadow-xs animate-pulse"
           />
         </div>
         <div>
@@ -29,11 +31,11 @@ export function Header() {
             <h1 className="font-display text-base font-black leading-none tracking-tight text-[#2A211B]">
               AspiToy
             </h1>
-            <span className="rounded-md border border-[#0F766E] bg-[#CCFBF1] px-2 py-0.5 font-mono text-[10px] font-black uppercase tracking-wider text-[#0F766E] shadow-[1px_1px_0px_#0F766E]">
-              SALA DE ESTAR
+            <span className="rounded-lg border-2 border-[#2A211B] bg-[#CCFBF1] px-2 py-0.5 font-mono text-[10px] font-black uppercase tracking-wider text-[#0F766E] shadow-[1.5px_1.5px_0px_#2A211B]">
+              {currentRegionLabel || 'Casa Completa'}
             </span>
           </div>
-          <p className="mt-1 font-mono text-[11px] font-bold text-[#6E5D4F] uppercase tracking-wide">
+          <p className="mt-1 font-mono text-[11px] font-black text-[#6E5D4F] uppercase tracking-wide">
             P1 • AGENTE DE LIMPEZA 3D
           </p>
         </div>

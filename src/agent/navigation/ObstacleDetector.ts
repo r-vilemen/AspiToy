@@ -2,6 +2,7 @@ import type { BoundingBox2D, EnvironmentObstacle } from '@/types/environment';
 import type { Vector2D } from '@/types/robot';
 import { isPointInsideBounds } from '@/utils/coordinates';
 import { clamp } from '@/utils/math';
+import { HOUSE_FLOOR_PLAN } from '@/world/House/FloorPlan';
 
 export interface CollisionResolutionResult {
   position: Vector2D;
@@ -13,12 +14,14 @@ export interface CollisionResolutionResult {
 /**
  * Detector e resolvedor físico de colisão 2D (desacoplado de Three.js/React).
  * Considera paredes perimétricas, móveis fixos e obstáculos móveis (como o Gato doméstico).
+ * Suporta navegação contínua intercômodos com passagens livres em portas abertas.
  */
 export class ObstacleDetector {
   private obstacles: EnvironmentObstacle[];
   private dynamicObstacles: EnvironmentObstacle[] = [];
   private roomWidth: number;
   private roomDepth: number;
+  public readonly isMultiRoom: boolean;
 
   constructor(
     obstacles: EnvironmentObstacle[],
@@ -28,6 +31,7 @@ export class ObstacleDetector {
     this.obstacles = obstacles;
     this.roomWidth = roomWidth;
     this.roomDepth = roomDepth;
+    this.isMultiRoom = roomWidth > 12;
   }
 
   public setObstacles(obstacles: EnvironmentObstacle[]): void {
@@ -55,19 +59,48 @@ export class ObstacleDetector {
     point: Vector2D,
     robotRadius = 0.32
   ): { id: string; label: string; bounds?: BoundingBox2D } | null {
-    const halfW = this.roomWidth / 2;
-    const halfD = this.roomDepth / 2;
+    if (!this.isMultiRoom) {
+      // Modo clássico quarto único
+      const halfW = this.roomWidth / 2;
+      const halfD = this.roomDepth / 2;
 
-    if (
-      point.x - robotRadius <= -halfW ||
-      point.x + robotRadius >= halfW ||
-      point.z - robotRadius <= -halfD ||
-      point.z + robotRadius >= halfD
-    ) {
-      return { id: 'wall', label: 'Parede' };
+      if (
+        point.x - robotRadius <= -halfW ||
+        point.x + robotRadius >= halfW ||
+        point.z - robotRadius <= -halfD ||
+        point.z + robotRadius >= halfD
+      ) {
+        return { id: 'wall', label: 'Parede' };
+      }
+    } else {
+      // Modo residência completa:
+      // Verifica se está dentro de algum cômodo da casa ou no vão de porta
+      const inAnyRoom = Object.values(HOUSE_FLOOR_PLAN.rooms).some((room) =>
+        isPointInsideBounds(point, room.bounds, 0.08)
+      );
+      const inAnyDoor = HOUSE_FLOOR_PLAN.doors.some(
+        (door) =>
+          door.isOpen &&
+          isPointInsideBounds(point, door.traversableBounds, 0.08)
+      );
+
+      if (!inAnyRoom && !inAnyDoor) {
+        return { id: 'wall-outer', label: 'Parede Externa' };
+      }
     }
 
+    // Se estiver no vão de porta aberta, ignora colisão com a parede de alvenaria
+    const inDoorway =
+      this.isMultiRoom &&
+      HOUSE_FLOOR_PLAN.doors.some(
+        (door) =>
+          door.isOpen && isPointInsideBounds(point, door.traversableBounds)
+      );
+
     for (const obs of this.getAllCollidableObstacles()) {
+      if (inDoorway && obs.category === 'wall') {
+        continue;
+      }
       if (isPointInsideBounds(point, obs.bounds, robotRadius)) {
         return { id: obs.id, label: obs.label, bounds: obs.bounds };
       }
@@ -85,13 +118,21 @@ export class ObstacleDetector {
     desiredPos: Vector2D,
     actorRadius = 0.31
   ): CollisionResolutionResult {
-    const halfW = this.roomWidth / 2 - actorRadius - 0.02;
-    const halfD = this.roomDepth / 2 - actorRadius - 0.02;
+    let clampedDesired: Vector2D;
 
-    const clampedDesired: Vector2D = {
-      x: clamp(desiredPos.x, -halfW, halfW),
-      z: clamp(desiredPos.z, -halfD, halfD),
-    };
+    if (!this.isMultiRoom) {
+      const halfW = this.roomWidth / 2 - actorRadius - 0.02;
+      const halfD = this.roomDepth / 2 - actorRadius - 0.02;
+      clampedDesired = {
+        x: clamp(desiredPos.x, -halfW, halfW),
+        z: clamp(desiredPos.z, -halfD, halfD),
+      };
+    } else {
+      clampedDesired = {
+        x: clamp(desiredPos.x, -5.0 + actorRadius, 17.6 - actorRadius),
+        z: clamp(desiredPos.z, -4.0 + actorRadius, 13.5 - actorRadius),
+      };
+    }
 
     const directHit = this.findCollidingObstacle(clampedDesired, actorRadius);
     if (!directHit) {
@@ -125,33 +166,8 @@ export class ObstacleDetector {
       };
     }
 
-    // Caso a posição atual já tenha sido invadida por um obstáculo dinâmico (ex: o gato encostou no robô),
-    // empurra suavemente para fora da bounding box
-    if (directHit.bounds) {
-      const b = directHit.bounds;
-      const centerX = (b.minX + b.maxX) * 0.5;
-      const centerZ = (b.minZ + b.maxZ) * 0.5;
-      const dx = currentPos.x - centerX;
-      const dz = currentPos.z - centerZ;
-      const len = Math.hypot(dx, dz) || 1;
-      const pushDist = 0.06;
-      const pushed: Vector2D = {
-        x: clamp(currentPos.x + (dx / len) * pushDist, -halfW, halfW),
-        z: clamp(currentPos.z + (dz / len) * pushDist, -halfD, halfD),
-      };
-      return {
-        position: pushed,
-        collided: true,
-        obstacleId: directHit.id,
-        obstacleLabel: directHit.label,
-      };
-    }
-
     return {
-      position: {
-        x: clamp(currentPos.x, -halfW, halfW),
-        z: clamp(currentPos.z, -halfD, halfD),
-      },
+      position: currentPos,
       collided: true,
       obstacleId: directHit.id,
       obstacleLabel: directHit.label,

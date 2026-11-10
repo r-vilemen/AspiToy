@@ -288,6 +288,88 @@ const oliveFabricTextures = createWovenFabricTexture('#768732', '#5C6A22');
 const terracottaFabricTextures = createWovenFabricTexture('#BD4E3C', '#963828');
 
 /**
+ * Gera DataTexture PBR (128x128) para piso cerâmico xadrez/azulejos da cozinha e banheiro.
+ */
+function createTileTexture(
+  color1Hex: string,
+  color2Hex: string,
+  groutHex = '#E0D6C8',
+  divisions = 4
+): { map: THREE.DataTexture; bumpMap: THREE.DataTexture } {
+  const size = 128;
+  const data = new Uint8Array(size * size * 4);
+  const bump = new Uint8Array(size * size * 4);
+  const c1 = hexToRgb(color1Hex);
+  const c2 = hexToRgb(color2Hex);
+  const grout = hexToRgb(groutHex);
+  const tileSize = Math.floor(size / divisions);
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const tileX = Math.floor(x / tileSize);
+      const tileY = Math.floor(y / tileSize);
+      const inGrout =
+        x % tileSize <= 1 ||
+        x % tileSize >= tileSize - 2 ||
+        y % tileSize <= 1 ||
+        y % tileSize >= tileSize - 2;
+
+      let r: number, g: number, b: number, bVal: number;
+      if (inGrout) {
+        r = grout[0];
+        g = grout[1];
+        b = grout[2];
+        bVal = 90;
+      } else {
+        const isAlt = (tileX + tileY) % 2 === 1;
+        const base = isAlt ? c2 : c1;
+        // Leve ruído cerâmico sutil
+        const subtleNoise = Math.sin(x * 0.4 + y * 0.3) * 4;
+        r = Math.min(255, Math.max(0, base[0] + subtleNoise));
+        g = Math.min(255, Math.max(0, base[1] + subtleNoise));
+        b = Math.min(255, Math.max(0, base[2] + subtleNoise));
+        bVal = 210;
+      }
+
+      const idx = (y * size + x) * 4;
+      data[idx] = Math.round(r);
+      data[idx + 1] = Math.round(g);
+      data[idx + 2] = Math.round(b);
+      data[idx + 3] = 255;
+
+      bump[idx] = bVal;
+      bump[idx + 1] = bVal;
+      bump[idx + 2] = bVal;
+      bump[idx + 3] = 255;
+    }
+  }
+
+  const map = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+  map.wrapS = THREE.RepeatWrapping;
+  map.wrapT = THREE.RepeatWrapping;
+  map.repeat.set(6, 6);
+  map.magFilter = THREE.LinearFilter;
+  map.minFilter = THREE.LinearMipmapLinearFilter;
+  map.generateMipmaps = true;
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.needsUpdate = true;
+
+  const bumpMap = new THREE.DataTexture(bump, size, size, THREE.RGBAFormat);
+  bumpMap.wrapS = THREE.RepeatWrapping;
+  bumpMap.wrapT = THREE.RepeatWrapping;
+  bumpMap.repeat.set(6, 6);
+  bumpMap.magFilter = THREE.LinearFilter;
+  bumpMap.minFilter = THREE.LinearMipmapLinearFilter;
+  bumpMap.generateMipmaps = true;
+  bumpMap.needsUpdate = true;
+
+  return { map, bumpMap };
+}
+
+const kitchenTileTextures = createTileTexture('#F5EFE6', '#C8734A', '#A38B78', 4);
+const bathroomTileTextures = createTileTexture('#E0F2FE', '#BAE6FD', '#94A3B8', 4);
+
+/**
  * Materiais PBR compartilhados com respostas físicas distintas:
  * - Madeira envernizada com veios sutis e reflexo controlado
  * - Estofados com trama têxtil e rugosidade elevada
@@ -303,6 +385,79 @@ export const sharedMaterials = {
     bumpScale: 0.008,
     roughness: 0.44,
     metalness: 0.04,
+  }),
+  floorParquet: new THREE.MeshStandardMaterial({
+    color: '#D48C46',
+    map: woodTextures.map,
+    bumpMap: woodTextures.bumpMap,
+    bumpScale: 0.012,
+    roughness: 0.38,
+    metalness: 0.05,
+  }),
+  floorKitchen: new THREE.MeshStandardMaterial({
+    color: '#FFFFFF',
+    map: kitchenTileTextures.map,
+    bumpMap: kitchenTileTextures.bumpMap,
+    bumpScale: 0.015,
+    roughness: 0.28,
+    metalness: 0.08,
+  }),
+  floorBathroom: new THREE.MeshStandardMaterial({
+    color: '#FFFFFF',
+    map: bathroomTileTextures.map,
+    bumpMap: bathroomTileTextures.bumpMap,
+    bumpScale: 0.012,
+    roughness: 0.22,
+    metalness: 0.1,
+  }),
+  kitchenCabinet: new THREE.MeshStandardMaterial({
+    color: '#657D62', // Sage green vintage
+    roughness: 0.48,
+    metalness: 0.06,
+  }),
+  kitchenCountertop: new THREE.MeshStandardMaterial({
+    color: '#283B32', // Polished dark green granite
+    roughness: 0.22,
+    metalness: 0.14,
+  }),
+  kitchenFridge: new THREE.MeshPhysicalMaterial({
+    color: '#E8F5E9', // Retro mint cream
+    roughness: 0.24,
+    metalness: 0.1,
+    clearcoat: 0.65,
+    clearcoatRoughness: 0.15,
+  }),
+  bathroomWallTile: new THREE.MeshPhysicalMaterial({
+    color: '#E0F2FE',
+    roughness: 0.18,
+    metalness: 0.08,
+    clearcoat: 0.75,
+  }),
+  bathroomPorcelain: new THREE.MeshPhysicalMaterial({
+    color: '#FFFFFF',
+    roughness: 0.12,
+    metalness: 0.04,
+    clearcoat: 0.9,
+  }),
+  bathroomGlass: new THREE.MeshPhysicalMaterial({
+    color: '#E0F2FE',
+    transparent: true,
+    opacity: 0.45,
+    roughness: 0.1,
+    metalness: 0.05,
+    clearcoat: 0.9,
+  }),
+  livingSofaLinen: new THREE.MeshStandardMaterial({
+    color: '#2C4F64', // Deep slate blue/teal
+    bumpMap: oliveFabricTextures.bumpMap,
+    bumpScale: 0.008,
+    roughness: 0.88,
+    metalness: 0.02,
+  }),
+  curtainBurgundy: new THREE.MeshStandardMaterial({
+    color: '#7F1D1D',
+    roughness: 0.85,
+    metalness: 0.02,
   }),
   floorPlankAlt: new THREE.MeshStandardMaterial({
     color: WORLD_PALETTE.woodFloorPlankAlt,
@@ -514,5 +669,25 @@ export const sharedMaterials = {
     color: WORLD_PALETTE.dockBody,
     roughness: 0.38,
     metalness: 0.22,
+  }),
+  robotCharcoal: new THREE.MeshStandardMaterial({
+    color: WORLD_PALETTE.robotCharcoal,
+    roughness: 0.85,
+    metalness: 0.05,
+  }),
+  lampShade: new THREE.MeshStandardMaterial({
+    color: WORLD_PALETTE.lampShade,
+    roughness: 0.6,
+  }),
+  sofaWoodLegs: new THREE.MeshStandardMaterial({
+    color: WORLD_PALETTE.sofaWoodLegs,
+    roughness: 0.65,
+  }),
+  armchairOlive: new THREE.MeshStandardMaterial({
+    color: WORLD_PALETTE.armchairOlive,
+    roughness: 0.82,
+    map: oliveFabricTextures.map,
+    bumpMap: oliveFabricTextures.bumpMap,
+    bumpScale: 0.04,
   }),
 };

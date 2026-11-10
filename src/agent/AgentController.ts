@@ -5,6 +5,7 @@ import {
 } from './navigation/ObstacleDetector';
 import { GridMap } from './navigation/GridMap';
 import { PathPlanner } from './navigation/PathPlanner';
+import { globalRoomGraph } from './navigation/RoomGraph';
 import type { EnvironmentObstacle } from '@/types/environment';
 import type { RobotOperationalState, Vector2D } from '@/types/robot';
 
@@ -21,7 +22,7 @@ export interface AgentDecision {
  * Controlador de autonomia de navegação e inteligência:
  * - Mantém grade de ocupação e histórico de exploração
  * - Considera obstáculos fixos (móveis/paredes) e dinâmicos (Gato doméstico andando/dormindo)
- * - Planeja rotas livres de colisão usando A*
+ * - Planeja rotas livres de colisão usando A* e grafo multicômodo (RoomGraph)
  * - Detecta obstruções dinâmicas e replaneja a rota automaticamente
  */
 export class AgentController {
@@ -41,11 +42,15 @@ export class AgentController {
   constructor(
     obstacles: EnvironmentObstacle[],
     roomWidth: number,
-    roomDepth: number
+    roomDepth: number,
+    minX?: number,
+    minZ?: number
   ) {
+    const computedMinX = minX ?? (roomWidth > 12 ? -5.0 : -roomWidth / 2);
+    const computedMinZ = minZ ?? (roomWidth > 12 ? -4.0 : -roomDepth / 2);
     this.detector = new ObstacleDetector(obstacles, roomWidth, roomDepth);
     this.sensor = new SensorSystem(this.detector);
-    this.grid = new GridMap(roomWidth, roomDepth, 0.25, obstacles);
+    this.grid = new GridMap(roomWidth, roomDepth, 0.25, obstacles, computedMinX, computedMinZ);
     this.planner = new PathPlanner(this.grid);
   }
 
@@ -55,7 +60,9 @@ export class AgentController {
       this.grid.width,
       this.grid.depth,
       this.grid.cellSize,
-      obstacles
+      obstacles,
+      this.grid.minX,
+      this.grid.minZ
     );
     this.planner.setGrid(this.grid);
   }
@@ -215,7 +222,32 @@ export class AgentController {
         (this.replanCooldown <= 0 && isImminentCollision));
 
     if (needsNewPlan && goal) {
-      const plan = this.planner.findPath(position, goal);
+      let plan: Vector2D[] = [];
+
+      // Se estamos na residência multicômodo, utiliza o grafo topológico de portas
+      if (this.detector.isMultiRoom) {
+        const multiPlan = globalRoomGraph.planMultiRoomNavigation(position, goal);
+        if (multiPlan && multiPlan.doorwayWaypoints.length > 0) {
+          const waypoints = [...multiPlan.doorwayWaypoints, goal];
+          let currentStart = position;
+          for (const wp of waypoints) {
+            const segment = this.planner.findPath(currentStart, wp);
+            if (segment.length > 0) {
+              plan.push(...segment);
+              currentStart = segment[segment.length - 1];
+            } else {
+              plan.push(wp);
+              currentStart = wp;
+            }
+          }
+        }
+      }
+
+      // Se a rota direta pelo A* for necessária (dentro do mesmo cômodo ou fallback)
+      if (plan.length === 0) {
+        plan = this.planner.findPath(position, goal);
+      }
+
       if (plan.length > 0) {
         this.currentPath = plan;
         this.currentPathIdx = 0;

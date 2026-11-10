@@ -352,79 +352,11 @@ export const Walls = memo(function Walls({
       </group>
 
       {/* ======================================================== */}
-      {/* 3. PAREDE DIREITA (LESTE): Porta Residencial e Quadro    */}
+      {/* 3. PAREDE LESTE: Quadro Decorativo (Porta aberta via Doors)*/}
       {/* ======================================================== */}
-      <group position={[halfW + wallThick / 2, 0, 0]}>
-        <mesh
-          castShadow
-          receiveShadow
-          position={[0, height / 2, 0]}
-          material={sharedMaterials.wallPlaster}
-        >
-          <boxGeometry args={[wallThick, height, depth + wallThick * 2]} />
-        </mesh>
-
-        {/* Rodapé leste */}
-        <mesh
-          receiveShadow
-          position={[-wallThick / 2 - 0.04, 0.12, 0]}
-          material={sharedMaterials.wallAccent}
-        >
-          <boxGeometry args={[0.08, 0.24, depth]} />
-        </mesh>
-
-        {/* Porta Residencial Esculpida com Almofadas e Maçaneta */}
-        <group position={[-wallThick / 2 - 0.04, 1.65, 2.35]}>
-          {/* Guarnição / Batente da porta */}
-          <RoundedBox
-            castShadow
-            args={[0.1, 3.32, 1.66]}
-            radius={0.02}
-            smoothness={3}
-            material={sharedMaterials.floorTrim}
-          />
-          {/* Folha principal de madeira nobre */}
-          <RoundedBox
-            castShadow
-            args={[0.065, 3.16, 1.48]}
-            radius={0.015}
-            smoothness={3}
-            position={[-0.03, 0, 0]}
-            material={sharedMaterials.furnitureWood}
-          />
-          {/* 4 Almofadas entalhadas na porta */}
-          {[
-            [0.72, -0.34],
-            [0.72, 0.34],
-            [-0.68, -0.34],
-            [-0.68, 0.34],
-          ].map(([py, pz], idx) => (
-            <RoundedBox
-              key={idx}
-              args={[0.025, 1.05, 0.48]}
-              radius={0.01}
-              smoothness={2}
-              position={[-0.065, py, pz]}
-              material={sharedMaterials.furnitureWoodDark}
-            />
-          ))}
-          {/* Espelho e maçaneta de latão polido */}
-          <mesh
-            position={[-0.068, -0.22, -0.55]}
-            material={sharedMaterials.metalBrass}
-          >
-            <boxGeometry args={[0.015, 0.26, 0.07]} />
-          </mesh>
-          <mesh
-            position={[-0.115, -0.22, -0.55]}
-            material={sharedMaterials.metalBrass}
-          >
-            <sphereGeometry args={[0.06, 14, 14]} />
-          </mesh>
-        </group>
-
-        {/* Quadro Decorativo 3 (Parede Leste, ao lado da porta) */}
-        <group position={[-wallThick / 2 - 0.05, 2.45, 0.85]}>
+      <group position={[halfW, 0, 0]}>
+        {/* Quadro Decorativo (Parede Leste, ao lado da porta do corredor) */}
+        <group position={[-0.05, 2.45, 0.85]}>
           <RoundedBox
             castShadow
             args={[0.045, 0.78, 0.65]}
