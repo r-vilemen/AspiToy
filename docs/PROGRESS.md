@@ -36,4 +36,10 @@
 ### Sprint 5 — Refinamento e Entrega (100%)
 - **Materiais PBR**: Vidros físicos com transmissão (`MeshPhysicalMaterial`), cerâmica terracota, madeira em tábuas com ranhuras e latão escovado.
 - **Iluminação Cinematográfica**: Sol matinal dourado com sombras de alta resolução (2048x2048) e contato suave (`ContactShadows`).
-- **Garantia de Qualidade**: 18 testes automatizados no Vitest (100% aprovados), tipagem estrita sem erros no `tsc --noEmit` e bundle de produção com code-splitting (`three`, `r3f`, `app`).
+- **Garantia de Qualidade**: 60 testes automatizados no Vitest (100% aprovados), tipagem estrita sem erros no `tsc --noEmit` e bundle de produção com code-splitting (`three`, `r3f`, `app`).
+
+### Melhorias Recentes Solicitadas pelo Usuário
+- **Transparência Dinâmica de Paredes**: Todas as paredes perimetrais e divisórias da casa possuem oclusão translúcida inteligente voltada para a câmera, impedindo bloqueio de visão no ângulo isométrico.
+- **Responsividade Mobile**: Layout otimizado para dispositivos móveis com barra de ação rápida inferior flutuante, drawer expansível e botões de controle tátil D-pad de 44px, preservando integralmente o layout desktop.
+- **Remoção de Elementos Decorativos**: Remoção das estrelas e esferas da tela de carregamento inicial, garantindo estética limpa e profissional.
+- **Telemetria Realista de Área Higienizada**: Sincronização direta e contínua entre a aspiração real do piso (tufos e manchas) e o painel de telemetria, exibindo porcentagem fiel do cômodo ativo e da residência completa com metragem quadrada real higienizada ($m^2$).

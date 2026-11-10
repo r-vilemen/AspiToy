@@ -81,5 +81,25 @@ describe('Arquitetura de Estado Zustand (robotStore, environmentStore, commandSt
     });
     expect(useRobotStore.getState().state).toBe('EXPLORING');
   });
+
+  it('atualiza telemetria realista da área higienizada em m² e porcentagem', () => {
+    const robot = useRobotStore.getState();
+    expect(robot.cleaningProgress).toBe(0);
+    expect(robot.roomCleaningProgress).toBe(0);
+    expect(robot.cleanedAreaM2).toBe(0);
+
+    robot.setSanitizedAreaTelemetry(45, 80, 24.5, 122);
+    const updated = useRobotStore.getState();
+    expect(updated.cleaningProgress).toBe(45);
+    expect(updated.roomCleaningProgress).toBe(80);
+    expect(updated.cleanedAreaM2).toBe(24.5);
+    expect(updated.totalAreaM2).toBe(122);
+
+    robot.resetRobot();
+    const reset = useRobotStore.getState();
+    expect(reset.cleaningProgress).toBe(0);
+    expect(reset.roomCleaningProgress).toBe(0);
+    expect(reset.cleanedAreaM2).toBe(0);
+  });
 });
 

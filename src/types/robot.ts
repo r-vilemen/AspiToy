@@ -32,6 +32,9 @@ export interface RobotTelemetry {
   battery: number;
   speed: number;
   cleaningProgress: number;
+  roomCleaningProgress: number;
+  cleanedAreaM2: number;
+  totalAreaM2: number;
   currentRegionId: string;
   currentRegionLabel: string;
   operationSeconds: number;

@@ -8,6 +8,7 @@ export function StatusCard() {
   const name = useRobotStore((s) => s.name);
   const state = useRobotStore((s) => s.state);
   const currentRegionLabel = useRobotStore((s) => s.currentRegionLabel);
+  const roomCleaningProgress = useRobotStore((s) => s.roomCleaningProgress);
   const operationSeconds = useRobotStore((s) => s.operationSeconds);
   const lastAction = useRobotStore((s) => s.lastAction);
 
@@ -41,8 +42,11 @@ export function StatusCard() {
             <MapPin className="h-3.5 w-3.5 stroke-[2.2] text-[#E05A36]" aria-hidden="true" />
             Região atual
           </dt>
-          <dd className="mt-0.5 font-black text-[#2A211B] truncate">
-            {currentRegionLabel}
+          <dd className="mt-0.5 flex items-baseline justify-between font-black text-[#2A211B]">
+            <span className="truncate">{currentRegionLabel}</span>
+            <span className="ml-1 shrink-0 font-mono text-[11px] font-black text-[#0F766E] tabular-nums">
+              {roomCleaningProgress}%
+            </span>
           </dd>
         </div>
 

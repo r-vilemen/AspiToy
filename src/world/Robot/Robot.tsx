@@ -392,8 +392,7 @@ export function Robot() {
         robotState.state === 'AVOIDING' ||
         manualControlBridge.active
       ) {
-        const nextProgress = envState.cleanDustNearPoint(point, 0.65, 0.14);
-        robotState.setCleaningProgress(nextProgress);
+        envState.cleanDustNearPoint(point, 0.65, 0.14);
         robotState.updateBattery(-0.08);
 
         if (robotState.battery <= 18) {
@@ -406,16 +405,6 @@ export function Robot() {
             'Bateria baixa',
             'Nível crítico. Retorno automático à base acionado pelo agente.',
             'warning'
-          );
-        } else if (nextProgress >= 100 && robotState.state === 'CLEANING') {
-          robotState.setOperationalState(
-            'COMPLETED',
-            'Limpeza da residência concluída com sucesso!'
-          );
-          cmdState.pushNotification(
-            'Limpeza concluída!',
-            'Todas as áreas prioritárias da residência foram higienizadas.',
-            'success'
           );
         }
       } else if (

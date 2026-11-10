@@ -60,6 +60,12 @@ export interface RobotStoreState extends RobotTelemetry {
   syncTelemetryFromBridge: (regionId: string, regionLabel: string) => void;
   updateBattery: (deltaPercent: number) => void;
   setCleaningProgress: (percent: number) => void;
+  setSanitizedAreaTelemetry: (
+    progress: number,
+    roomProgress: number,
+    cleanedM2: number,
+    totalM2: number
+  ) => void;
   tickOperationTimer: () => void;
   setTargetPosition: (target: Vector2D | null) => void;
   resetRobot: () => void;
@@ -75,6 +81,9 @@ const INITIAL_TELEMETRY: RobotTelemetry = {
   battery: 96,
   speed: 1.35,
   cleaningProgress: 0,
+  roomCleaningProgress: 0,
+  cleanedAreaM2: 0,
+  totalAreaM2: 122,
   currentRegionId: 'bedroom',
   currentRegionLabel: 'Base de Recarga',
   operationSeconds: 0,
@@ -115,6 +124,15 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
 
   setCleaningProgress: (percent) => {
     set({ cleaningProgress: clamp(Math.round(percent), 0, 100) });
+  },
+
+  setSanitizedAreaTelemetry: (progress, roomProgress, cleanedM2, totalM2) => {
+    set({
+      cleaningProgress: clamp(Math.round(progress), 0, 100),
+      roomCleaningProgress: clamp(Math.round(roomProgress), 0, 100),
+      cleanedAreaM2: Math.max(0, cleanedM2),
+      totalAreaM2: Math.max(1, totalM2),
+    });
   },
 
   tickOperationTimer: () => {

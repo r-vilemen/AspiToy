@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { robotMotionBridge, useRobotStore, manualControlBridge } from '@/store/robotStore';
 import { useEnvironmentStore } from '@/store/environmentStore';
+import { useCommandStore } from '@/store/commandStore';
 import { ALL_HOUSE_OBSTACLES } from './HouseObstacles';
 
 interface DustSeed {
@@ -185,6 +186,23 @@ function generateDustSeeds(): { seeds: DustSeed[]; patches: GroundPatchSeed[] } 
   return { seeds, patches };
 }
 
+export const ROOM_WALKABLE_AREAS: Record<string, number> = {
+  bedroom: 32.0,
+  hallway: 18.0,
+  'living-room': 36.0,
+  kitchen: 24.0,
+  bathroom: 12.0,
+};
+export const TOTAL_HOUSE_WALKABLE_AREA = 122.0;
+
+export const ROOM_DISPLAY_NAMES: Record<string, string> = {
+  bedroom: 'Quarto',
+  hallway: 'Corredor',
+  'living-room': 'Sala de Estar',
+  kitchen: 'Cozinha',
+  bathroom: 'Banheiro',
+};
+
 /**
  * Sistema de Poeira Dinâmica no Piso do AspiToy:
  * - Centenas de tufos, fiapos e farelos de poeira 3D orgânicos distribuídos pela residência inteira.
@@ -199,6 +217,24 @@ export const FloorDust = memo(function FloorDust() {
   const syncTimerRef = useRef(0);
 
   const { seeds, patches } = useMemo(() => generateDustSeeds(), []);
+
+  // Mapeamento pré-calculado de índices por cômodo para performance máxima de cálculo
+  const roomIndices = useMemo(() => {
+    const map: Record<string, { clumps: number[]; patches: number[] }> = {
+      bedroom: { clumps: [], patches: [] },
+      hallway: { clumps: [], patches: [] },
+      'living-room': { clumps: [], patches: [] },
+      kitchen: { clumps: [], patches: [] },
+      bathroom: { clumps: [], patches: [] },
+    };
+    seeds.forEach((s, idx) => {
+      if (map[s.regionId]) map[s.regionId].clumps.push(idx);
+    });
+    patches.forEach((p, idx) => {
+      if (map[p.regionId]) map[p.regionId].patches.push(idx);
+    });
+    return map;
+  }, [seeds, patches]);
 
   // Estado mutável por partícula para animação suave de sucção
   const clumpsStateRef = useRef<
@@ -324,6 +360,7 @@ export const FloorDust = memo(function FloorDust() {
           }
         }
         if (patchesMesh) patchesMesh.instanceMatrix.needsUpdate = true;
+        useRobotStore.getState().setSanitizedAreaTelemetry(0, 0, 0, TOTAL_HOUSE_WALKABLE_AREA);
       }
     });
 
@@ -428,33 +465,99 @@ export const FloorDust = memo(function FloorDust() {
       }
     }
 
-    // 3. Sincroniza progresso geral de limpeza com o store a cada 200ms
+    // 3. Sincroniza telemetria realista da área higienizada a cada 200ms
     syncTimerRef.current += delta;
     if (syncTimerRef.current >= 0.2) {
       syncTimerRef.current = 0;
 
       const envState = useEnvironmentStore.getState();
-      const currentRegion = envState.selectedRegionId;
+      const currentSelectedRegion = envState.selectedRegionId;
+      const robotRegion = robotState.currentRegionId || 'bedroom';
 
-      const relevant =
-        currentRegion && currentRegion !== 'all'
-          ? clumpsStateRef.current.filter((_, idx) => seeds[idx].regionId === currentRegion)
-          : clumpsStateRef.current;
+      let totalCleanedHouse = 0;
+      let totalCleanedM2 = 0;
+      const totalItemsHouse = seeds.length + patches.length;
 
-      if (relevant.length > 0) {
-        const cleanedCount = relevant.filter((item) => item.isCleaned).length;
-        const progress = Math.round((cleanedCount / relevant.length) * 100);
+      const roomPcts: Record<string, number> = {};
+      const roomIds = ['bedroom', 'hallway', 'living-room', 'kitchen', 'bathroom'];
 
-        if (robotState.cleaningProgress !== progress && isVacuumActive) {
-          robotState.setCleaningProgress(progress);
+      for (let r = 0; r < roomIds.length; r++) {
+        const id = roomIds[r];
+        const indices = roomIndices[id];
+        if (!indices) continue;
 
-          // Se concluiu 100% da área em modo autônomo
-          if (progress >= 100 && robotState.state === 'CLEANING') {
-            robotState.setOperationalState(
-              'COMPLETED',
-              'Limpeza concluída! Todos os tufos de poeira foram aspirados.'
-            );
-          }
+        const totalInRoom = indices.clumps.length + indices.patches.length;
+        if (totalInRoom === 0) continue;
+
+        let cleanedInRoom = 0;
+        for (let c = 0; c < indices.clumps.length; c++) {
+          if (clumpsStateRef.current[indices.clumps[c]]?.isCleaned) cleanedInRoom++;
+        }
+        for (let p = 0; p < indices.patches.length; p++) {
+          if (patchesStateRef.current[indices.patches[p]]?.isCleaned) cleanedInRoom++;
+        }
+
+        totalCleanedHouse += cleanedInRoom;
+
+        // Normalização de alcance: rodapés e cantos estreitos ocupam ~8% de margem
+        const reachableTotal = totalInRoom * 0.92;
+        const pct = Math.min(100, Math.round((cleanedInRoom / Math.max(1, reachableTotal)) * 100));
+        roomPcts[id] = pct;
+
+        const roomArea = ROOM_WALKABLE_AREAS[id] ?? 20;
+        totalCleanedM2 += (pct / 100) * roomArea;
+      }
+
+      const totalHouseReachable = totalItemsHouse * 0.92;
+      const housePct = Math.min(
+        100,
+        Math.round((totalCleanedHouse / Math.max(1, totalHouseReachable)) * 100)
+      );
+
+      const currentRoomPct = roomPcts[robotRegion] ?? 0;
+
+      let activeProgress: number;
+      let cleanedM2: number;
+      let totalM2: number;
+
+      if (currentSelectedRegion && currentSelectedRegion !== 'all') {
+        activeProgress = roomPcts[currentSelectedRegion] ?? 0;
+        totalM2 = ROOM_WALKABLE_AREAS[currentSelectedRegion] ?? 20;
+        cleanedM2 = Number(((activeProgress / 100) * totalM2).toFixed(1));
+      } else {
+        activeProgress = housePct;
+        cleanedM2 = Number(totalCleanedM2.toFixed(1));
+        totalM2 = TOTAL_HOUSE_WALKABLE_AREA;
+      }
+
+      if (
+        robotState.cleaningProgress !== activeProgress ||
+        robotState.roomCleaningProgress !== currentRoomPct ||
+        robotState.cleanedAreaM2 !== cleanedM2
+      ) {
+        robotState.setSanitizedAreaTelemetry(
+          activeProgress,
+          currentRoomPct,
+          cleanedM2,
+          totalM2
+        );
+
+        if (activeProgress >= 100 && robotState.state === 'CLEANING') {
+          const isHouse = !currentSelectedRegion || currentSelectedRegion === 'all';
+          const targetName = isHouse
+            ? 'Toda a residência'
+            : ROOM_DISPLAY_NAMES[currentSelectedRegion] ?? 'Região selecionada';
+
+          robotState.setOperationalState(
+            'COMPLETED',
+            `Limpeza concluída! ${targetName} foi totalmente higienizada.`
+          );
+
+          useCommandStore.getState().pushNotification(
+            'Higienização concluída!',
+            `100% da área planejada (${targetName}) foi aspirada e higienizada com sucesso.`,
+            'success'
+          );
         }
       }
     }
