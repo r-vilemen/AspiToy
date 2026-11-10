@@ -1,20 +1,9 @@
-import { Cat as CatIcon, Clock, Compass, MapPin, Sparkles } from 'lucide-react';
+import { Clock, MapPin, Sparkles } from 'lucide-react';
 import { useRobotStore } from '@/store/robotStore';
-import { useEnvironmentStore } from '@/store/environmentStore';
-import type { CatBehaviorState } from '@/types/environment';
 import type { RobotExpression } from '@/types/robot';
 import { formatDuration, STATE_DESCRIPTORS } from '@/hooks/useRobotState';
-import { formatCoordinates } from '@/utils/coordinates';
 import { BatteryIndicator } from './BatteryIndicator';
 import { ProgressBar } from './ProgressBar';
-
-const CAT_STATE_LABELS: Record<CatBehaviorState, string> = {
-  WALKING: 'Andando pela casa',
-  RUNNING: 'Correndo animado',
-  STANDING: 'Em pé (acordado)',
-  LYING: 'Deitado (acordado)',
-  SLEEPING: 'Dormindo (Zzz)',
-};
 
 const EXPRESSION_LABELS: Record<RobotExpression, string> = {
   neutral: 'Atento / Pronto',
@@ -33,10 +22,6 @@ export function StatusCard() {
   const currentRegionLabel = useRobotStore((s) => s.currentRegionLabel);
   const operationSeconds = useRobotStore((s) => s.operationSeconds);
   const lastAction = useRobotStore((s) => s.lastAction);
-  const position = useRobotStore((s) => s.position);
-
-  const catState = useEnvironmentStore((s) => s.catState);
-  const cycleCatBehavior = useEnvironmentStore((s) => s.cycleCatBehavior);
 
   const descriptor = STATE_DESCRIPTORS[state];
 
@@ -98,31 +83,6 @@ export function StatusCard() {
           <span className="text-[11px] font-semibold text-[#2A211B]">
             {EXPRESSION_LABELS[expression]}
           </span>
-        </div>
-
-        <div className="col-span-2 pt-1.5 border-t border-[#8C6D4F]/12 flex items-center justify-between">
-          <span className="inline-flex items-center gap-1 text-[#6E5D4F]">
-            <Compass className="h-3.5 w-3.5 text-[#6E5D4F]" aria-hidden="true" />
-            Posição na sala
-          </span>
-          <span className="font-mono text-[11px] tabular-nums text-[#2A211B]">
-            {formatCoordinates(position)}
-          </span>
-        </div>
-
-        <div className="col-span-2 pt-1.5 border-t border-[#8C6D4F]/12 flex items-center justify-between">
-          <span className="inline-flex items-center gap-1 text-[#6E5D4F]">
-            <CatIcon className="h-3.5 w-3.5 text-[#D96B27]" aria-hidden="true" />
-            Gato Laranja
-          </span>
-          <button
-            type="button"
-            onClick={() => cycleCatBehavior()}
-            title="Clique para alternar o comportamento do gato"
-            className="rounded-md bg-[#D96B27]/15 px-2 py-0.5 text-[11px] font-semibold text-[#9C3E11] hover:bg-[#D96B27]/25 transition cursor-pointer"
-          >
-            {CAT_STATE_LABELS[catState]}
-          </button>
         </div>
       </dl>
 
