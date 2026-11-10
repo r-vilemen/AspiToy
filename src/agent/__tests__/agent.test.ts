@@ -128,6 +128,13 @@ describe('Agente Inteligente, Colisão Física e Desvio do Gato Dinâmico', () =
     // Avança simulação de rolamento
     stepPushableToysPhysics({ x: 0, z: -4 }, 0.1, 0.05);
     expect(ball.rollPitch).toBeGreaterThan(0);
+    expect(ball.radius).toBe(0.21);
+
+    // Empurra a bola lateralmente (+X) e verifica resposta física de rolamento
+    const posX = ball.x;
+    stepPushableToysPhysics({ x: posX - 0.2, z: ball.z }, 0.32, 0.016);
+    expect(ball.vx).toBeGreaterThan(0);
+    expect(ball.x).toBeGreaterThan(posX);
 
     // Testa colisão física de todos os objetos do chão garantindo que ficam dentro dos limites da sala
     for (let frame = 0; frame < 60; frame++) {
