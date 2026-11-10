@@ -17,8 +17,8 @@ describe('Componentes de Onboarding (IntroAnimation e InGameTour)', () => {
   it('renderiza a animação de introdução e permite pular', () => {
     render(<IntroAnimation />);
 
-    expect(screen.getByText('AspiToy')).toBeDefined();
-    expect(screen.getByText(/Toy-Tech Autonomous Agent/i)).toBeDefined();
+    expect(screen.getByRole('heading', { name: /AspiToy/i })).toBeDefined();
+    expect(screen.getByText(/Agente Inteligente de Limpeza 3D/i)).toBeDefined();
 
     const skipBtn = screen.getByRole('button', { name: /Pular introdução/i });
     expect(skipBtn).toBeDefined();
