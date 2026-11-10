@@ -72,14 +72,6 @@ export const LivingRoom = memo(function LivingRoom() {
         <planeGeometry args={[6.2, 4.4]} />
         <primitive object={sharedMaterials.rugFabric} attach="material" />
       </mesh>
-      <mesh
-        receiveShadow
-        position={[12.8, 0.01, -0.5]}
-        rotation={[-Math.PI / 2, 0, 0]}
-      >
-        <ringGeometry args={[2.1, 2.18, 36]} />
-        <primitive object={sharedMaterials.rugBorder} attach="material" />
-      </mesh>
 
       {/* 3. Sofá em L (L-Shaped Couch) na Sala de Estar */}
       {/* Base Principal (corre no eixo X em Z = 1.2m) */}

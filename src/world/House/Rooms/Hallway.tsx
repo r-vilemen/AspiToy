@@ -37,15 +37,6 @@ export const Hallway = memo(function Hallway() {
         <planeGeometry args={[1.4, 10.0]} />
         <primitive object={sharedMaterials.rugFabric} attach="material" />
       </mesh>
-      {/* Borda do tapete passadeira */}
-      <mesh
-        receiveShadow
-        position={[6.3, 0.01, 2.25]}
-        rotation={[-Math.PI / 2, 0, 0]}
-      >
-        <ringGeometry args={[0.65, 0.72, 32]} />
-        <primitive object={sharedMaterials.rugBorder} attach="material" />
-      </mesh>
 
       {/* 3. Aparador / Console Vintage de Corredor (X = 5.35m, Z = -1.8m) */}
       <group position={[5.35, 0, -1.8]}>
