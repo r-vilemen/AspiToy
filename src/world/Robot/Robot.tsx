@@ -81,7 +81,15 @@ export function Robot() {
 
       if (manualControlBridge.active) {
         const currentRobot = useRobotStore.getState();
-        if (currentRobot.state === 'IDLE' || currentRobot.state === 'PAUSED') {
+        // Cancela alvo A* prévio se estiver no modo manual
+        if (currentRobot.targetPosition) {
+          currentRobot.setTargetPosition(null);
+        }
+        if (
+          currentRobot.state === 'IDLE' ||
+          currentRobot.state === 'PAUSED' ||
+          currentRobot.state === 'RECHARGING'
+        ) {
           currentRobot.setOperationalState(
             'CLEANING',
             'Controle manual direto (WASD / Setas) ativado'
@@ -201,25 +209,35 @@ export function Robot() {
     if (manualControlBridge.active) {
       // Controle manual direto (WASD / Setas / D-Pad)
       agent.setDynamicObstacles([dynamicCat]);
-      const manualTurn = manualControlBridge.turn * 2.75 * delta;
-      const nextHeading = loc.rotationY + manualTurn;
-      const desiredManualSpeed =
-        manualControlBridge.forward * robotState.speed;
+      const manualTurn = manualControlBridge.turn * 3.2 * delta;
+      loc.rotationY += manualTurn;
+      loc.targetRotationY = loc.rotationY;
 
-      loc.rotationY = nextHeading;
-      loc.targetRotationY = nextHeading;
-      updateRobotLocomotion(
-        loc,
-        Math.abs(desiredManualSpeed),
-        nextHeading,
+      // Velocidade do controle manual: frente positiva, ré negativa suave
+      const targetManualSpeed = manualControlBridge.forward * robotState.speed;
+      loc.speed = damp(
+        loc.speed,
+        targetManualSpeed,
+        Math.abs(targetManualSpeed) > 0.05 ? 8.0 : 12.0,
         delta
       );
 
-      const moveSign = manualControlBridge.forward >= 0 ? 1 : -0.65;
-      const desiredX =
-        loc.x + Math.sin(loc.rotationY) * loc.speed * moveSign * delta;
-      const desiredZ =
-        loc.z + Math.cos(loc.rotationY) * loc.speed * moveSign * delta;
+      // Giro visual das rodas e oscilação orgânica do modelo
+      const wheelRadius = 0.045;
+      const linearDist = loc.speed * delta;
+      loc.wheelSpin += linearDist / wheelRadius;
+      if (Math.abs(loc.speed) > 0.05 || Math.abs(manualControlBridge.turn) > 0) {
+        loc.bobPhase += delta * 10.0;
+        loc.pitch = damp(loc.pitch, loc.speed * 0.03, 6.0, delta);
+        loc.roll = damp(loc.roll, -manualControlBridge.turn * 0.04, 7.0, delta);
+      } else {
+        loc.pitch = damp(loc.pitch, 0, 6.0, delta);
+        loc.roll = damp(loc.roll, 0, 7.0, delta);
+      }
+
+      // Direção do deslocamento: para a frente do visor (sen/cos de rotationY)
+      const desiredX = loc.x + Math.sin(loc.rotationY) * loc.speed * delta;
+      const desiredZ = loc.z + Math.cos(loc.rotationY) * loc.speed * delta;
 
       const collisionResult = agent.resolveSafeMovement(
         { x: loc.x, z: loc.z },
