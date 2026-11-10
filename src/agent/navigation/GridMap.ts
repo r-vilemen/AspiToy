@@ -23,6 +23,7 @@ export class GridMap {
   public readonly cols: number;
   public readonly rows: number;
   private cells: GridCell[][];
+  private dynamicObstacles: EnvironmentObstacle[] = [];
 
   constructor(
     width = 10,
@@ -38,6 +39,10 @@ export class GridMap {
 
     this.cells = [];
     this.initGrid(obstacles);
+  }
+
+  public setDynamicObstacles(dynamicObstacles: EnvironmentObstacle[]): void {
+    this.dynamicObstacles = dynamicObstacles;
   }
 
   private initGrid(obstacles: EnvironmentObstacle[]): void {
@@ -103,7 +108,16 @@ export class GridMap {
 
   public isWalkable(col: number, row: number): boolean {
     const cell = this.getCell(col, row);
-    return cell !== null && cell.state !== 'OCCUPIED';
+    if (!cell || cell.state === 'OCCUPIED') return false;
+
+    for (const dyn of this.dynamicObstacles) {
+      if (!dyn.collidable) continue;
+      if (isPointInsideBounds(cell.worldPos, dyn.bounds, 0.22)) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   public markExplored(point: Vector2D, radius = 0.5): void {
@@ -131,7 +145,7 @@ export class GridMap {
     for (let r = 0; r < this.rows; r++) {
       for (let c = 0; c < this.cols; c++) {
         const cell = this.cells[r][c];
-        if (!cell.explored && cell.state !== 'OCCUPIED') {
+        if (!cell.explored && this.isWalkable(c, r)) {
           list.push(cell);
         }
       }
@@ -139,4 +153,3 @@ export class GridMap {
     return list;
   }
 }
-

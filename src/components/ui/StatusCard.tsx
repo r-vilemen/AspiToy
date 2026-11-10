@@ -1,9 +1,19 @@
-import { Clock, Compass, MapPin } from 'lucide-react';
+import { Cat as CatIcon, Clock, Compass, MapPin } from 'lucide-react';
 import { useRobotStore } from '@/store/robotStore';
+import { useEnvironmentStore } from '@/store/environmentStore';
+import type { CatBehaviorState } from '@/types/environment';
 import { formatDuration, STATE_DESCRIPTORS } from '@/hooks/useRobotState';
 import { formatCoordinates } from '@/utils/coordinates';
 import { BatteryIndicator } from './BatteryIndicator';
 import { ProgressBar } from './ProgressBar';
+
+const CAT_STATE_LABELS: Record<CatBehaviorState, string> = {
+  WALKING: 'Andando pela casa',
+  RUNNING: 'Correndo animado',
+  STANDING: 'Em pé (acordado)',
+  LYING: 'Deitado (acordado)',
+  SLEEPING: 'Dormindo (Zzz)',
+};
 
 export function StatusCard() {
   const name = useRobotStore((s) => s.name);
@@ -12,6 +22,9 @@ export function StatusCard() {
   const operationSeconds = useRobotStore((s) => s.operationSeconds);
   const lastAction = useRobotStore((s) => s.lastAction);
   const position = useRobotStore((s) => s.position);
+
+  const catState = useEnvironmentStore((s) => s.catState);
+  const cycleCatBehavior = useEnvironmentStore((s) => s.cycleCatBehavior);
 
   const descriptor = STATE_DESCRIPTORS[state];
 
@@ -74,6 +87,21 @@ export function StatusCard() {
             {formatCoordinates(position)}
           </span>
         </div>
+
+        <div className="col-span-2 pt-1.5 border-t border-[#8C6D4F]/12 flex items-center justify-between">
+          <span className="inline-flex items-center gap-1 text-[#6E5D4F]">
+            <CatIcon className="h-3.5 w-3.5 text-[#D96B27]" aria-hidden="true" />
+            Gato Laranja
+          </span>
+          <button
+            type="button"
+            onClick={() => cycleCatBehavior()}
+            title="Clique para alternar o comportamento do gato"
+            className="rounded-md bg-[#D96B27]/15 px-2 py-0.5 text-[11px] font-semibold text-[#9C3E11] hover:bg-[#D96B27]/25 transition cursor-pointer"
+          >
+            {CAT_STATE_LABELS[catState]}
+          </button>
+        </div>
       </dl>
 
       <div className="rounded-xl bg-[#EFE6D6]/85 px-3 py-2 text-xs text-[#54463B]">
@@ -83,4 +111,3 @@ export function StatusCard() {
     </section>
   );
 }
-

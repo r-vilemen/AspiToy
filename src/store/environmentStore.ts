@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import type {
+  CatBehaviorState,
+  CatMotionBridge,
   DustSpot,
   EnvironmentObstacle,
   RoomDimensions,
@@ -10,11 +12,51 @@ import { isPointInsideBounds } from '@/utils/coordinates';
 
 export const INITIAL_DOCK_POSITION: Vector2D = { x: -0.15, z: 0.85 };
 
+export const INITIAL_CAT_POSITION: Vector2D = { x: -1.65, z: 0.35 };
+
 export const INITIAL_ROOM_DIMENSIONS: RoomDimensions = {
   width: 10,
   depth: 8,
   wallHeight: 4.6,
 };
+
+/**
+ * Bridge mutável de 60 FPS para o Gato doméstico autônomo.
+ * Permite que o robô leia a posição exata do gato em tempo real sem `setState` por frame.
+ */
+export const catMotionBridge: CatMotionBridge = {
+  x: INITIAL_CAT_POSITION.x,
+  z: INITIAL_CAT_POSITION.z,
+  rotationY: 0.6,
+  targetRotationY: 0.6,
+  speed: 0.65,
+  state: 'WALKING',
+  animPhase: 0,
+  stateTimer: 4.5,
+  targetX: 0.1,
+  targetZ: -0.4,
+  radius: 0.34,
+};
+
+/**
+ * Retorna o obstáculo dinâmico representando a posição instantânea do gato.
+ */
+export function getDynamicCatObstacle(): EnvironmentObstacle {
+  const r = catMotionBridge.radius;
+  return {
+    id: 'dynamic-cat',
+    label: 'Gato Laranja',
+    category: 'pet',
+    bounds: {
+      minX: catMotionBridge.x - r,
+      maxX: catMotionBridge.x + r,
+      minZ: catMotionBridge.z - r,
+      maxZ: catMotionBridge.z + r,
+    },
+    collidable: true,
+    height: 0.42,
+  };
+}
 
 export const INITIAL_REGIONS: RoomRegion[] = [
   {
@@ -89,6 +131,14 @@ export const INITIAL_OBSTACLES: EnvironmentObstacle[] = [
     height: 2.4,
   },
   {
+    id: 'fireplace-hearth',
+    label: 'Lareira Clássica',
+    category: 'furniture',
+    bounds: { minX: -1.15, maxX: 0.75, minZ: -4.0, maxZ: -3.45 },
+    collidable: true,
+    height: 1.95,
+  },
+  {
     id: 'bookcase-east',
     label: 'Estante e Cômoda',
     category: 'furniture',
@@ -97,21 +147,45 @@ export const INITIAL_OBSTACLES: EnvironmentObstacle[] = [
     height: 3.5,
   },
   {
+    id: 'toy-blocks-abc',
+    label: 'Blocos ABC',
+    category: 'decor',
+    bounds: { minX: -3.65, maxX: -2.75, minZ: 1.25, maxZ: 1.95 },
+    collidable: true,
+    height: 0.65,
+  },
+  {
+    id: 'charging-dock-tower',
+    label: 'Torre de Energia Toy-Tech',
+    category: 'furniture',
+    bounds: { minX: -3.85, maxX: -3.15, minZ: -2.0, maxZ: -1.2 },
+    collidable: true,
+    height: 0.48,
+  },
+  {
     id: 'charging-dock',
     label: 'Base Toy-Tech',
     category: 'dock',
-    bounds: { minX: -4.2, maxX: -3.3, minZ: -2.05, maxZ: -1.15 },
+    bounds: { minX: -0.45, maxX: 0.15, minZ: 0.55, maxZ: 1.15 },
     collidable: false,
-    height: 0.48,
+    height: 0.02,
   },
 ];
 
 const INITIAL_DUST_SPOTS: DustSpot[] = [
-  { id: 'dust-1', position: { x: -0.4, z: 0.6 }, radius: 0.48, intensity: 0.95, regionId: 'living-center' },
+  { id: 'dust-1', position: { x: -0.4, z: 0.2 }, radius: 0.48, intensity: 0.95, regionId: 'living-center' },
   { id: 'dust-2', position: { x: -0.2, z: -1.35 }, radius: 0.44, intensity: 0.9, regionId: 'living-center' },
   { id: 'dust-3', position: { x: 2.3, z: -0.6 }, radius: 0.5, intensity: 1.0, regionId: 'reading-nook' },
   { id: 'dust-4', position: { x: 2.4, z: 1.2 }, radius: 0.45, intensity: 0.85, regionId: 'reading-nook' },
   { id: 'dust-5', position: { x: -2.2, z: 0.3 }, radius: 0.46, intensity: 0.85, regionId: 'media-zone' },
+];
+
+const CAT_BEHAVIOR_ORDER: CatBehaviorState[] = [
+  'WALKING',
+  'RUNNING',
+  'STANDING',
+  'LYING',
+  'SLEEPING',
 ];
 
 export interface EnvironmentStoreState {
@@ -121,7 +195,11 @@ export interface EnvironmentStoreState {
   obstacles: EnvironmentObstacle[];
   dustSpots: DustSpot[];
   selectedRegionId: string;
+  catState: CatBehaviorState;
+  catPosition: Vector2D;
   setSelectedRegion: (regionId: string) => void;
+  setCatTelemetry: (state: CatBehaviorState, position: Vector2D) => void;
+  cycleCatBehavior: () => CatBehaviorState;
   resolveRegionAtPoint: (point: Vector2D) => RoomRegion;
   cleanDustNearPoint: (point: Vector2D, reachRadius?: number, power?: number) => number;
   resetEnvironment: () => void;
@@ -134,12 +212,36 @@ export const useEnvironmentStore = create<EnvironmentStoreState>((set, get) => (
   obstacles: INITIAL_OBSTACLES,
   dustSpots: INITIAL_DUST_SPOTS,
   selectedRegionId: 'all',
+  catState: 'WALKING',
+  catPosition: { ...INITIAL_CAT_POSITION },
 
   setSelectedRegion: (regionId) => {
     const exists = get().regions.some((r) => r.id === regionId);
     if (exists) {
       set({ selectedRegionId: regionId });
     }
+  },
+
+  setCatTelemetry: (catState, catPosition) => {
+    set({
+      catState,
+      catPosition: {
+        x: Number(catPosition.x.toFixed(2)),
+        z: Number(catPosition.z.toFixed(2)),
+      },
+    });
+  },
+
+  cycleCatBehavior: () => {
+    const current = get().catState;
+    const idx = CAT_BEHAVIOR_ORDER.indexOf(current);
+    const next = CAT_BEHAVIOR_ORDER[(idx + 1) % CAT_BEHAVIOR_ORDER.length];
+    catMotionBridge.state = next;
+    catMotionBridge.stateTimer = next === 'RUNNING' ? 4.0 : 6.0;
+    catMotionBridge.speed =
+      next === 'RUNNING' ? 1.85 : next === 'WALKING' ? 0.68 : 0;
+    set({ catState: next });
+    return next;
   },
 
   resolveRegionAtPoint: (point) => {
@@ -176,9 +278,20 @@ export const useEnvironmentStore = create<EnvironmentStoreState>((set, get) => (
     return Math.round(Math.min(100, Math.max(0, cleanedRatio * 100)));
   },
 
-  resetEnvironment: () =>
+  resetEnvironment: () => {
+    catMotionBridge.x = INITIAL_CAT_POSITION.x;
+    catMotionBridge.z = INITIAL_CAT_POSITION.z;
+    catMotionBridge.rotationY = 0.6;
+    catMotionBridge.targetRotationY = 0.6;
+    catMotionBridge.speed = 0.65;
+    catMotionBridge.state = 'WALKING';
+    catMotionBridge.stateTimer = 4.5;
+
     set({
       dustSpots: INITIAL_DUST_SPOTS.map((spot) => ({ ...spot })),
       selectedRegionId: 'all',
-    }),
+      catState: 'WALKING',
+      catPosition: { ...INITIAL_CAT_POSITION },
+    });
+  },
 }));

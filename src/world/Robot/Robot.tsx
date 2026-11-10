@@ -3,44 +3,57 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { RobotModel } from './RobotModel';
 import { RobotEffects } from './RobotEffects';
-import { updateRobotLocomotion, type RobotLocomotionState } from './RobotAnimations';
+import {
+  updateRobotLocomotion,
+  type RobotLocomotionState,
+} from './RobotAnimations';
 import { robotMotionBridge, useRobotStore } from '@/store/robotStore';
-import { useEnvironmentStore } from '@/store/environmentStore';
+import {
+  getDynamicCatObstacle,
+  useEnvironmentStore,
+} from '@/store/environmentStore';
 import { useCommandStore } from '@/store/commandStore';
 import { AgentController } from '@/agent/AgentController';
-import { clamp, distance2D } from '@/utils/math';
+import { PriorityManager } from '@/agent/decision/PriorityManager';
+import { distance2D } from '@/utils/math';
 
 const PATROL_POINTS = [
-  { x: -1.8, z: -1.6 },
-  { x: 0.0, z: -1.3 },
-  { x: 2.3, z: -1.2 },
-  { x: 2.6, z: 0.9 },
-  { x: 0.2, z: 1.1 },
-  { x: -2.2, z: 0.8 },
+  { x: -1.8, z: -0.2 },
+  { x: -0.2, z: -1.4 },
+  { x: 2.3, z: -1.1 },
+  { x: 2.4, z: 1.1 },
+  { x: -0.3, z: 1.0 },
+  { x: -2.3, z: 0.4 },
 ];
 
 /**
  * Ator robótico interativo.
  * Controla a movimentação contínua com interpolação de alta performance em `useFrame`,
- * sem chamar `setState` a cada frame (`perf-never-set-state-in-useframe`).
+ * desviando de todos os móveis fixos e também do gato dinâmico sem atravessá-los.
  */
 export function Robot() {
   const rootRef = useRef<THREE.Group>(null);
   const patrolIdxRef = useRef(0);
   const syncTimerRef = useRef(0);
+  const notifyCooldownRef = useRef(0);
 
   const state = useRobotStore((s) => s.state);
   const expression = useRobotStore((s) => s.expression);
   const obstacles = useEnvironmentStore((s) => s.obstacles);
   const roomDimensions = useEnvironmentStore((s) => s.roomDimensions);
 
-  // Instância do controlador desacoplado
   const agent = useMemo(
-    () => new AgentController(obstacles, roomDimensions.width, roomDimensions.depth),
+    () =>
+      new AgentController(
+        obstacles,
+        roomDimensions.width,
+        roomDimensions.depth
+      ),
     [obstacles, roomDimensions]
   );
 
-  // Estado interno de locomoção em ref mutável
+  const priorityManager = useMemo(() => new PriorityManager(), []);
+
   const locomotionRef = useRef<RobotLocomotionState>({
     x: robotMotionBridge.x,
     z: robotMotionBridge.z,
@@ -61,15 +74,46 @@ export function Robot() {
     const envState = useEnvironmentStore.getState();
     const cmdState = useCommandStore.getState();
 
+    if (notifyCooldownRef.current > 0) {
+      notifyCooldownRef.current -= delta;
+    }
+
+    // Sincroniza posição caso o robô tenha sido resetado
+    if (
+      robotState.state === 'IDLE' &&
+      distance2D({ x: loc.x, z: loc.z }, robotState.position) > 0.5
+    ) {
+      loc.x = robotMotionBridge.x;
+      loc.z = robotMotionBridge.z;
+      loc.rotationY = robotMotionBridge.rotationY;
+    }
+
     let targetPoint: { x: number; z: number } | null = null;
 
-    if (robotState.state === 'CLEANING' || robotState.state === 'EXPLORING') {
+    if (
+      robotState.state === 'CLEANING' ||
+      robotState.state === 'EXPLORING' ||
+      robotState.state === 'AVOIDING'
+    ) {
+      const smartDustTarget = priorityManager.selectBestTarget(
+        { x: loc.x, z: loc.z },
+        envState.dustSpots,
+        envState.selectedRegionId,
+        envState.regions,
+        robotState.battery,
+        envState.dockPosition
+      );
+
       targetPoint =
         robotState.targetPosition ??
+        smartDustTarget ??
         PATROL_POINTS[patrolIdxRef.current % PATROL_POINTS.length];
     } else if (robotState.state === 'RETURNING') {
       targetPoint = envState.dockPosition;
     }
+
+    // Obstáculo dinâmico em tempo real do gato andando/dormindo pela casa
+    const dynamicCat = getDynamicCatObstacle();
 
     // Consulta de tomada de decisão autônoma do agente desacoplado
     const decision = agent.decide(
@@ -79,19 +123,41 @@ export function Robot() {
       targetPoint,
       robotState.speed,
       robotState.currentRegionId,
-      delta
+      delta,
+      [dynamicCat]
     );
 
-    // Se o agente detectar colisão e transicionar para desvio
-    if (decision.nextState !== robotState.state && decision.nextState === 'AVOIDING') {
-      robotState.setOperationalState('AVOIDING', decision.logAction);
+    if (decision.nextState !== robotState.state) {
+      if (decision.nextState === 'AVOIDING') {
+        loc.bumperCompression = 0.024;
+        robotState.setOperationalState('AVOIDING', decision.logAction);
+        if (
+          decision.detectedObstacleLabel === 'Gato Laranja' &&
+          notifyCooldownRef.current <= 0
+        ) {
+          notifyCooldownRef.current = 4.5;
+          cmdState.pushNotification(
+            'Gato no caminho!',
+            'O AspiToy detectou o gato pela casa e recalculou a rota para não incomodá-lo.',
+            'warning'
+          );
+        }
+      } else if (
+        robotState.state === 'AVOIDING' &&
+        decision.nextState === 'CLEANING'
+      ) {
+        robotState.setOperationalState(
+          'CLEANING',
+          'Trajetória livre retomada após desvio'
+        );
+      }
     }
 
     if (targetPoint && decision.desiredSpeed > 0) {
       const currentPos = { x: loc.x, z: loc.z };
       const dist = distance2D(currentPos, targetPoint);
 
-      if (dist < 0.22) {
+      if (dist < 0.24) {
         if (robotState.state === 'RETURNING') {
           loc.speed = 0;
           robotState.setOperationalState(
@@ -107,29 +173,40 @@ export function Robot() {
           if (robotState.targetPosition) {
             robotState.setTargetPosition(null);
           }
-          patrolIdxRef.current = (patrolIdxRef.current + 1) % PATROL_POINTS.length;
+          patrolIdxRef.current =
+            (patrolIdxRef.current + 1) % PATROL_POINTS.length;
         }
       }
     }
 
     // Atualiza locomoção física com base nas diretrizes do AgentController
-    updateRobotLocomotion(loc, decision.desiredSpeed, decision.desiredHeading, delta);
+    updateRobotLocomotion(
+      loc,
+      decision.desiredSpeed,
+      decision.desiredHeading,
+      delta
+    );
 
-    // Avança posição linear no plano horizontal
-    if (loc.speed > 0.001) {
-      loc.x = clamp(
-        loc.x + Math.sin(loc.rotationY) * loc.speed * delta,
-        -4.4,
-        4.4
-      );
-      loc.z = clamp(
-        loc.z + Math.cos(loc.rotationY) * loc.speed * delta,
-        -3.4,
-        1.5
-      );
+    // Avança posição linear com resolução física de colisão contra TODOS os objetos e o gato
+    const desiredX = loc.x + Math.sin(loc.rotationY) * loc.speed * delta;
+    const desiredZ = loc.z + Math.cos(loc.rotationY) * loc.speed * delta;
+
+    const collisionResult = agent.resolveSafeMovement(
+      { x: loc.x, z: loc.z },
+      { x: desiredX, z: desiredZ },
+      0.31
+    );
+
+    loc.x = collisionResult.position.x;
+    loc.z = collisionResult.position.z;
+
+    if (collisionResult.collided) {
+      loc.bumperCompression = 0.028;
+      // Gira suavemente para sair da tangente do obstáculo
+      loc.rotationY += 1.6 * delta;
     }
 
-    // Sincroniza com a bridge mutável de 60fps para a câmera
+    // Sincroniza com a bridge mutável de 60fps para a câmera e o gato
     robotMotionBridge.x = loc.x;
     robotMotionBridge.z = loc.z;
     robotMotionBridge.rotationY = loc.rotationY;
@@ -150,12 +227,14 @@ export function Robot() {
       const region = envState.resolveRegionAtPoint(point);
       robotState.syncTelemetryFromBridge(region.id, region.label);
 
-      if (robotState.state === 'CLEANING') {
-        const nextProgress = envState.cleanDustNearPoint(point, 0.65, 0.12);
+      if (
+        robotState.state === 'CLEANING' ||
+        robotState.state === 'AVOIDING'
+      ) {
+        const nextProgress = envState.cleanDustNearPoint(point, 0.65, 0.14);
         robotState.setCleaningProgress(nextProgress);
         robotState.updateBattery(-0.08);
 
-        // Bateria crítica durante a operação -> Retorno automático à base
         if (robotState.battery <= 18) {
           robotState.setTargetPosition(envState.dockPosition);
           robotState.setOperationalState(
@@ -178,7 +257,10 @@ export function Robot() {
             'success'
           );
         }
-      } else if (robotState.state === 'RECHARGING' && robotState.battery < 100) {
+      } else if (
+        robotState.state === 'RECHARGING' &&
+        robotState.battery < 100
+      ) {
         robotState.updateBattery(0.4);
       }
     }
@@ -195,7 +277,10 @@ export function Robot() {
         wheelSpin={robotMotionBridge.wheelSpin}
         pitch={locomotionRef.current.pitch}
         roll={locomotionRef.current.roll}
-        bobY={Math.sin(locomotionRef.current.bobPhase) * (locomotionRef.current.speed > 0.1 ? 0.006 : 0.002)}
+        bobY={
+          Math.sin(locomotionRef.current.bobPhase) *
+          (locomotionRef.current.speed > 0.1 ? 0.006 : 0.002)
+        }
         bumperCompression={locomotionRef.current.bumperCompression}
         state={state}
         expression={expression}

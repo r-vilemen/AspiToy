@@ -4,6 +4,7 @@ import { Lighting } from './Environment/Lighting';
 import { WORLD_PALETTE } from './Environment/Materials';
 import { House } from './House/House';
 import { Robot } from './Robot/Robot';
+import { Cat } from './Cat/Cat';
 import { FollowCamera } from './Camera/FollowCamera';
 
 export function Scene() {
@@ -20,6 +21,7 @@ export function Scene() {
         <Suspense fallback={null}>
           <Lighting />
           <House />
+          <Cat />
           <Robot />
           <FollowCamera />
         </Suspense>

@@ -5,7 +5,29 @@ export type ObstacleCategory =
   | 'furniture'
   | 'rug'
   | 'decor'
-  | 'dock';
+  | 'dock'
+  | 'pet';
+
+export type CatBehaviorState =
+  | 'STANDING'
+  | 'WALKING'
+  | 'RUNNING'
+  | 'LYING'
+  | 'SLEEPING';
+
+export interface CatMotionBridge {
+  x: number;
+  z: number;
+  rotationY: number;
+  targetRotationY: number;
+  speed: number;
+  state: CatBehaviorState;
+  animPhase: number;
+  stateTimer: number;
+  targetX: number;
+  targetZ: number;
+  radius: number;
+}
 
 export interface BoundingBox2D {
   minX: number;
@@ -44,4 +66,3 @@ export interface RoomDimensions {
   depth: number;
   wallHeight: number;
 }
-
