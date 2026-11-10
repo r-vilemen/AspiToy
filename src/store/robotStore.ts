@@ -24,6 +24,16 @@ export const robotMotionBridge: RobotMotionBridge = {
   bumperCompression: 0,
 };
 
+/**
+ * Bridge mutável de 60 FPS para controle manual direto (WASD / Setas / D-Pad)
+ * sem disparar re-renderizações do React a cada frame.
+ */
+export const manualControlBridge = {
+  forward: 0, // -1 (ré) a +1 (frente)
+  turn: 0, // -1 (direita) a +1 (esquerda)
+  active: false,
+};
+
 function mapStateToExpression(state: RobotOperationalState): RobotExpression {
   switch (state) {
     case 'IDLE':

@@ -1,7 +1,6 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import * as THREE from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { robotMotionBridge } from '@/store/robotStore';
 import { useCommandStore } from '@/store/commandStore';
@@ -9,16 +8,40 @@ import { clamp, damp } from '@/utils/math';
 
 /**
  * Câmera em terceira pessoa estilo PS2 Toy Story (Perspectiva de Pequeno Brinquedo em Quarto Gigante):
- * - Modo 'follow': câmera baixa acompanhando o AspiToy pelo chão, valorizando a escala gigante dos móveis
+ * - Modo 'follow': acompanha o deslocamento do AspiToy sem brigar com o OrbitControls (permite girar e dar zoom livremente)
+ * - Modo 'overview': perspectiva de cima (top-down) enquadrando o quarto inteiro (10m x 8m) e liberando o controle do mouse após a transição
  * - Modo 'closeup': visão colada às costas do brinquedo (estilo plataforma 3D anos 2000)
- * - Modo 'overview': câmera elevada panorâmica do quarto completo
  */
 export function FollowCamera() {
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const cameraPreset = useCommandStore((s) => s.cameraPreset);
-  const targetVecRef = useRef(new THREE.Vector3(-0.3, 0.36, -0.8));
   const lastPresetRef = useRef(cameraPreset);
-  const followTransitionTimerRef = useRef(0);
+  const transitionTimerRef = useRef(0.75);
+  const isUserInteractingRef = useRef(false);
+  const trackedRobotPosRef = useRef({
+    x: robotMotionBridge.x,
+    z: robotMotionBridge.z,
+  });
+
+  useEffect(() => {
+    const controls = controlsRef.current;
+    if (!controls) return;
+
+    const handleStart = () => {
+      isUserInteractingRef.current = true;
+      transitionTimerRef.current = 0;
+    };
+    const handleEnd = () => {
+      isUserInteractingRef.current = false;
+    };
+
+    controls.addEventListener('start', handleStart);
+    controls.addEventListener('end', handleEnd);
+    return () => {
+      controls.removeEventListener('start', handleStart);
+      controls.removeEventListener('end', handleEnd);
+    };
+  }, []);
 
   useFrame((state, rawDelta) => {
     const delta = Math.min(rawDelta, 0.05);
@@ -26,100 +49,130 @@ export function FollowCamera() {
     if (!controls) return;
 
     if (lastPresetRef.current !== cameraPreset) {
-      if (cameraPreset === 'follow') {
-        followTransitionTimerRef.current = 1.4;
-      }
       lastPresetRef.current = cameraPreset;
+      transitionTimerRef.current = 0.85;
+      trackedRobotPosRef.current.x = robotMotionBridge.x;
+      trackedRobotPosRef.current.z = robotMotionBridge.z;
+    }
+
+    if (transitionTimerRef.current > 0) {
+      transitionTimerRef.current = Math.max(0, transitionTimerRef.current - delta);
     }
 
     if (cameraPreset === 'follow') {
-      // Olha levemente à frente e acima do robô para enquadrar os móveis gigantes
-      const lookAheadX =
-        robotMotionBridge.x + Math.sin(robotMotionBridge.rotationY) * 0.65;
-      const lookAheadZ =
-        robotMotionBridge.z + Math.cos(robotMotionBridge.rotationY) * 0.65;
-
-      const prevTargetX = controls.target.x;
-      const prevTargetZ = controls.target.z;
-
-      targetVecRef.current.set(
-        damp(controls.target.x, lookAheadX, 4.5, delta),
-        damp(controls.target.y, 0.38, 4.5, delta),
-        damp(controls.target.z, lookAheadZ, 4.5, delta)
+      const nextRobotX = damp(
+        trackedRobotPosRef.current.x,
+        robotMotionBridge.x,
+        6.0,
+        delta
       );
-      controls.target.copy(targetVecRef.current);
+      const nextRobotZ = damp(
+        trackedRobotPosRef.current.z,
+        robotMotionBridge.z,
+        6.0,
+        delta
+      );
+      const dx = nextRobotX - trackedRobotPosRef.current.x;
+      const dz = nextRobotZ - trackedRobotPosRef.current.z;
+      trackedRobotPosRef.current.x = nextRobotX;
+      trackedRobotPosRef.current.z = nextRobotZ;
 
-      // Ao voltar de "Visão Geral" ou "Close-up", reposiciona suavemente a câmera na altura de 3ª pessoa
-      if (followTransitionTimerRef.current > 0) {
-        followTransitionTimerRef.current = Math.max(
-          0,
-          followTransitionTimerRef.current - delta
+      if (transitionTimerRef.current > 0 && !isUserInteractingRef.current) {
+        // Transição suave inicial ao entrar no modo Acompanhar
+        controls.target.set(
+          damp(controls.target.x, nextRobotX, 6.0, delta),
+          damp(controls.target.y, 0.28, 6.0, delta),
+          damp(controls.target.z, nextRobotZ, 6.0, delta)
         );
         const desiredCamX = clamp(
-          robotMotionBridge.x - Math.sin(robotMotionBridge.rotationY) * 2.25,
+          nextRobotX - Math.sin(robotMotionBridge.rotationY) * 2.2,
+          -4.4,
+          4.4
+        );
+        const desiredCamZ = clamp(
+          nextRobotZ - Math.cos(robotMotionBridge.rotationY) * 2.2,
+          -3.4,
+          3.4
+        );
+        state.camera.position.set(
+          damp(state.camera.position.x, desiredCamX, 5.5, delta),
+          damp(state.camera.position.y, 1.15, 5.5, delta),
+          damp(state.camera.position.z, desiredCamZ, 5.5, delta)
+        );
+      } else {
+        // Translada câmera e alvo exatamente pelo mesmo delta (preserva 100% da rotação/zoom do mouse!)
+        controls.target.x += dx;
+        controls.target.y = damp(controls.target.y, 0.28, 5.0, delta);
+        controls.target.z += dz;
+        state.camera.position.x += dx;
+        state.camera.position.z += dz;
+      }
+    } else if (cameraPreset === 'closeup') {
+      const nextRobotX = damp(
+        trackedRobotPosRef.current.x,
+        robotMotionBridge.x,
+        7.0,
+        delta
+      );
+      const nextRobotZ = damp(
+        trackedRobotPosRef.current.z,
+        robotMotionBridge.z,
+        7.0,
+        delta
+      );
+      const dx = nextRobotX - trackedRobotPosRef.current.x;
+      const dz = nextRobotZ - trackedRobotPosRef.current.z;
+      trackedRobotPosRef.current.x = nextRobotX;
+      trackedRobotPosRef.current.z = nextRobotZ;
+
+      if (!isUserInteractingRef.current) {
+        const lookAheadX =
+          nextRobotX + Math.sin(robotMotionBridge.rotationY) * 0.45;
+        const lookAheadZ =
+          nextRobotZ + Math.cos(robotMotionBridge.rotationY) * 0.45;
+
+        controls.target.set(
+          damp(controls.target.x, lookAheadX, 6.0, delta),
+          damp(controls.target.y, 0.28, 6.0, delta),
+          damp(controls.target.z, lookAheadZ, 6.0, delta)
+        );
+
+        const desiredCamX = clamp(
+          nextRobotX - Math.sin(robotMotionBridge.rotationY) * 1.45,
           -4.5,
           4.5
         );
         const desiredCamZ = clamp(
-          robotMotionBridge.z - Math.cos(robotMotionBridge.rotationY) * 2.25,
-          -3.6,
-          3.6
+          nextRobotZ - Math.cos(robotMotionBridge.rotationY) * 1.45,
+          -3.5,
+          3.5
         );
         state.camera.position.set(
-          damp(state.camera.position.x, desiredCamX, 4.5, delta),
-          damp(state.camera.position.y, 1.05, 4.5, delta),
-          damp(state.camera.position.z, desiredCamZ, 4.5, delta)
+          damp(state.camera.position.x, desiredCamX, 4.8, delta),
+          damp(state.camera.position.y, 0.65, 4.8, delta),
+          damp(state.camera.position.z, desiredCamZ, 4.8, delta)
         );
       } else {
-        // Mantém o deslocamento relativo ao robô enquanto permite orbitar livremente
-        const dx = controls.target.x - prevTargetX;
-        const dz = controls.target.z - prevTargetZ;
-        state.camera.position.x = clamp(state.camera.position.x + dx, -4.7, 4.7);
-        state.camera.position.z = clamp(state.camera.position.z + dz, -3.7, 3.7);
+        controls.target.x += dx;
+        controls.target.z += dz;
+        state.camera.position.x += dx;
+        state.camera.position.z += dz;
       }
-    } else if (cameraPreset === 'closeup') {
-      // Câmera baixíssima atrás do brinquedo (Toy Perspective PS2)
-      const lookAheadX =
-        robotMotionBridge.x + Math.sin(robotMotionBridge.rotationY) * 0.9;
-      const lookAheadZ =
-        robotMotionBridge.z + Math.cos(robotMotionBridge.rotationY) * 0.9;
-
-      targetVecRef.current.set(
-        damp(controls.target.x, lookAheadX, 5.0, delta),
-        damp(controls.target.y, 0.35, 5.0, delta),
-        damp(controls.target.z, lookAheadZ, 5.0, delta)
-      );
-      controls.target.copy(targetVecRef.current);
-
-      const desiredCamX = clamp(
-        robotMotionBridge.x - Math.sin(robotMotionBridge.rotationY) * 1.45,
-        -4.5,
-        4.5
-      );
-      const desiredCamZ = clamp(
-        robotMotionBridge.z - Math.cos(robotMotionBridge.rotationY) * 1.45,
-        -3.5,
-        3.5
-      );
-      state.camera.position.set(
-        damp(state.camera.position.x, desiredCamX, 3.8, delta),
-        damp(state.camera.position.y, 0.62, 3.8, delta),
-        damp(state.camera.position.z, desiredCamZ, 3.8, delta)
-      );
     } else {
-      // Visão Geral ("overview"): perspectiva de cima mostrando o quarto inteiro (10m x 8m)
-      targetVecRef.current.set(
-        damp(controls.target.x, 0, 4.5, delta),
-        damp(controls.target.y, 0, 4.5, delta),
-        damp(controls.target.z, 0, 4.5, delta)
-      );
-      controls.target.copy(targetVecRef.current);
-
-      state.camera.position.set(
-        damp(state.camera.position.x, 0, 4.2, delta),
-        damp(state.camera.position.y, 12.2, 4.2, delta),
-        damp(state.camera.position.z, 0.85, 4.2, delta)
-      );
+      // Visão Geral ("overview"): posiciona a câmera no alto mostrando o quarto inteiro visto de cima
+      // e libera o controle do mouse assim que a transição termina ou o usuário interage.
+      if (transitionTimerRef.current > 0 && !isUserInteractingRef.current) {
+        controls.target.set(
+          damp(controls.target.x, 0, 6.5, delta),
+          damp(controls.target.y, 0, 6.5, delta),
+          damp(controls.target.z, 0, 6.5, delta)
+        );
+        state.camera.position.set(
+          damp(state.camera.position.x, 0, 6.5, delta),
+          damp(state.camera.position.y, 12.2, 6.5, delta),
+          damp(state.camera.position.z, 0.25, 6.5, delta)
+        );
+      }
     }
 
     controls.update();
@@ -130,10 +183,13 @@ export function FollowCamera() {
       ref={controlsRef}
       makeDefault
       enableDamping
-      dampingFactor={0.07}
-      minDistance={1.1}
-      maxDistance={16.0}
-      minPolarAngle={0.04}
+      dampingFactor={0.08}
+      rotateSpeed={0.85}
+      zoomSpeed={0.95}
+      panSpeed={0.85}
+      minDistance={0.9}
+      maxDistance={16.5}
+      minPolarAngle={0.02}
       maxPolarAngle={Math.PI / 2 - 0.04}
     />
   );

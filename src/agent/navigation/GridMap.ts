@@ -46,7 +46,7 @@ export class GridMap {
   }
 
   private initGrid(obstacles: EnvironmentObstacle[]): void {
-    const robotPadding = 0.18; // Margem de segurança de colisão
+    const robotPadding = 0.24; // Margem de segurança de colisão
 
     for (let r = 0; r < this.rows; r++) {
       this.cells[r] = [];

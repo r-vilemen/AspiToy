@@ -34,6 +34,7 @@ export class AgentController {
   private currentPathIdx: number = 0;
   private avoidanceTimer: number = 0;
   private avoidTurnDirection: number = 1;
+  private avoidTargetHeading: number = 0;
   private replanCooldown: number = 0;
 
   constructor(
@@ -129,9 +130,11 @@ export class AgentController {
       ...scan.rays.slice(centerIdx + 1).map((r) => r.distance)
     );
 
-    // Colisão iminente frontal (< 0.52m) ou proximidade lateral crítica (< 0.36m)
+    const minSideRayDist = Math.min(...scan.rays.map((r) => r.distance));
+
+    // Colisão iminente frontal (< 0.48m) ou nos raios diagonais dianteiros (< 0.35m)
     const isImminentCollision =
-      minFrontRay.distance < 0.52 || scan.nearestObstacleDistance < 0.36;
+      minFrontRay.distance < 0.48 || minSideRayDist < 0.35;
 
     // Manobra de evasão ativa
     if (this.avoidanceTimer > 0) {
@@ -140,22 +143,24 @@ export class AgentController {
         this.avoidanceTimer <= 0 ? 'CLEANING' : 'AVOIDING';
       return {
         nextState: resumedState,
-        desiredSpeed: baseSpeed * 0.48,
-        desiredHeading: rotationY + this.avoidTurnDirection * 2.2 * delta,
+        desiredSpeed: baseSpeed * 0.55,
+        desiredHeading: this.avoidTargetHeading,
         logAction: 'Contornando obstáculo com segurança',
         plannedPath: this.currentPath,
       };
     }
 
     if (isImminentCollision) {
-      this.avoidanceTimer = 0.72;
+      this.avoidanceTimer = 0.55;
       this.avoidTurnDirection = leftDist >= rightDist ? -1 : 1;
+      this.avoidTargetHeading =
+        rotationY + this.avoidTurnDirection * (Math.PI * 0.55);
       this.currentPath = []; // Invalida rota para forçar replanejamento A* contornando o gato/móvel
       const obstacleName = minFrontRay.obstacleLabel ?? 'obstáculo';
       return {
         nextState: 'AVOIDING',
         desiredSpeed: baseSpeed * 0.35,
-        desiredHeading: rotationY + this.avoidTurnDirection * Math.PI * 0.48,
+        desiredHeading: this.avoidTargetHeading,
         logAction: `Desviando de ${obstacleName}`,
         detectedObstacleLabel: obstacleName,
       };

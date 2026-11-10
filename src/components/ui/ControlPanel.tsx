@@ -1,5 +1,14 @@
-import { Home, Pause, Play, RotateCcw } from 'lucide-react';
-import { useRobotStore } from '@/store/robotStore';
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  Home,
+  Pause,
+  Play,
+  RotateCcw,
+} from 'lucide-react';
+import { manualControlBridge, useRobotStore } from '@/store/robotStore';
 import { useEnvironmentStore } from '@/store/environmentStore';
 import { useCommandStore } from '@/store/commandStore';
 import { CommandInput } from './CommandInput';
@@ -14,6 +23,25 @@ export function ControlPanel() {
     state === 'CLEANING' || state === 'EXPLORING' || state === 'AVOIDING';
   const isPaused = state === 'PAUSED';
   const isReturning = state === 'RETURNING';
+
+  const startManualMove = (forward: number, turn: number) => {
+    manualControlBridge.forward = forward;
+    manualControlBridge.turn = turn;
+    manualControlBridge.active = true;
+    const currentRobot = useRobotStore.getState();
+    if (currentRobot.state === 'IDLE' || currentRobot.state === 'PAUSED') {
+      currentRobot.setOperationalState(
+        'CLEANING',
+        'Controle manual direto ativado'
+      );
+    }
+  };
+
+  const stopManualMove = () => {
+    manualControlBridge.forward = 0;
+    manualControlBridge.turn = 0;
+    manualControlBridge.active = false;
+  };
 
   return (
     <section aria-label="Controles do agente" className="space-y-3">
@@ -65,6 +93,64 @@ export function ControlPanel() {
           <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
           Reiniciar cena
         </button>
+      </div>
+
+      {/* Controle direcional manual estilo Gamepad / WASD */}
+      <div className="rounded-xl border border-[#8C6D4F]/18 bg-[#F3ECE0]/60 p-2.5">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-semibold text-[#2A211B]">
+            Direção manual (WASD / Setas)
+          </span>
+          <span className="text-[10px] text-[#6E5D4F]">Segure para mover</span>
+        </div>
+        <div className="mt-2 grid grid-cols-3 gap-1.5 max-w-[180px] mx-auto">
+          <div />
+          <button
+            type="button"
+            aria-label="Mover para frente"
+            onPointerDown={() => startManualMove(1, 0)}
+            onPointerUp={stopManualMove}
+            onPointerLeave={stopManualMove}
+            onPointerCancel={stopManualMove}
+            className="flex h-8 items-center justify-center rounded-lg border border-[#8C6D4F]/25 bg-[#FBF7F0] text-[#2A211B] shadow-2xs active:bg-[#E05A36] active:text-white cursor-pointer"
+          >
+            <ArrowUp className="h-4 w-4" />
+          </button>
+          <div />
+          <button
+            type="button"
+            aria-label="Girar para a esquerda"
+            onPointerDown={() => startManualMove(0.35, 1)}
+            onPointerUp={stopManualMove}
+            onPointerLeave={stopManualMove}
+            onPointerCancel={stopManualMove}
+            className="flex h-8 items-center justify-center rounded-lg border border-[#8C6D4F]/25 bg-[#FBF7F0] text-[#2A211B] shadow-2xs active:bg-[#E05A36] active:text-white cursor-pointer"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            aria-label="Mover para trás"
+            onPointerDown={() => startManualMove(-1, 0)}
+            onPointerUp={stopManualMove}
+            onPointerLeave={stopManualMove}
+            onPointerCancel={stopManualMove}
+            className="flex h-8 items-center justify-center rounded-lg border border-[#8C6D4F]/25 bg-[#FBF7F0] text-[#2A211B] shadow-2xs active:bg-[#E05A36] active:text-white cursor-pointer"
+          >
+            <ArrowDown className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            aria-label="Girar para a direita"
+            onPointerDown={() => startManualMove(0.35, -1)}
+            onPointerUp={stopManualMove}
+            onPointerLeave={stopManualMove}
+            onPointerCancel={stopManualMove}
+            className="flex h-8 items-center justify-center rounded-lg border border-[#8C6D4F]/25 bg-[#FBF7F0] text-[#2A211B] shadow-2xs active:bg-[#E05A36] active:text-white cursor-pointer"
+          >
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {/* Seleção rápida de região */}

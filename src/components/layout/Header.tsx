@@ -36,7 +36,7 @@ export function Header() {
       {/* Seletor de enquadramento da câmera 3D */}
       <nav
         aria-label="Modos de câmera"
-        className="pointer-events-auto hidden sm:inline-flex items-center gap-1 rounded-2xl border border-[#8C6D4F]/20 bg-[#FBF7F0]/88 p-1.5 shadow-sm backdrop-blur-md"
+        className="pointer-events-auto inline-flex items-center gap-1 rounded-2xl border border-[#8C6D4F]/20 bg-[#FBF7F0]/88 p-1.5 shadow-sm backdrop-blur-md"
       >
         {CAMERA_OPTIONS.map((option) => {
           const Icon = option.icon;

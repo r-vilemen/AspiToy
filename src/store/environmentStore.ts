@@ -71,7 +71,7 @@ export const INITIAL_REGIONS: RoomRegion[] = [
     label: 'Tapete Redondo',
     description: 'Área ensolarada entre a mesa de madeira e a poltrona verde',
     bounds: { minX: -2.4, maxX: 0.6, minZ: -2.4, maxZ: 0.4 },
-    center: { x: -0.6, z: -1.1 },
+    center: { x: -0.15, z: -1.15 },
   },
   {
     id: 'reading-nook',
@@ -85,7 +85,7 @@ export const INITIAL_REGIONS: RoomRegion[] = [
     label: 'Canto da TV Tubo',
     description: 'Zona próxima ao gabinete da TV CRT, lareira e blocos ABC',
     bounds: { minX: -4.2, maxX: -0.4, minZ: -2.8, maxZ: 1.8 },
-    center: { x: -2.2, z: 0.4 },
+    center: { x: -2.15, z: -2.25 },
   },
 ];
 
@@ -222,10 +222,10 @@ export const INITIAL_OBSTACLES: EnvironmentObstacle[] = [
 
 const INITIAL_DUST_SPOTS: DustSpot[] = [
   { id: 'dust-1', position: { x: -0.4, z: 0.2 }, radius: 0.48, intensity: 0.95, regionId: 'living-center' },
-  { id: 'dust-2', position: { x: -0.2, z: -1.35 }, radius: 0.44, intensity: 0.9, regionId: 'living-center' },
+  { id: 'dust-2', position: { x: -0.15, z: -1.25 }, radius: 0.44, intensity: 0.9, regionId: 'living-center' },
   { id: 'dust-3', position: { x: 2.3, z: -0.6 }, radius: 0.5, intensity: 1.0, regionId: 'reading-nook' },
   { id: 'dust-4', position: { x: 2.4, z: 1.2 }, radius: 0.45, intensity: 0.85, regionId: 'reading-nook' },
-  { id: 'dust-5', position: { x: -2.2, z: 0.3 }, radius: 0.46, intensity: 0.85, regionId: 'media-zone' },
+  { id: 'dust-5', position: { x: -2.15, z: -2.25 }, radius: 0.46, intensity: 0.85, regionId: 'media-zone' },
 ];
 
 const CAT_BEHAVIOR_ORDER: CatBehaviorState[] = [

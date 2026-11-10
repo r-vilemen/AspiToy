@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { RobotModel } from './RobotModel';
@@ -7,7 +7,11 @@ import {
   updateRobotLocomotion,
   type RobotLocomotionState,
 } from './RobotAnimations';
-import { robotMotionBridge, useRobotStore } from '@/store/robotStore';
+import {
+  manualControlBridge,
+  robotMotionBridge,
+  useRobotStore,
+} from '@/store/robotStore';
 import {
   getDynamicCatObstacle,
   useEnvironmentStore,
@@ -53,6 +57,80 @@ export function Robot() {
   );
 
   const priorityManager = useMemo(() => new PriorityManager(), []);
+
+  // Suporte a controle direto pelo teclado (WASD e Setas direcionais)
+  useEffect(() => {
+    const pressedKeys = new Set<string>();
+
+    const syncKeyboardBridge = () => {
+      let forward = 0;
+      let turn = 0;
+      if (pressedKeys.has('KeyW') || pressedKeys.has('ArrowUp')) forward += 1;
+      if (pressedKeys.has('KeyS') || pressedKeys.has('ArrowDown')) forward -= 1;
+      if (pressedKeys.has('KeyA') || pressedKeys.has('ArrowLeft')) turn += 1;
+      if (pressedKeys.has('KeyD') || pressedKeys.has('ArrowRight')) turn -= 1;
+
+      manualControlBridge.forward = forward;
+      manualControlBridge.turn = turn;
+      manualControlBridge.active = forward !== 0 || turn !== 0;
+
+      if (manualControlBridge.active) {
+        const currentRobot = useRobotStore.getState();
+        if (currentRobot.state === 'IDLE' || currentRobot.state === 'PAUSED') {
+          currentRobot.setOperationalState(
+            'CLEANING',
+            'Controle manual direto (WASD / Setas) ativado'
+          );
+        }
+      }
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (
+        e.code === 'KeyW' ||
+        e.code === 'KeyA' ||
+        e.code === 'KeyS' ||
+        e.code === 'KeyD' ||
+        e.code === 'ArrowUp' ||
+        e.code === 'ArrowDown' ||
+        e.code === 'ArrowLeft' ||
+        e.code === 'ArrowRight'
+      ) {
+        pressedKeys.add(e.code);
+        syncKeyboardBridge();
+      }
+    };
+
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (pressedKeys.delete(e.code)) {
+        syncKeyboardBridge();
+      }
+    };
+
+    const onBlur = () => {
+      pressedKeys.clear();
+      syncKeyboardBridge();
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, []);
 
   const locomotionRef = useRef<RobotLocomotionState>({
     x: robotMotionBridge.x,
@@ -115,95 +193,132 @@ export function Robot() {
     // Obstáculo dinâmico em tempo real do gato andando/dormindo pela casa
     const dynamicCat = getDynamicCatObstacle();
 
-    // Consulta de tomada de decisão autônoma do agente desacoplado
-    const decision = agent.decide(
-      robotState.state,
-      { x: loc.x, z: loc.z },
-      loc.rotationY,
-      targetPoint,
-      robotState.speed,
-      robotState.currentRegionId,
-      delta,
-      [dynamicCat]
-    );
+    if (manualControlBridge.active) {
+      // Controle manual direto (WASD / Setas / D-Pad)
+      agent.setDynamicObstacles([dynamicCat]);
+      const manualTurn = manualControlBridge.turn * 2.75 * delta;
+      const nextHeading = loc.rotationY + manualTurn;
+      const desiredManualSpeed =
+        manualControlBridge.forward * robotState.speed;
 
-    if (decision.nextState !== robotState.state) {
-      if (decision.nextState === 'AVOIDING') {
-        loc.bumperCompression = 0.024;
-        robotState.setOperationalState('AVOIDING', decision.logAction);
-        if (
-          decision.detectedObstacleLabel === 'Gato Laranja' &&
-          notifyCooldownRef.current <= 0
-        ) {
-          notifyCooldownRef.current = 4.5;
-          cmdState.pushNotification(
-            'Gato no caminho!',
-            'O AspiToy detectou o gato pela casa e recalculou a rota para não incomodá-lo.',
-            'warning'
-          );
-        }
-      } else if (
-        robotState.state === 'AVOIDING' &&
-        decision.nextState === 'CLEANING'
-      ) {
-        robotState.setOperationalState(
-          'CLEANING',
-          'Trajetória livre retomada após desvio'
-        );
+      loc.rotationY = nextHeading;
+      loc.targetRotationY = nextHeading;
+      updateRobotLocomotion(
+        loc,
+        Math.abs(desiredManualSpeed),
+        nextHeading,
+        delta
+      );
+
+      const moveSign = manualControlBridge.forward >= 0 ? 1 : -0.65;
+      const desiredX =
+        loc.x + Math.sin(loc.rotationY) * loc.speed * moveSign * delta;
+      const desiredZ =
+        loc.z + Math.cos(loc.rotationY) * loc.speed * moveSign * delta;
+
+      const collisionResult = agent.resolveSafeMovement(
+        { x: loc.x, z: loc.z },
+        { x: desiredX, z: desiredZ },
+        0.31
+      );
+
+      loc.x = collisionResult.position.x;
+      loc.z = collisionResult.position.z;
+      if (collisionResult.collided) {
+        loc.bumperCompression = 0.028;
       }
-    }
+    } else {
+      // Consulta de tomada de decisão autônoma do agente desacoplado
+      const decision = agent.decide(
+        robotState.state,
+        { x: loc.x, z: loc.z },
+        loc.rotationY,
+        targetPoint,
+        robotState.speed,
+        robotState.currentRegionId,
+        delta,
+        [dynamicCat]
+      );
 
-    if (targetPoint && decision.desiredSpeed > 0) {
-      const currentPos = { x: loc.x, z: loc.z };
-      const dist = distance2D(currentPos, targetPoint);
-
-      if (dist < 0.24) {
-        if (robotState.state === 'RETURNING') {
-          loc.speed = 0;
-          robotState.setOperationalState(
-            'RECHARGING',
-            'Acoplado na estação de carregamento'
-          );
-          cmdState.pushNotification(
-            'Acoplamento concluído',
-            'AspiToy conectado à base e recarregando bateria.',
-            'success'
-          );
-        } else {
-          if (robotState.targetPosition) {
-            robotState.setTargetPosition(null);
+      if (decision.nextState !== robotState.state) {
+        if (decision.nextState === 'AVOIDING') {
+          loc.bumperCompression = 0.024;
+          robotState.setOperationalState('AVOIDING', decision.logAction);
+          if (
+            decision.detectedObstacleLabel === 'Gato Laranja' &&
+            notifyCooldownRef.current <= 0
+          ) {
+            notifyCooldownRef.current = 4.5;
+            cmdState.pushNotification(
+              'Gato no caminho!',
+              'O AspiToy detectou o gato pela casa e recalculou a rota para não incomodá-lo.',
+              'warning'
+            );
           }
-          patrolIdxRef.current =
-            (patrolIdxRef.current + 1) % PATROL_POINTS.length;
+        } else if (
+          robotState.state === 'AVOIDING' &&
+          decision.nextState === 'CLEANING'
+        ) {
+          robotState.setOperationalState(
+            'CLEANING',
+            'Trajetória livre retomada após desvio'
+          );
         }
       }
-    }
 
-    // Atualiza locomoção física com base nas diretrizes do AgentController
-    updateRobotLocomotion(
-      loc,
-      decision.desiredSpeed,
-      decision.desiredHeading,
-      delta
-    );
+      if (targetPoint && decision.desiredSpeed > 0) {
+        const currentPos = { x: loc.x, z: loc.z };
+        const dist = distance2D(currentPos, targetPoint);
 
-    // Avança posição linear com resolução física de colisão contra TODOS os objetos e o gato
-    const desiredX = loc.x + Math.sin(loc.rotationY) * loc.speed * delta;
-    const desiredZ = loc.z + Math.cos(loc.rotationY) * loc.speed * delta;
+        if (dist < 0.28) {
+          if (robotState.state === 'RETURNING') {
+            loc.speed = 0;
+            robotState.setOperationalState(
+              'RECHARGING',
+              'Acoplado na estação de carregamento'
+            );
+            cmdState.pushNotification(
+              'Acoplamento concluído',
+              'AspiToy conectado à base e recarregando bateria.',
+              'success'
+            );
+          } else {
+            if (robotState.targetPosition) {
+              robotState.setTargetPosition(null);
+            }
+            patrolIdxRef.current =
+              (patrolIdxRef.current + 1) % PATROL_POINTS.length;
+          }
+        }
+      }
 
-    const collisionResult = agent.resolveSafeMovement(
-      { x: loc.x, z: loc.z },
-      { x: desiredX, z: desiredZ },
-      0.31
-    );
+      // Atualiza locomoção física com base nas diretrizes do AgentController
+      updateRobotLocomotion(
+        loc,
+        decision.desiredSpeed,
+        decision.desiredHeading,
+        delta
+      );
 
-    loc.x = collisionResult.position.x;
-    loc.z = collisionResult.position.z;
+      // Avança posição linear com resolução física de colisão contra TODOS os objetos e o gato
+      const desiredX = loc.x + Math.sin(loc.rotationY) * loc.speed * delta;
+      const desiredZ = loc.z + Math.cos(loc.rotationY) * loc.speed * delta;
 
-    if (collisionResult.collided) {
-      loc.bumperCompression = 0.028;
-      // Gira suavemente para sair da tangente do obstáculo
-      loc.rotationY += 1.6 * delta;
+      const collisionResult = agent.resolveSafeMovement(
+        { x: loc.x, z: loc.z },
+        { x: desiredX, z: desiredZ },
+        0.31
+      );
+
+      loc.x = collisionResult.position.x;
+      loc.z = collisionResult.position.z;
+
+      if (collisionResult.collided) {
+        loc.bumperCompression = 0.028;
+        // Gira decididamente para sair da tangente do obstáculo sem ser anulado no próximo frame
+        loc.rotationY += 2.2 * delta;
+        loc.targetRotationY = loc.rotationY;
+      }
     }
 
     // Sincroniza com a bridge mutável de 60fps para a câmera e o gato
