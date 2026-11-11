@@ -16,6 +16,7 @@ export function SoundSettingsModal() {
   const musicVolume = useSoundStore((s) => s.musicVolume);
   const sfxVolume = useSoundStore((s) => s.sfxVolume);
   const toggleSound = useSoundStore((s) => s.toggleSound);
+  const enableSound = useSoundStore((s) => s.enableSound);
   const setMasterVolume = useSoundStore((s) => s.setMasterVolume);
   const setMusicVolume = useSoundStore((s) => s.setMusicVolume);
   const setSfxVolume = useSoundStore((s) => s.setSfxVolume);
@@ -41,7 +42,6 @@ export function SoundSettingsModal() {
         containerRef.current &&
         !containerRef.current.contains(e.target as Node)
       ) {
-        // Ignora cliques no próprio botão disparador de som
         const soundBtn = document.getElementById('sound-toggle-btn');
         const soundSettingsBtn = document.getElementById('sound-settings-btn');
         if (
@@ -58,7 +58,32 @@ export function SoundSettingsModal() {
   }, [closeSettings]);
 
   const handleTestSfx = () => {
+    if (!isEnabled) {
+      enableSound();
+    }
+    soundManager.ensureAudioRunning();
     soundManager.playCleanPop();
+  };
+
+  const handleMusicChange = (val: number) => {
+    if (!isEnabled && val > 0) {
+      enableSound();
+    }
+    setMusicVolume(val);
+  };
+
+  const handleSfxChange = (val: number) => {
+    if (!isEnabled && val > 0) {
+      enableSound();
+    }
+    setSfxVolume(val);
+  };
+
+  const handleMasterChange = (val: number) => {
+    if (!isEnabled && val > 0) {
+      enableSound();
+    }
+    setMasterVolume(val);
   };
 
   return (
@@ -161,7 +186,7 @@ export function SoundSettingsModal() {
               </span>
             </div>
             <p className="font-mono text-[10px] text-[#78695D]">
-              Tema instrumental lúdico estilo Pixar / Toy Story
+              Tema lúdico estilo Toy Story / Pixar
             </p>
             <div className="flex items-center gap-2">
               <input
@@ -170,13 +195,13 @@ export function SoundSettingsModal() {
                 min="0"
                 max="100"
                 value={Math.round(musicVolume * 100)}
-                onChange={(e) => setMusicVolume(Number(e.target.value) / 100)}
+                onChange={(e) => handleMusicChange(Number(e.target.value) / 100)}
                 aria-label="Volume da trilha sonora"
                 className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-[#E5DCD0] accent-[#F2724D]"
               />
               <button
                 type="button"
-                onClick={() => setMusicVolume(musicVolume > 0 ? 0 : 0.65)}
+                onClick={() => handleMusicChange(musicVolume > 0 ? 0 : 0.7)}
                 title={musicVolume > 0 ? 'Mutar trilha sonora' : 'Restaurar música'}
                 className="shrink-0 rounded-md border border-[#2A211B]/40 bg-[#FFFDF8] px-1.5 py-0.5 font-mono text-[9px] font-black uppercase text-[#2A211B] hover:bg-[#F3ECE0] cursor-pointer"
               >
@@ -200,7 +225,7 @@ export function SoundSettingsModal() {
               </span>
             </div>
             <p className="font-mono text-[10px] text-[#78695D]">
-              Motor de aspiração, sucção de poeira e bipes
+              Motor do aspirador, sucção de poeira e bipes
             </p>
             <div className="flex items-center gap-2">
               <input
@@ -209,7 +234,7 @@ export function SoundSettingsModal() {
                 min="0"
                 max="100"
                 value={Math.round(sfxVolume * 100)}
-                onChange={(e) => setSfxVolume(Number(e.target.value) / 100)}
+                onChange={(e) => handleSfxChange(Number(e.target.value) / 100)}
                 aria-label="Volume dos efeitos sonoros"
                 className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-[#E5DCD0] accent-[#0F766E]"
               />
@@ -243,7 +268,7 @@ export function SoundSettingsModal() {
               min="0"
               max="100"
               value={Math.round(masterVolume * 100)}
-              onChange={(e) => setMasterVolume(Number(e.target.value) / 100)}
+              onChange={(e) => handleMasterChange(Number(e.target.value) / 100)}
               aria-label="Volume master geral"
               className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-[#E5DCD0] accent-[#2A211B]"
             />

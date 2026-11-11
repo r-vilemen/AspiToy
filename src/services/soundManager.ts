@@ -4,6 +4,7 @@
  * - Efeito Físico de Sucção e Motor do AspiToy (zumbido suave com modulação de velocidade)
  * - Efeitos Sonoros (bipes fofos de ligar/desligar, clique e aspiração)
  * - Controle independente de Master, Trilha Sonora (Música) e Efeitos Sonoros (SFX)
+ * - Compressor dinâmico no barramento principal para áudio limpo, nítido e encorpado
  * - 100% nativo, sem arquivos externos nem latência de download.
  */
 
@@ -132,15 +133,16 @@ const TOY_HARMONY_COMP: [string[], number, number][] = [
 
 export class SoundManager {
   private ctx: AudioContext | null = null;
+  private compressor: DynamicsCompressorNode | null = null;
   private masterGain: GainNode | null = null;
   private musicGain: GainNode | null = null;
   private motorGain: GainNode | null = null;
   private sfxGain: GainNode | null = null;
 
   private isEnabled = false;
-  private volume = 0.7; // Master volume (0 to 1)
-  private musicVolume = 0.65; // Volume da trilha sonora (0 to 1)
-  private sfxVolume = 0.75; // Volume dos efeitos sonoros (0 to 1)
+  private volume = 0.75; // Master volume (0 to 1)
+  private musicVolume = 0.7; // Volume da trilha sonora (0 to 1)
+  private sfxVolume = 0.8; // Volume dos efeitos sonoros (0 to 1)
 
   // Gerador de Ruído de Aspiração (Motor AspiToy)
   private noiseNode: AudioBufferSourceNode | null = null;
@@ -150,10 +152,11 @@ export class SoundManager {
 
   // Agendador de Trilha Sonora
   private schedulerTimer: number | null = null;
-  private nextBeatTime = 0;
-  private currentBeat = 0;
+  private loopStartTime = 0;
+  private lastScheduledTime = 0;
   private readonly SECONDS_PER_BEAT = 60 / 104; // ~0.576s (104 BPM)
   private readonly TOTAL_BEATS = 32;
+  private readonly LOOP_DURATION = 32 * (60 / 104); // ~18.46s
 
   constructor() {
     // Inicialização atrasada para obedecer políticas de autoplay do navegador
@@ -171,19 +174,28 @@ export class SoundManager {
 
       this.ctx = new AudioCtx();
 
+      // Master Compressor / Limiter para mixagem cristalina sem distorção
+      this.compressor = this.ctx.createDynamicsCompressor();
+      this.compressor.threshold.setValueAtTime(-16, this.ctx.currentTime);
+      this.compressor.knee.setValueAtTime(10, this.ctx.currentTime);
+      this.compressor.ratio.setValueAtTime(4, this.ctx.currentTime);
+      this.compressor.attack.setValueAtTime(0.003, this.ctx.currentTime);
+      this.compressor.release.setValueAtTime(0.25, this.ctx.currentTime);
+      this.compressor.connect(this.ctx.destination);
+
       // Master Gain
       this.masterGain = this.ctx.createGain();
       this.masterGain.gain.setValueAtTime(this.volume, this.ctx.currentTime);
-      this.masterGain.connect(this.ctx.destination);
+      this.masterGain.connect(this.compressor);
 
       // Barramento de Música (Trilha Sonora BGM)
       this.musicGain = this.ctx.createGain();
-      this.musicGain.gain.setValueAtTime(this.musicVolume * 0.35, this.ctx.currentTime);
+      this.musicGain.gain.setValueAtTime(this.musicVolume * 0.7, this.ctx.currentTime);
       this.musicGain.connect(this.masterGain);
 
       // Barramento de Efeitos Sonoros (SFX)
       this.sfxGain = this.ctx.createGain();
-      this.sfxGain.gain.setValueAtTime(this.sfxVolume * 0.45, this.ctx.currentTime);
+      this.sfxGain.gain.setValueAtTime(this.sfxVolume * 0.8, this.ctx.currentTime);
       this.sfxGain.connect(this.masterGain);
 
       // Barramento de Motor/Aspiração (conecta ao sfxGain para respeitar o volume de efeitos)
@@ -195,7 +207,7 @@ export class SoundManager {
     }
 
     if (this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      this.ctx.resume().catch(() => {});
     }
 
     return this.ctx;
@@ -265,6 +277,15 @@ export class SoundManager {
   }
 
   /**
+   * Assegura que o contexto de áudio esteja ativo após gesto do usuário
+   */
+  public ensureAudioRunning(): void {
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
+    }
+  }
+
+  /**
    * Liga ou desliga globalmente o sistema de som do AspiToy.
    */
   public setEnabled(enabled: boolean): void {
@@ -275,11 +296,16 @@ export class SoundManager {
     if (!ctx) return;
 
     if (enabled) {
+      const activate = () => {
+        this.playChime(true);
+        this.startMusicScheduler();
+      };
+
       if (ctx.state === 'suspended') {
-        ctx.resume();
+        ctx.resume().then(activate).catch(() => activate());
+      } else {
+        activate();
       }
-      this.playChime(true);
-      this.startMusicScheduler();
     } else {
       if (wasEnabled) {
         this.playChime(false);
@@ -303,6 +329,7 @@ export class SoundManager {
    */
   public setVolume(val: number): void {
     this.volume = Math.max(0, Math.min(1, val));
+    this.ensureAudioRunning();
     if (this.masterGain && this.ctx) {
       this.masterGain.gain.setTargetAtTime(this.volume, this.ctx.currentTime, 0.05);
     }
@@ -317,8 +344,9 @@ export class SoundManager {
    */
   public setMusicVolume(val: number): void {
     this.musicVolume = Math.max(0, Math.min(1, val));
+    this.ensureAudioRunning();
     if (this.musicGain && this.ctx) {
-      this.musicGain.gain.setTargetAtTime(this.musicVolume * 0.35, this.ctx.currentTime, 0.05);
+      this.musicGain.gain.setTargetAtTime(this.musicVolume * 0.7, this.ctx.currentTime, 0.05);
     }
   }
 
@@ -331,8 +359,9 @@ export class SoundManager {
    */
   public setSfxVolume(val: number): void {
     this.sfxVolume = Math.max(0, Math.min(1, val));
+    this.ensureAudioRunning();
     if (this.sfxGain && this.ctx) {
-      this.sfxGain.gain.setTargetAtTime(this.sfxVolume * 0.45, this.ctx.currentTime, 0.05);
+      this.sfxGain.gain.setTargetAtTime(this.sfxVolume * 0.8, this.ctx.currentTime, 0.05);
     }
   }
 
@@ -384,8 +413,9 @@ export class SoundManager {
   private startMusicScheduler(): void {
     if (this.schedulerTimer !== null || !this.ctx) return;
 
-    this.currentBeat = 0;
-    this.nextBeatTime = this.ctx.currentTime + 0.15;
+    const now = this.ctx.currentTime;
+    this.loopStartTime = now + 0.1;
+    this.lastScheduledTime = now + 0.05;
 
     const scheduleLoop = () => {
       if (!this.isEnabled || !this.ctx) {
@@ -393,15 +423,58 @@ export class SoundManager {
         return;
       }
 
-      // Agenda notas até 0.4s no futuro
-      const lookahead = 0.4;
-      while (this.nextBeatTime < this.ctx.currentTime + lookahead) {
-        this.scheduleBeat(this.currentBeat, this.nextBeatTime);
-        this.nextBeatTime += this.SECONDS_PER_BEAT;
-        this.currentBeat = (this.currentBeat + 1) % this.TOTAL_BEATS;
+      const currentTime = this.ctx.currentTime;
+      const lookahead = 0.35; // Agenda eventos até 350ms no futuro
+      const windowEnd = currentTime + lookahead;
+
+      if (windowEnd > this.lastScheduledTime) {
+        const minLoop = Math.max(
+          0,
+          Math.floor((this.lastScheduledTime - this.loopStartTime) / this.LOOP_DURATION)
+        );
+        const maxLoop =
+          Math.floor((windowEnd - this.loopStartTime) / this.LOOP_DURATION) + 1;
+
+        for (let k = minLoop; k <= maxLoop; k++) {
+          const loopOffset = this.loopStartTime + k * this.LOOP_DURATION;
+
+          // 1. Melodia Principal (Marimba / Celesta de Brinquedo)
+          for (const [noteName, startBeat, durBeats] of TOY_STORY_MELODY) {
+            const noteTime = loopOffset + startBeat * this.SECONDS_PER_BEAT;
+            if (noteTime >= this.lastScheduledTime && noteTime < windowEnd) {
+              this.playToyMarimbaNote(noteName, noteTime, durBeats * this.SECONDS_PER_BEAT);
+            }
+          }
+
+          // 2. Contrabaixo Acústico (Toy Pizzicato Bass)
+          for (const [noteName, startBeat, durBeats] of TOY_BASS_LINE) {
+            const noteTime = loopOffset + startBeat * this.SECONDS_PER_BEAT;
+            if (noteTime >= this.lastScheduledTime && noteTime < windowEnd) {
+              this.playToyBassNote(noteName, noteTime, durBeats * this.SECONDS_PER_BEAT);
+            }
+          }
+
+          // 3. Harmonia de Piano / Celesta de Brinquedo
+          for (const [chord, startBeat, durBeats] of TOY_HARMONY_COMP) {
+            const noteTime = loopOffset + startBeat * this.SECONDS_PER_BEAT;
+            if (noteTime >= this.lastScheduledTime && noteTime < windowEnd) {
+              this.playToyChord(chord, noteTime, durBeats * this.SECONDS_PER_BEAT);
+            }
+          }
+
+          // 4. Percussão Suave de Madeira nos contratempos (batidas ímpares 1, 3, 5, 7...)
+          for (let beat = 1; beat < this.TOTAL_BEATS; beat += 2) {
+            const woodTime = loopOffset + beat * this.SECONDS_PER_BEAT;
+            if (woodTime >= this.lastScheduledTime && woodTime < windowEnd) {
+              this.playWoodblock(woodTime);
+            }
+          }
+        }
+
+        this.lastScheduledTime = windowEnd;
       }
 
-      this.schedulerTimer = window.setTimeout(scheduleLoop, 100);
+      this.schedulerTimer = window.setTimeout(scheduleLoop, 75);
     };
 
     scheduleLoop();
@@ -411,36 +484,6 @@ export class SoundManager {
     if (this.schedulerTimer !== null) {
       window.clearTimeout(this.schedulerTimer);
       this.schedulerTimer = null;
-    }
-  }
-
-  private scheduleBeat(beatIndex: number, time: number): void {
-    if (!this.ctx || !this.musicGain) return;
-
-    // 1. Toca notas da melodia principal iniciadas nesta batida
-    for (const [noteName, startBeat, durBeats] of TOY_STORY_MELODY) {
-      if (Math.abs(startBeat - beatIndex) < 0.25) {
-        this.playToyMarimbaNote(noteName, time, durBeats * this.SECONDS_PER_BEAT);
-      }
-    }
-
-    // 2. Toca notas do contrabaixo de brinquedo iniciadas nesta batida
-    for (const [noteName, startBeat, durBeats] of TOY_BASS_LINE) {
-      if (Math.abs(startBeat - beatIndex) < 0.25) {
-        this.playToyBassNote(noteName, time, durBeats * this.SECONDS_PER_BEAT);
-      }
-    }
-
-    // 3. Acordes harmônicos de celesta / piano de brinquedo
-    for (const [chord, startBeat, durBeats] of TOY_HARMONY_COMP) {
-      if (Math.abs(startBeat - beatIndex) < 0.25) {
-        this.playToyChord(chord, time, durBeats * this.SECONDS_PER_BEAT);
-      }
-    }
-
-    // 4. Toque suave de percussão de madeira nas batidas 2 e 4
-    if (beatIndex % 2 === 1) {
-      this.playWoodblock(time);
     }
   }
 
@@ -463,14 +506,17 @@ export class SoundManager {
 
     // Envelope de ganho percussivo (ataque rápido, queda exponencial suave)
     const noteGain = this.ctx.createGain();
-    noteGain.gain.setValueAtTime(0, startTime);
-    noteGain.gain.linearRampToValueAtTime(0.18, startTime + 0.012);
-    noteGain.gain.exponentialRampToValueAtTime(0.0001, startTime + Math.min(duration, 1.4));
+    noteGain.gain.setValueAtTime(0.0001, startTime);
+    noteGain.gain.linearRampToValueAtTime(0.35, startTime + 0.015);
+    noteGain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      startTime + Math.min(duration, 1.2)
+    );
 
     // Filtro suave para conferir calor acústico
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(1800, startTime);
+    filter.frequency.setValueAtTime(2200, startTime);
 
     osc1.connect(noteGain);
     osc2.connect(noteGain);
@@ -479,8 +525,8 @@ export class SoundManager {
 
     osc1.start(startTime);
     osc2.start(startTime);
-    osc1.stop(startTime + duration + 0.2);
-    osc2.stop(startTime + duration + 0.2);
+    osc1.stop(startTime + duration + 0.25);
+    osc2.stop(startTime + duration + 0.25);
   }
 
   /**
@@ -491,24 +537,27 @@ export class SoundManager {
     if (!freq || !this.ctx || !this.musicGain) return;
 
     const osc = this.ctx.createOscillator();
-    osc.type = 'sine';
+    osc.type = 'triangle';
     osc.frequency.setValueAtTime(freq, startTime);
 
     const bassGain = this.ctx.createGain();
-    bassGain.gain.setValueAtTime(0, startTime);
-    bassGain.gain.linearRampToValueAtTime(0.16, startTime + 0.02);
-    bassGain.gain.exponentialRampToValueAtTime(0.0001, startTime + Math.min(duration, 1.6));
+    bassGain.gain.setValueAtTime(0.0001, startTime);
+    bassGain.gain.linearRampToValueAtTime(0.32, startTime + 0.02);
+    bassGain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      startTime + Math.min(duration, 1.4)
+    );
 
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(280, startTime);
+    filter.frequency.setValueAtTime(320, startTime);
 
     osc.connect(bassGain);
     bassGain.connect(filter);
     filter.connect(this.musicGain);
 
     osc.start(startTime);
-    osc.stop(startTime + duration + 0.1);
+    osc.stop(startTime + duration + 0.2);
   }
 
   /**
@@ -522,17 +571,20 @@ export class SoundManager {
       if (!freq || !this.ctx || !this.musicGain) return;
 
       const osc = this.ctx.createOscillator();
-      osc.type = 'triangle';
+      osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, startTime);
 
       const gain = this.ctx.createGain();
-      gain.gain.setValueAtTime(0, startTime);
-      gain.gain.linearRampToValueAtTime(0.045, startTime + 0.015);
-      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + Math.min(duration, 0.9));
+      gain.gain.setValueAtTime(0.0001, startTime);
+      gain.gain.linearRampToValueAtTime(0.08, startTime + 0.015);
+      gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        startTime + Math.min(duration, 0.8)
+      );
 
       const filter = this.ctx.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(1400, startTime);
+      filter.frequency.setValueAtTime(1200, startTime);
 
       osc.connect(gain);
       gain.connect(filter);
@@ -551,18 +603,19 @@ export class SoundManager {
 
     const osc = this.ctx.createOscillator();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(820, startTime);
-    osc.frequency.exponentialRampToValueAtTime(350, startTime + 0.05);
+    osc.frequency.setValueAtTime(780, startTime);
+    osc.frequency.exponentialRampToValueAtTime(320, startTime + 0.04);
 
     const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.035, startTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.06);
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.linearRampToValueAtTime(0.09, startTime + 0.004);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.05);
 
     osc.connect(gain);
     gain.connect(this.musicGain);
 
     osc.start(startTime);
-    osc.stop(startTime + 0.07);
+    osc.stop(startTime + 0.06);
   }
 
   // ==========================================================================
@@ -588,8 +641,8 @@ export class SoundManager {
       osc.frequency.setValueAtTime(freq, noteTime);
 
       const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0, noteTime);
-      gain.gain.linearRampToValueAtTime(0.18, noteTime + 0.015);
+      gain.gain.setValueAtTime(0.0001, noteTime);
+      gain.gain.linearRampToValueAtTime(0.24, noteTime + 0.015);
       gain.gain.exponentialRampToValueAtTime(0.0001, noteTime + 0.28);
 
       osc.connect(gain);
@@ -613,7 +666,8 @@ export class SoundManager {
     osc.frequency.exponentialRampToValueAtTime(880, t + 0.08);
 
     const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.08, t);
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(0.18, t + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.1);
 
     osc.connect(gain);
@@ -636,7 +690,8 @@ export class SoundManager {
     osc.frequency.exponentialRampToValueAtTime(140, t + 0.04);
 
     const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.06, t);
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(0.12, t + 0.008);
     gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
 
     osc.connect(gain);
