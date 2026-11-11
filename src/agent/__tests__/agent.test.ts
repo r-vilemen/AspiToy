@@ -189,4 +189,35 @@ describe('Agente Inteligente, Colisão Física e Desvio do Gato Dinâmico', () =
       expect(Number.isNaN(toy.z)).toBe(false);
     }
   });
+
+  it('notifyStuck limpa a rota emperrada e calcula desvio evasivo para área livre', () => {
+    const controller = new AgentController(
+      INITIAL_OBSTACLES,
+      INITIAL_ROOM_DIMENSIONS.width,
+      INITIAL_ROOM_DIMENSIONS.depth
+    );
+
+    // Simula robô preso em uma quina
+    const stuckPos = { x: 3.5, z: 0.0 };
+    const stuckHeading = 0; // olhando para a frente
+    const turnDir = controller.notifyStuck(stuckPos, stuckHeading);
+
+    expect(typeof turnDir).toBe('number');
+    expect(Math.abs(turnDir)).toBe(1);
+    expect(controller.getCurrentPath()).toHaveLength(0);
+
+    // Próxima decisão deve estar em AVOIDING com velocidade controlada
+    const decision = controller.decide(
+      'CLEANING',
+      stuckPos,
+      stuckHeading,
+      null,
+      1.0,
+      'bedroom',
+      0.016
+    );
+
+    expect(decision.nextState).toBe('AVOIDING');
+    expect(decision.desiredHeading).not.toBe(stuckHeading);
+  });
 });

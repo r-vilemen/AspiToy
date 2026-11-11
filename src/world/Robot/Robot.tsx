@@ -107,6 +107,19 @@ export function Robot() {
     bumperCompression: 0,
   });
 
+  // Mecanismo anti-trava inteligente: detecta emperramento em quinas/batentes e executa desengate automático (ré + giro)
+  const unstuckRef = useRef<{
+    phase: 'IDLE' | 'REVERSE' | 'TURN';
+    stuckTimer: number;
+    phaseTimer: number;
+    turnDirection: number;
+  }>({
+    phase: 'IDLE',
+    stuckTimer: 0,
+    phaseTimer: 0,
+    turnDirection: 1,
+  });
+
   useFrame((_, rawDelta) => {
     const delta = Math.min(rawDelta, 0.05);
     const loc = locomotionRef.current;
@@ -214,132 +227,195 @@ export function Robot() {
         robotState.state === 'RECHARGING' ||
         robotState.state === 'COMPLETED'
       ) {
+        unstuckRef.current.phase = 'IDLE';
+        unstuckRef.current.stuckTimer = 0;
         loc.speed = damp(loc.speed, 0, 16.0, delta);
         loc.pitch = damp(loc.pitch, 0, 8.0, delta);
         loc.roll = damp(loc.roll, 0, 8.0, delta);
       } else {
-        // Consulta de tomada de decisão autônoma do agente desacoplado (somente se em CLEANING, EXPLORING, RETURNING ou AVOIDING)
-        const decision = agent.decide(
-          robotState.state,
-          { x: loc.x, z: loc.z },
-          loc.rotationY,
-          targetPoint,
-          robotState.speed,
-          envState.selectedRegionId,
-          delta,
-          dynamicCats
-        );
+        const unstuck = unstuckRef.current;
 
-        if (decision.nextState !== robotState.state) {
-          if (decision.nextState === 'AVOIDING') {
-            loc.bumperCompression = 0.024;
-            robotState.setOperationalState('AVOIDING', decision.logAction);
-            if (
-              decision.detectedObstacleLabel === 'Gato Laranja' &&
-              notifyCooldownRef.current <= 0
-            ) {
-              notifyCooldownRef.current = 4.5;
-              cmdState.pushNotification(
-                'Gato no caminho!',
-                'O AspiToy detectou o gato pela casa e recalculou a rota para não incomodá-lo.',
-                'warning'
-              );
-            }
-          } else if (
-            robotState.state === 'AVOIDING' &&
-            decision.nextState === 'CLEANING'
-          ) {
-            robotState.setOperationalState(
-              'CLEANING',
-              'Trajetória livre retomada após desvio'
-            );
+        // Manobra de desengate anti-trava ativa: marcha a ré e giro evasivo
+        if (unstuck.phase === 'REVERSE') {
+          unstuck.phaseTimer -= delta;
+          loc.speed = damp(loc.speed, -0.30, 14.0, delta);
+          const wheelRadius = 0.045;
+          loc.wheelSpin += (loc.speed * delta) / wheelRadius;
+          loc.pitch = damp(loc.pitch, -0.02, 6.0, delta);
+          loc.roll = damp(loc.roll, 0, 7.0, delta);
+
+          const revX = loc.x + Math.sin(loc.rotationY) * loc.speed * delta;
+          const revZ = loc.z + Math.cos(loc.rotationY) * loc.speed * delta;
+          const revResult = agent.resolveSafeMovement(
+            { x: loc.x, z: loc.z },
+            { x: revX, z: revZ },
+            0.29
+          );
+          loc.x = revResult.position.x;
+          loc.z = revResult.position.z;
+
+          if (unstuck.phaseTimer <= 0) {
+            unstuck.phase = 'TURN';
+            unstuck.phaseTimer = 0.38;
           }
-        }
+        } else if (unstuck.phase === 'TURN') {
+          unstuck.phaseTimer -= delta;
+          loc.speed = damp(loc.speed, 0, 16.0, delta);
+          loc.rotationY += unstuck.turnDirection * 3.4 * delta;
+          loc.targetRotationY = loc.rotationY;
+          loc.pitch = damp(loc.pitch, 0, 6.0, delta);
+          loc.roll = damp(loc.roll, -unstuck.turnDirection * 0.03, 7.0, delta);
 
-        if (targetPoint && decision.desiredSpeed > 0) {
-          const currentPos = { x: loc.x, z: loc.z };
-          const planned = decision.plannedPath;
-          const effectiveTarget =
-            planned && planned.length > 0
-              ? planned[planned.length - 1]
-              : targetPoint;
-          const dist = Math.min(
-            distance2D(currentPos, targetPoint),
-            distance2D(currentPos, effectiveTarget)
+          if (unstuck.phaseTimer <= 0) {
+            unstuck.phase = 'IDLE';
+            unstuck.stuckTimer = 0;
+            agent.notifyStuck({ x: loc.x, z: loc.z }, loc.rotationY);
+          }
+        } else {
+          // Consulta de tomada de decisão autônoma do agente desacoplado (somente se em CLEANING, EXPLORING, RETURNING ou AVOIDING)
+          const decision = agent.decide(
+            robotState.state,
+            { x: loc.x, z: loc.z },
+            loc.rotationY,
+            targetPoint,
+            robotState.speed,
+            envState.selectedRegionId,
+            delta,
+            dynamicCats
           );
 
-          if (dist < 0.28) {
-            if (robotState.state === 'RETURNING') {
-              loc.speed = 0;
-              loc.x = envState.dockPosition.x;
-              loc.z = envState.dockPosition.z;
-              loc.rotationY = Math.PI / 2;
-              loc.targetRotationY = Math.PI / 2;
-              robotState.setTargetPosition(null);
-              robotState.setOperationalState(
-                'RECHARGING',
-                'Acoplado na estação de carregamento'
-              );
-              cmdState.pushNotification(
-                'Acoplamento concluído',
-                'AspiToy conectado à base e recarregando bateria.',
-                'success'
-              );
-            } else if (
-              robotState.state === 'EXPLORING' &&
-              robotState.targetPosition !== null
-            ) {
-              loc.speed = 0;
-              robotState.setTargetPosition(null);
-              robotState.setOperationalState(
-                'IDLE',
-                'Chegou ao ponto selecionado no chão'
-              );
-            } else {
-              if (robotState.targetPosition) {
-                robotState.setTargetPosition(null);
+          if (decision.nextState !== robotState.state) {
+            if (decision.nextState === 'AVOIDING') {
+              loc.bumperCompression = 0.024;
+              robotState.setOperationalState('AVOIDING', decision.logAction);
+              if (
+                decision.detectedObstacleLabel === 'Gato Laranja' &&
+                notifyCooldownRef.current <= 0
+              ) {
+                notifyCooldownRef.current = 4.5;
+                cmdState.pushNotification(
+                  'Gato no caminho!',
+                  'O AspiToy detectou o gato pela casa e recalculou a rota para não incomodá-lo.',
+                  'warning'
+                );
               }
-              patrolIdxRef.current =
-                (patrolIdxRef.current + 1) % patrolPool.length;
+            } else if (
+              robotState.state === 'AVOIDING' &&
+              decision.nextState === 'CLEANING'
+            ) {
+              robotState.setOperationalState(
+                'CLEANING',
+                'Trajetória livre retomada após desvio'
+              );
             }
           }
-        }
 
-        // Atualiza locomoção física com base nas diretrizes do AgentController
-        updateRobotLocomotion(
-          loc,
-          decision.desiredSpeed,
-          decision.desiredHeading,
-          delta
-        );
+          if (targetPoint && decision.desiredSpeed > 0) {
+            const currentPos = { x: loc.x, z: loc.z };
+            const planned = decision.plannedPath;
+            const effectiveTarget =
+              planned && planned.length > 0
+                ? planned[planned.length - 1]
+                : targetPoint;
+            const dist = Math.min(
+              distance2D(currentPos, targetPoint),
+              distance2D(currentPos, effectiveTarget)
+            );
 
-        // Avança posição linear com resolução física de colisão contra TODOS os objetos e o gato
-        const desiredX = loc.x + Math.sin(loc.rotationY) * loc.speed * delta;
-        const desiredZ = loc.z + Math.cos(loc.rotationY) * loc.speed * delta;
+            if (dist < 0.28) {
+              if (robotState.state === 'RETURNING') {
+                loc.speed = 0;
+                loc.x = envState.dockPosition.x;
+                loc.z = envState.dockPosition.z;
+                loc.rotationY = Math.PI / 2;
+                loc.targetRotationY = Math.PI / 2;
+                robotState.setTargetPosition(null);
+                robotState.setOperationalState(
+                  'RECHARGING',
+                  'Acoplado na estação de carregamento'
+                );
+                cmdState.pushNotification(
+                  'Acoplamento concluído',
+                  'AspiToy conectado à base e recarregando bateria.',
+                  'success'
+                );
+              } else if (
+                robotState.state === 'EXPLORING' &&
+                robotState.targetPosition !== null
+              ) {
+                loc.speed = 0;
+                robotState.setTargetPosition(null);
+                robotState.setOperationalState(
+                  'IDLE',
+                  'Chegou ao ponto selecionado no chão'
+                );
+              } else {
+                if (robotState.targetPosition) {
+                  robotState.setTargetPosition(null);
+                }
+                patrolIdxRef.current =
+                  (patrolIdxRef.current + 1) % patrolPool.length;
+              }
+            }
+          }
 
-        const collisionResult = agent.resolveSafeMovement(
-          { x: loc.x, z: loc.z },
-          { x: desiredX, z: desiredZ },
-          0.29
-        );
+          // Atualiza locomoção física com base nas diretrizes do AgentController
+          updateRobotLocomotion(
+            loc,
+            decision.desiredSpeed,
+            decision.desiredHeading,
+            delta
+          );
 
-        const actualMovedDist = Math.hypot(
-          collisionResult.position.x - loc.x,
-          collisionResult.position.z - loc.z
-        );
-        const expectedDist = Math.max(0.0001, Math.abs(loc.speed) * delta);
+          // Avança posição linear com resolução física de colisão contra TODOS os objetos e o gato
+          const desiredX = loc.x + Math.sin(loc.rotationY) * loc.speed * delta;
+          const desiredZ = loc.z + Math.cos(loc.rotationY) * loc.speed * delta;
 
-        loc.x = collisionResult.position.x;
-        loc.z = collisionResult.position.z;
+          const collisionResult = agent.resolveSafeMovement(
+            { x: loc.x, z: loc.z },
+            { x: desiredX, z: desiredZ },
+            0.29
+          );
 
-        if (collisionResult.collided) {
-          loc.bumperCompression = 0.028;
-          // Se o robô estiver efetivamente bloqueado sem conseguir deslizar, amortece a velocidade
-          if (actualMovedDist < expectedDist * 0.25) {
-            loc.speed = damp(loc.speed, 0, 14.0, delta);
-          } else {
-            // Se estiver deslizando suavemente pela quina/parede, preserva o avanço
-            loc.speed = damp(loc.speed, loc.speed * 0.88, 3.5, delta);
+          const actualMovedDist = Math.hypot(
+            collisionResult.position.x - loc.x,
+            collisionResult.position.z - loc.z
+          );
+          const expectedDist = Math.max(0.0001, Math.abs(loc.speed) * delta);
+
+          loc.x = collisionResult.position.x;
+          loc.z = collisionResult.position.z;
+
+          if (collisionResult.collided) {
+            loc.bumperCompression = 0.028;
+            // Se o robô estiver efetivamente bloqueado sem conseguir deslizar, amortece a velocidade
+            if (actualMovedDist < expectedDist * 0.25) {
+              loc.speed = damp(loc.speed, 0, 14.0, delta);
+            } else {
+              // Se estiver deslizando suavemente pela quina/parede, preserva o avanço
+              loc.speed = damp(loc.speed, loc.speed * 0.88, 3.5, delta);
+            }
+          }
+
+          // Monitoramento anti-trava inteligente: se estiver bloqueado em quina ou batente
+          const isTryingToAdvance = decision.desiredSpeed > 0.08;
+          const isBlocked =
+            collisionResult.collided && actualMovedDist < expectedDist * 0.30;
+
+          if (isTryingToAdvance && isBlocked) {
+            unstuck.stuckTimer += delta;
+            if (unstuck.stuckTimer > 0.28) {
+              // Dispara manobra de desengate imediata: ré para descolar + giro evasivo
+              unstuck.phase = 'REVERSE';
+              unstuck.phaseTimer = 0.35;
+              unstuck.turnDirection = agent.notifyStuck(
+                { x: loc.x, z: loc.z },
+                loc.rotationY
+              );
+              loc.bumperCompression = 0.035;
+            }
+          } else if (actualMovedDist > 0.015) {
+            unstuck.stuckTimer = Math.max(0, unstuck.stuckTimer - delta * 2.0);
           }
         }
       }

@@ -84,7 +84,7 @@ export class GridMap {
   }
 
   private initGrid(obstacles: EnvironmentObstacle[]): void {
-    const robotPadding = 0.22; // Margem de segurança de colisão
+    const robotPadding = this.isMultiRoom ? 0.25 : 0.22; // Margem adaptativa de segurança
 
     for (let r = 0; r < this.rows; r++) {
       this.cells[r] = [];
@@ -132,7 +132,7 @@ export class GridMap {
                 isPointInsideBounds(worldPos, door.traversableBounds)
             );
 
-          const effectivePadding = inDoorway ? 0.12 : robotPadding;
+          const effectivePadding = inDoorway ? 0.18 : robotPadding;
 
           for (const obs of obstacles) {
             if (!obs.collidable) continue;

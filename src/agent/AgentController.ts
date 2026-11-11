@@ -39,6 +39,8 @@ export class AgentController {
   private avoidTurnDirection: number = 1;
   private avoidTargetHeading: number = 0;
   private replanCooldown: number = 0;
+  private waypointStallTimer: number = 0;
+  private lastWaypointIdx: number = -1;
 
   constructor(
     obstacles: EnvironmentObstacle[],
@@ -79,6 +81,32 @@ export class AgentController {
     actorRadius = 0.31
   ): CollisionResolutionResult {
     return this.detector.resolveSafeMovement(currentPos, desiredPos, actorRadius);
+  }
+
+  /**
+   * Notificação de emperramento físico (anti-trava):
+   * Chamada quando o robô detecta bloqueio físico consecutivo em quinas, batentes ou móveis.
+   * Limpa a rota travada, descarta alvos inalcançáveis e orienta para o espaço aberto.
+   */
+  public notifyStuck(position: Vector2D, currentHeading: number): number {
+    this.currentPath = [];
+    this.currentPathIdx = 0;
+    this.replanCooldown = 0;
+    this.avoidanceTimer = 0.75;
+    this.waypointStallTimer = 0;
+
+    const scan = this.sensor.scan(position, currentHeading, '');
+    const centerIdx = Math.floor(scan.rays.length / 2);
+    const leftDist = Math.min(...scan.rays.slice(0, centerIdx).map((r) => r.distance));
+    const rightDist = Math.min(...scan.rays.slice(centerIdx + 1).map((r) => r.distance));
+    this.avoidTurnDirection = leftDist >= rightDist ? -1 : 1;
+    this.avoidTargetHeading = currentHeading + this.avoidTurnDirection * (Math.PI * 0.55);
+
+    if (this.lastGoal && Math.hypot(this.lastGoal.x - position.x, this.lastGoal.z - position.z) < 0.6) {
+      this.lastGoal = null;
+    }
+
+    return this.avoidTurnDirection;
   }
 
   public getCurrentPath(): Vector2D[] {
@@ -140,7 +168,6 @@ export class AgentController {
       ...scan.rays.slice(centerIdx + 1).map((r) => r.distance)
     );
 
-    const centerRay = scan.rays[centerIdx];
     const isCatInFront = frontRays.some(
       (r) => r.hit && r.distance < 0.55 && r.obstacleLabel?.includes('Gato')
     );
@@ -154,12 +181,13 @@ export class AgentController {
           Math.hypot(position.x - door.position.x, position.z - door.position.z) < 1.3
       );
 
-    // Colisão iminente: gato à frente, ou obstáculo frontal direto (< 0.32m),
-    // ou feixe oblíquo (< 0.40m) fora de vãos de porta
+    // Colisão iminente: gato à frente, ou qualquer feixe frontal perigosamente próximo (< 0.32m),
+    // ou feixe oblíquo (< 0.38m) fora de vãos de porta
+    const minFrontDist = Math.min(...frontRays.map((r) => r.distance));
     const isImminentCollision =
       isCatInFront ||
-      centerRay.distance < 0.32 ||
-      (!isNearDoorway && minFrontRay.distance < 0.40);
+      minFrontDist < 0.32 ||
+      (!isNearDoorway && minFrontDist < 0.38);
 
     // Manobra de evasão ativa
     if (this.avoidanceTimer > 0) {
@@ -176,11 +204,11 @@ export class AgentController {
     }
 
     if (isImminentCollision) {
-      this.avoidanceTimer = 0.5;
+      this.avoidanceTimer = 0.55;
       this.avoidTurnDirection = leftDist >= rightDist ? -1 : 1;
       this.avoidTargetHeading =
-        rotationY + this.avoidTurnDirection * (Math.PI * 0.4);
-      this.currentPath = []; // Invalida rota para forçar replanejamento A* contornando o gato/móvel
+        rotationY + this.avoidTurnDirection * (Math.PI * 0.45);
+      this.currentPath = []; // Invalida rota para forçar replanejamento A* contornando o obstáculo
       const obstacleName = minFrontRay.obstacleLabel ?? 'obstáculo';
       return {
         nextState: 'AVOIDING',
@@ -298,30 +326,48 @@ export class AgentController {
       this.currentPath.length > 0 &&
       this.currentPathIdx < this.currentPath.length
     ) {
-      const waypoint = this.currentPath[this.currentPathIdx];
-      const distToWaypoint = Math.hypot(
-        waypoint.x - position.x,
-        waypoint.z - position.z
-      );
-
-      if (distToWaypoint < 0.28) {
-        this.currentPathIdx++;
+      // Proteção contra waypoint emperrado: se passar mais de 1.8s no mesmo nó, avança ou replaneja
+      if (this.currentPathIdx === this.lastWaypointIdx) {
+        this.waypointStallTimer += delta;
+        if (this.waypointStallTimer > 1.8) {
+          this.currentPathIdx++;
+          this.waypointStallTimer = 0;
+          if (this.currentPathIdx >= this.currentPath.length) {
+            this.currentPath = [];
+          }
+        }
+      } else {
+        this.lastWaypointIdx = this.currentPathIdx;
+        this.waypointStallTimer = 0;
       }
 
       if (this.currentPathIdx < this.currentPath.length) {
-        const nextTarget = this.currentPath[this.currentPathIdx];
-        const heading = Math.atan2(
-          nextTarget.x - position.x,
-          nextTarget.z - position.z
+        const waypoint = this.currentPath[this.currentPathIdx];
+        const distToWaypoint = Math.hypot(
+          waypoint.x - position.x,
+          waypoint.z - position.z
         );
 
-        return {
-          nextState: currentState === 'AVOIDING' ? 'CLEANING' : currentState,
-          desiredSpeed: baseSpeed,
-          desiredHeading: heading,
-          logAction: `Navegando via A* (Passo ${this.currentPathIdx + 1}/${this.currentPath.length})`,
-          plannedPath: this.currentPath,
-        };
+        if (distToWaypoint < 0.32) {
+          this.currentPathIdx++;
+          this.waypointStallTimer = 0;
+        }
+
+        if (this.currentPathIdx < this.currentPath.length) {
+          const nextTarget = this.currentPath[this.currentPathIdx];
+          const heading = Math.atan2(
+            nextTarget.x - position.x,
+            nextTarget.z - position.z
+          );
+
+          return {
+            nextState: currentState === 'AVOIDING' ? 'CLEANING' : currentState,
+            desiredSpeed: baseSpeed,
+            desiredHeading: heading,
+            logAction: `Navegando via A* (Passo ${this.currentPathIdx + 1}/${this.currentPath.length})`,
+            plannedPath: this.currentPath,
+          };
+        }
       }
     }
 
