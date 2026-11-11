@@ -5,6 +5,7 @@ import { robotMotionBridge, useRobotStore, manualControlBridge } from '@/store/r
 import { useEnvironmentStore } from '@/store/environmentStore';
 import { useCommandStore } from '@/store/commandStore';
 import { ALL_HOUSE_OBSTACLES } from './HouseObstacles';
+import { soundManager } from '@/services/soundManager';
 
 interface DustSeed {
   x: number;
@@ -369,6 +370,7 @@ export const FloorDust = memo(function FloorDust() {
 
   // Dummy reutilizável para cálculos de matriz em useFrame
   const dummy = useMemo(() => new THREE.Object3D(), []);
+  const lastPopTimeRef = useRef(0);
 
   useFrame((_, rawDelta) => {
     const delta = Math.min(rawDelta, 0.05);
@@ -405,6 +407,11 @@ export const FloorDust = memo(function FloorDust() {
 
         if (dist <= vacuumReach) {
           item.isCleaned = true;
+          const now = performance.now();
+          if (now - lastPopTimeRef.current > 180) {
+            lastPopTimeRef.current = now;
+            soundManager.playCleanPop();
+          }
         }
       }
 

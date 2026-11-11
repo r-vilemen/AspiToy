@@ -5,6 +5,7 @@ import { ControlPanel } from '../ui/ControlPanel';
 import { Header } from '../layout/Header';
 import { useRobotStore } from '@/store/robotStore';
 import { useEnvironmentStore } from '@/store/environmentStore';
+import { useSoundStore } from '@/store/soundStore';
 
 describe('Componentes de Interface e Controles (Dia 1)', () => {
   beforeEach(() => {
@@ -82,6 +83,22 @@ describe('Componentes de Interface e Controles (Dia 1)', () => {
     expect(useRobotStore.getState().state).toBe('CLEANING');
     expect(useRobotStore.getState().cleaningProgress).toBe(0);
     expect(useEnvironmentStore.getState().dustSpots.some((s) => s.intensity > 0.5)).toBe(true);
+  });
+
+  it('permite ligar e desligar o som através do botão no Header', () => {
+    useSoundStore.getState().disableSound();
+    render(<Header />);
+
+    const soundBtn = screen.getByRole('button', { name: /Ligar som do projeto/i });
+    expect(soundBtn).toBeDefined();
+
+    fireEvent.click(soundBtn);
+    expect(screen.getByRole('button', { name: /Desligar som do projeto/i })).toBeDefined();
+    expect(useSoundStore.getState().isEnabled).toBe(true);
+
+    fireEvent.click(soundBtn);
+    expect(screen.getByRole('button', { name: /Ligar som do projeto/i })).toBeDefined();
+    expect(useSoundStore.getState().isEnabled).toBe(false);
   });
 });
 

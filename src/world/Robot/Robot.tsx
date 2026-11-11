@@ -22,6 +22,7 @@ import { AgentController } from '@/agent/AgentController';
 import { PriorityManager } from '@/agent/decision/PriorityManager';
 import { distance2D, damp } from '@/utils/math';
 import type { Vector2D } from '@/types/robot';
+import { soundManager } from '@/services/soundManager';
 
 const ROOM_PATROL_POINTS: Record<string, Vector2D[]> = {
   bedroom: [
@@ -368,6 +369,15 @@ export function Robot() {
     robotMotionBridge.rotationY = loc.rotationY;
     robotMotionBridge.currentSpeed = loc.speed;
     robotMotionBridge.wheelSpin = loc.wheelSpin;
+
+    // Sincroniza áudio procedural do motor do aspirador em tempo real (sem re-renders)
+    const isOperating =
+      (robotState.state === 'CLEANING' ||
+        robotState.state === 'EXPLORING' ||
+        robotState.state === 'AVOIDING' ||
+        manualControlBridge.active) &&
+      Math.abs(loc.speed) > 0.03;
+    soundManager.setMotorOperating(isOperating, Math.abs(loc.speed));
 
     // Altura vertical do piso: sobre a base de recarga (y = 0.04m) ou sobre o tapete (y = 0.023m)
     const dockDist = Math.hypot(loc.x - (-4.15), loc.z - 3.2);
