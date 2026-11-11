@@ -1,8 +1,9 @@
-import { Bot, Eye, HelpCircle, Scan, Video, Volume2, VolumeX } from 'lucide-react';
+import { Bot, Eye, HelpCircle, Scan, SlidersHorizontal, Video, Volume2, VolumeX } from 'lucide-react';
 import { useCommandStore, type CameraPreset } from '@/store/commandStore';
 import { useOnboardingStore } from '@/store/onboardingStore';
 import { useRobotStore } from '@/store/robotStore';
 import { useSoundStore } from '@/store/soundStore';
+import { SoundSettingsModal } from '@/components/ui/SoundSettingsModal';
 
 const CAMERA_OPTIONS: { id: CameraPreset; label: string; icon: typeof Video }[] = [
   { id: 'follow', label: 'Acompanhar', icon: Video },
@@ -17,6 +18,8 @@ export function Header() {
   const currentRegionLabel = useRobotStore((s) => s.currentRegionLabel);
   const isSoundEnabled = useSoundStore((s) => s.isEnabled);
   const toggleSound = useSoundStore((s) => s.toggleSound);
+  const isSettingsOpen = useSoundStore((s) => s.isSettingsOpen);
+  const toggleSettings = useSoundStore((s) => s.toggleSettings);
 
   return (
     <header className="pointer-events-none flex items-center justify-between gap-2 px-2.5 pt-2.5 sm:gap-4 sm:px-6 sm:pt-5">
@@ -74,32 +77,60 @@ export function Header() {
           })}
         </nav>
 
-        {/* Botão de Som Liga/Desliga */}
-        <button
-          id="sound-toggle-btn"
-          type="button"
-          onClick={toggleSound}
-          title={
-            isSoundEnabled
-              ? 'Som do AspiToy: Ligado (Clique para desligar)'
-              : 'Som do AspiToy: Desligado (Clique para ligar)'
-          }
-          aria-label={isSoundEnabled ? 'Desligar som do projeto' : 'Ligar som do projeto'}
-          className={`inline-flex items-center gap-1.5 rounded-2xl border-2 sm:border-2.5 border-[#2A211B] p-2 sm:px-3 sm:py-2.5 text-xs font-black uppercase tracking-wider shadow-[2.5px_2.5px_0px_#2A211B] sm:shadow-[3px_3px_0px_#2A211B] hover:shadow-[1px_1px_0px_#2A211B] hover:translate-y-0.5 active:shadow-none active:translate-y-1 transition cursor-pointer ${
-            isSoundEnabled
-              ? 'bg-[#10B981] hover:bg-[#059669] text-white'
-              : 'bg-[#FFFDF8] hover:bg-[#F3ECE0] text-[#78695D]'
-          }`}
-        >
-          {isSoundEnabled ? (
-            <Volume2 className="h-4 w-4 stroke-[2.5] animate-pulse" aria-hidden="true" />
-          ) : (
-            <VolumeX className="h-4 w-4 stroke-[2.2] opacity-70" aria-hidden="true" />
-          )}
-          <span className="hidden sm:inline">
-            {isSoundEnabled ? 'Som Ligado' : 'Som Desligado'}
-          </span>
-        </button>
+        {/* Controle e Configuração de Som (Música e Efeitos) */}
+        <div className="relative inline-flex items-center">
+          <div className="inline-flex items-center rounded-2xl border-2 sm:border-2.5 border-[#2A211B] bg-[#FFFDF8] shadow-[2.5px_2.5px_0px_#2A211B] sm:shadow-[3px_3px_0px_#2A211B] overflow-hidden">
+            {/* Botão Liga/Desliga Som */}
+            <button
+              id="sound-toggle-btn"
+              type="button"
+              onClick={toggleSound}
+              title={
+                isSoundEnabled
+                  ? 'Som do AspiToy: Ligado (Clique para desligar)'
+                  : 'Som do AspiToy: Desligado (Clique para ligar)'
+              }
+              aria-label={isSoundEnabled ? 'Desligar som do projeto' : 'Ligar som do projeto'}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-2 sm:px-3 sm:py-2.5 text-xs font-black uppercase tracking-wider transition cursor-pointer ${
+                isSoundEnabled
+                  ? 'bg-[#10B981] hover:bg-[#059669] text-white'
+                  : 'bg-transparent hover:bg-[#F3ECE0] text-[#78695D]'
+              }`}
+            >
+              {isSoundEnabled ? (
+                <Volume2 className="h-4 w-4 stroke-[2.5] animate-pulse" aria-hidden="true" />
+              ) : (
+                <VolumeX className="h-4 w-4 stroke-[2.2] opacity-70" aria-hidden="true" />
+              )}
+              <span className="hidden sm:inline">
+                {isSoundEnabled ? 'Som Ligado' : 'Som Desligado'}
+              </span>
+            </button>
+
+            {/* Divisor vertical */}
+            <div className="h-5 w-px bg-[#2A211B]/20" />
+
+            {/* Botão para Configurar Volumes (Trilha Sonora & Efeitos) */}
+            <button
+              id="sound-settings-btn"
+              type="button"
+              onClick={toggleSettings}
+              title="Configurar volume da trilha sonora e dos efeitos"
+              aria-label="Abrir configurações de volume da trilha sonora e efeitos"
+              aria-expanded={isSettingsOpen}
+              className={`p-2 sm:px-2.5 sm:py-2.5 transition cursor-pointer ${
+                isSettingsOpen
+                  ? 'bg-[#F2724D] text-white'
+                  : 'hover:bg-[#F3ECE0] text-[#54463B]'
+              }`}
+            >
+              <SlidersHorizontal className="h-4 w-4 stroke-[2.2]" aria-hidden="true" />
+            </button>
+          </div>
+
+          {/* Modal / Popover de Configuração de Som */}
+          {isSettingsOpen && <SoundSettingsModal />}
+        </div>
 
         {/* Botão de Tutorial no Estilo Ficha / Cartucho */}
         <button

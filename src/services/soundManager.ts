@@ -3,6 +3,7 @@
  * - Trilha Sonora Lúdica inspirada em filmes de brinquedo (Pixar / Toy Story)
  * - Efeito Físico de Sucção e Motor do AspiToy (zumbido suave com modulação de velocidade)
  * - Efeitos Sonoros (bipes fofos de ligar/desligar, clique e aspiração)
+ * - Controle independente de Master, Trilha Sonora (Música) e Efeitos Sonoros (SFX)
  * - 100% nativo, sem arquivos externos nem latência de download.
  */
 
@@ -12,27 +13,33 @@ const NOTES: Record<string, number> = {
   G2: 98.0,
   A2: 110.0,
   Bb2: 116.54,
+  B2: 123.47,
   C3: 130.81,
   D3: 146.83,
+  Eb3: 155.56,
   E3: 164.81,
   F3: 174.61,
   G3: 196.0,
   A3: 220.0,
   Bb3: 233.08,
+  B3: 246.94,
   C4: 261.63,
   D4: 293.66,
+  Eb4: 311.13,
   E4: 329.63,
   F4: 349.23,
   G4: 392.0,
   A4: 440.0,
   Bb4: 466.16,
+  B4: 493.88,
   C5: 523.25,
   D5: 587.33,
+  Eb5: 622.25,
   E5: 659.25,
   F5: 698.46,
 };
 
-// Sequência melódica lúdica (16 compassos em Fá Maior)
+// Sequência melódica lúdica (16 compassos / 32 batidas em Fá Maior)
 // Formato: [nota, tempoEmBatidas, duracaoEmBatidas]
 type MelodyNote = [string, number, number];
 
@@ -103,6 +110,26 @@ const TOY_BASS_LINE: MelodyNote[] = [
   ['F2', 30.0, 1.5],
 ];
 
+// Harmonia de piano de brinquedo / celesta (chords swing estilo Randy Newman / Pixar)
+const TOY_HARMONY_COMP: [string[], number, number][] = [
+  [['F3', 'A3', 'C4'], 1.0, 0.8],
+  [['A3', 'C4', 'E4'], 3.0, 0.8],
+  [['D3', 'F3', 'A3'], 5.0, 0.8],
+  [['G3', 'Bb3', 'D4'], 7.0, 0.8],
+  [['Bb3', 'D4', 'F4'], 9.0, 0.8],
+  [['C4', 'E4', 'G4'], 11.0, 0.8],
+  [['A3', 'C4', 'F4'], 13.0, 0.8],
+  [['G3', 'Bb3', 'D4'], 15.0, 0.8],
+  [['F3', 'A3', 'C4'], 17.0, 0.8],
+  [['Bb3', 'D4', 'F4'], 19.0, 0.8],
+  [['A3', 'C4', 'E4'], 21.0, 0.8],
+  [['C4', 'E4', 'G4', 'Bb4'], 23.0, 0.8],
+  [['F3', 'A3', 'C4'], 25.0, 0.8],
+  [['D3', 'F3', 'A3'], 27.0, 0.8],
+  [['G3', 'Bb3', 'D4'], 29.0, 0.8],
+  [['C3', 'E3', 'G3'], 31.0, 0.8],
+];
+
 export class SoundManager {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
@@ -111,7 +138,9 @@ export class SoundManager {
   private sfxGain: GainNode | null = null;
 
   private isEnabled = false;
-  private volume = 0.6;
+  private volume = 0.7; // Master volume (0 to 1)
+  private musicVolume = 0.65; // Volume da trilha sonora (0 to 1)
+  private sfxVolume = 0.75; // Volume dos efeitos sonoros (0 to 1)
 
   // Gerador de Ruído de Aspiração (Motor AspiToy)
   private noiseNode: AudioBufferSourceNode | null = null;
@@ -147,20 +176,20 @@ export class SoundManager {
       this.masterGain.gain.setValueAtTime(this.volume, this.ctx.currentTime);
       this.masterGain.connect(this.ctx.destination);
 
-      // Barramento de Música
+      // Barramento de Música (Trilha Sonora BGM)
       this.musicGain = this.ctx.createGain();
-      this.musicGain.gain.setValueAtTime(0.22, this.ctx.currentTime);
+      this.musicGain.gain.setValueAtTime(this.musicVolume * 0.35, this.ctx.currentTime);
       this.musicGain.connect(this.masterGain);
 
-      // Barramento de Motor/Aspiração
+      // Barramento de Efeitos Sonoros (SFX)
+      this.sfxGain = this.ctx.createGain();
+      this.sfxGain.gain.setValueAtTime(this.sfxVolume * 0.45, this.ctx.currentTime);
+      this.sfxGain.connect(this.masterGain);
+
+      // Barramento de Motor/Aspiração (conecta ao sfxGain para respeitar o volume de efeitos)
       this.motorGain = this.ctx.createGain();
       this.motorGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
-      this.motorGain.connect(this.masterGain);
-
-      // Barramento de Efeitos Sonoros
-      this.sfxGain = this.ctx.createGain();
-      this.sfxGain.gain.setValueAtTime(0.35, this.ctx.currentTime);
-      this.sfxGain.connect(this.masterGain);
+      this.motorGain.connect(this.sfxGain);
 
       this.setupMotorSynth();
     }
@@ -269,6 +298,9 @@ export class SoundManager {
     return this.isEnabled;
   }
 
+  /**
+   * Configura o volume geral (Master) [0, 1].
+   */
   public setVolume(val: number): void {
     this.volume = Math.max(0, Math.min(1, val));
     if (this.masterGain && this.ctx) {
@@ -278,6 +310,34 @@ export class SoundManager {
 
   public getVolume(): number {
     return this.volume;
+  }
+
+  /**
+   * Configura o volume da trilha sonora (BGM) [0, 1].
+   */
+  public setMusicVolume(val: number): void {
+    this.musicVolume = Math.max(0, Math.min(1, val));
+    if (this.musicGain && this.ctx) {
+      this.musicGain.gain.setTargetAtTime(this.musicVolume * 0.35, this.ctx.currentTime, 0.05);
+    }
+  }
+
+  public getMusicVolume(): number {
+    return this.musicVolume;
+  }
+
+  /**
+   * Configura o volume dos efeitos sonoros (SFX) [0, 1].
+   */
+  public setSfxVolume(val: number): void {
+    this.sfxVolume = Math.max(0, Math.min(1, val));
+    if (this.sfxGain && this.ctx) {
+      this.sfxGain.gain.setTargetAtTime(this.sfxVolume * 0.45, this.ctx.currentTime, 0.05);
+    }
+  }
+
+  public getSfxVolume(): number {
+    return this.sfxVolume;
   }
 
   /**
@@ -371,7 +431,14 @@ export class SoundManager {
       }
     }
 
-    // 3. Toque suave de percussão de madeira nas batidas 2 e 4
+    // 3. Acordes harmônicos de celesta / piano de brinquedo
+    for (const [chord, startBeat, durBeats] of TOY_HARMONY_COMP) {
+      if (Math.abs(startBeat - beatIndex) < 0.25) {
+        this.playToyChord(chord, time, durBeats * this.SECONDS_PER_BEAT);
+      }
+    }
+
+    // 4. Toque suave de percussão de madeira nas batidas 2 e 4
     if (beatIndex % 2 === 1) {
       this.playWoodblock(time);
     }
@@ -442,6 +509,38 @@ export class SoundManager {
 
     osc.start(startTime);
     osc.stop(startTime + duration + 0.1);
+  }
+
+  /**
+   * Acorde suave de celesta / piano de brinquedo
+   */
+  private playToyChord(chordNotes: string[], startTime: number, duration: number): void {
+    if (!this.ctx || !this.musicGain) return;
+
+    chordNotes.forEach((noteName) => {
+      const freq = NOTES[noteName];
+      if (!freq || !this.ctx || !this.musicGain) return;
+
+      const osc = this.ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, startTime);
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(0.045, startTime + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + Math.min(duration, 0.9));
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(1400, startTime);
+
+      osc.connect(gain);
+      gain.connect(filter);
+      filter.connect(this.musicGain);
+
+      osc.start(startTime);
+      osc.stop(startTime + duration + 0.1);
+    });
   }
 
   /**
