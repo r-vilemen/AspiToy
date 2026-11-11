@@ -36,3 +36,4 @@ export const useSoundStore = create<SoundStoreState>((set) => ({
     set({ isEnabled: false });
   },
 }));
+

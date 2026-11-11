@@ -125,9 +125,11 @@ export const LivingRoom = memo(function LivingRoom() {
         <SofaLeg position={[-1.98, 0, -0.52]} rotation={[0.18, 0, -0.18]} />
         <SofaLeg position={[-0.65, 0, -0.52]} rotation={[0.18, 0, 0]} />
         <SofaLeg position={[0.7, 0, -0.52]} rotation={[0.18, 0, 0]} />
+        <SofaLeg position={[1.82, 0, -0.52]} rotation={[0.18, 0, 0.18]} />
         <SofaLeg position={[-1.98, 0, 0.52]} rotation={[-0.18, 0, -0.18]} />
         <SofaLeg position={[-0.65, 0, 0.52]} rotation={[-0.18, 0, 0]} />
         <SofaLeg position={[0.7, 0, 0.52]} rotation={[-0.18, 0, 0]} />
+        <SofaLeg position={[1.82, 0, 0.52]} rotation={[-0.18, 0, 0.18]} />
 
         {/* Almofadas decorativas sobre o encosto */}
         {[-1.2, -0.2, 0.8, 1.5].map((cx, idx) => (
