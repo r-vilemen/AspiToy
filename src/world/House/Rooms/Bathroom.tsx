@@ -163,11 +163,17 @@ export const Bathroom = memo(function Bathroom() {
 
       {/* 6. Cesto de Roupas em Vime (X = 5.6m, Z = 9.4m) */}
       <group position={[5.6, 0, 9.4]}>
-        <mesh castShadow material={sharedMaterials.furnitureWood}>
+        {/* Corpo do cesto perfeitamente apoiado no piso cerâmico */}
+        <mesh castShadow receiveShadow position={[0, 0.325, 0]} material={sharedMaterials.furnitureWood}>
           <cylinderGeometry args={[0.28, 0.24, 0.65, 16]} />
         </mesh>
-        <mesh position={[0, 0.34, 0]} material={sharedMaterials.wallWainscot}>
-          <cylinderGeometry args={[0.29, 0.29, 0.06, 16]} />
+        {/* Borda / Tampa superior */}
+        <mesh position={[0, 0.65, 0]} material={sharedMaterials.wallWainscot}>
+          <cylinderGeometry args={[0.29, 0.28, 0.06, 16]} />
+        </mesh>
+        {/* Puxador da tampa */}
+        <mesh position={[0, 0.70, 0]} material={sharedMaterials.furnitureWoodDark}>
+          <cylinderGeometry args={[0.04, 0.04, 0.04, 12]} />
         </mesh>
       </group>
     </group>
