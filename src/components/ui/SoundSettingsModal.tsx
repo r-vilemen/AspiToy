@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
 import {
+  AudioLines,
   Music,
   SlidersHorizontal,
-  Sparkles,
   Volume2,
   VolumeX,
   X,
@@ -232,7 +232,7 @@ export function SoundSettingsModal() {
                 htmlFor="sfx-volume-slider"
                 className="flex items-center gap-1.5 font-display text-xs font-black text-[#2A211B]"
               >
-                <Sparkles className="h-3.5 w-3.5 text-[#0F766E] stroke-[2.5]" aria-hidden="true" />
+                <AudioLines className="h-3.5 w-3.5 text-[#0F766E] stroke-[2.5]" aria-hidden="true" />
                 <span>Efeitos Sonoros</span>
               </label>
               <div className="flex items-center gap-2">
