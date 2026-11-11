@@ -69,6 +69,7 @@ export function SoundSettingsModal() {
     if (!isEnabled && val > 0) {
       enableSound();
     }
+    soundManager.ensureAudioRunning();
     setMusicVolume(val);
   };
 
@@ -76,6 +77,7 @@ export function SoundSettingsModal() {
     if (!isEnabled && val > 0) {
       enableSound();
     }
+    soundManager.ensureAudioRunning();
     setSfxVolume(val);
   };
 
@@ -83,6 +85,7 @@ export function SoundSettingsModal() {
     if (!isEnabled && val > 0) {
       enableSound();
     }
+    soundManager.ensureAudioRunning();
     setMasterVolume(val);
   };
 
@@ -130,13 +133,17 @@ export function SoundSettingsModal() {
         </div>
 
         {/* Interruptor Master (Som Ligado / Desligado) */}
-        <div className="mt-4 flex items-center justify-between rounded-xl border-2 border-[#2A211B] bg-[#F7F2E7] p-2.5 shadow-[2px_2px_0px_#2A211B]">
+        <div
+          className={`mt-4 flex items-center justify-between rounded-xl border-2 border-[#2A211B] p-2.5 shadow-[2px_2px_0px_#2A211B] transition ${
+            isEnabled ? 'bg-[#ECFDF5]' : 'bg-[#FEF2F2]'
+          }`}
+        >
           <div className="flex items-center gap-2.5">
             <div
               className={`flex h-8 w-8 items-center justify-center rounded-lg border-1.5 border-[#2A211B] transition ${
                 isEnabled
                   ? 'bg-[#10B981] text-white'
-                  : 'bg-[#E5DCD0] text-[#78695D]'
+                  : 'bg-[#EF4444] text-white'
               }`}
             >
               {isEnabled ? (
@@ -149,23 +156,26 @@ export function SoundSettingsModal() {
               <span className="block font-display text-xs font-black text-[#2A211B]">
                 Som Geral
               </span>
-              <span className="block font-mono text-[10px] text-[#78695D]">
-                {isEnabled ? 'Áudio ativado no jogo' : 'Mudo (sem som)'}
+              <span className="block font-mono text-[10px] font-bold text-[#78695D]">
+                {isEnabled ? 'Áudio e trilha sonora ativos' : 'Áudio desativado'}
               </span>
             </div>
           </div>
 
           <button
             type="button"
-            onClick={toggleSound}
+            onClick={() => {
+              toggleSound();
+              soundManager.ensureAudioRunning();
+            }}
             aria-pressed={isEnabled}
-            className={`rounded-xl border-2 border-[#2A211B] px-3 py-1.5 font-mono text-xs font-black uppercase tracking-wider shadow-[2px_2px_0px_#2A211B] active:shadow-none active:translate-y-0.5 transition cursor-pointer ${
+            className={`rounded-xl border-2 border-[#2A211B] px-3.5 py-1.5 font-mono text-xs font-black uppercase tracking-wider shadow-[2px_2px_0px_#2A211B] active:shadow-none active:translate-y-0.5 transition cursor-pointer ${
               isEnabled
                 ? 'bg-[#10B981] hover:bg-[#059669] text-white'
-                : 'bg-[#FFFDF8] hover:bg-[#F3ECE0] text-[#2A211B]'
+                : 'bg-[#F2724D] hover:bg-[#E05A36] text-white animate-bounce'
             }`}
           >
-            {isEnabled ? 'Ligado' : 'Desligado'}
+            {isEnabled ? 'Ligado' : 'Ligar Som'}
           </button>
         </div>
 
@@ -181,33 +191,38 @@ export function SoundSettingsModal() {
                 <Music className="h-3.5 w-3.5 text-[#F2724D] stroke-[2.5]" aria-hidden="true" />
                 <span>Trilha Sonora</span>
               </label>
-              <span className="font-mono text-xs font-black text-[#F2724D] tabular-nums">
-                {Math.round(musicVolume * 100)}%
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-black text-[#F2724D] tabular-nums">
+                  {Math.round(musicVolume * 100)}%
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleMusicChange(musicVolume > 0 ? 0 : 0.75)}
+                  title={musicVolume > 0 ? 'Silenciar trilha sonora' : 'Restaurar trilha sonora'}
+                  aria-label={musicVolume > 0 ? 'Silenciar trilha sonora' : 'Restaurar trilha sonora'}
+                  className="flex h-5 w-5 items-center justify-center rounded border border-[#2A211B]/40 bg-[#FFFDF8] hover:bg-[#F3ECE0] transition cursor-pointer"
+                >
+                  {musicVolume > 0 ? (
+                    <Volume2 className="h-3 w-3 text-[#F2724D]" aria-hidden="true" />
+                  ) : (
+                    <VolumeX className="h-3 w-3 text-[#78695D]" aria-hidden="true" />
+                  )}
+                </button>
+              </div>
             </div>
             <p className="font-mono text-[10px] text-[#78695D]">
-              Tema lúdico estilo Toy Story / Pixar
+              Musiquinha animada e saltitante de brinquedo (128 BPM)
             </p>
-            <div className="flex items-center gap-2">
-              <input
-                id="music-volume-slider"
-                type="range"
-                min="0"
-                max="100"
-                value={Math.round(musicVolume * 100)}
-                onChange={(e) => handleMusicChange(Number(e.target.value) / 100)}
-                aria-label="Volume da trilha sonora"
-                className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-[#E5DCD0] accent-[#F2724D]"
-              />
-              <button
-                type="button"
-                onClick={() => handleMusicChange(musicVolume > 0 ? 0 : 0.7)}
-                title={musicVolume > 0 ? 'Mutar trilha sonora' : 'Restaurar música'}
-                className="shrink-0 rounded-md border border-[#2A211B]/40 bg-[#FFFDF8] px-1.5 py-0.5 font-mono text-[9px] font-black uppercase text-[#2A211B] hover:bg-[#F3ECE0] cursor-pointer"
-              >
-                {musicVolume > 0 ? 'Mudo' : 'Ativar'}
-              </button>
-            </div>
+            <input
+              id="music-volume-slider"
+              type="range"
+              min="0"
+              max="100"
+              value={Math.round(musicVolume * 100)}
+              onChange={(e) => handleMusicChange(Number(e.target.value) / 100)}
+              aria-label="Volume da trilha sonora"
+              className="h-2.5 w-full cursor-pointer appearance-none rounded-lg bg-[#E5DCD0] accent-[#F2724D]"
+            />
           </div>
 
           {/* 2. Efeitos Sonoros (SFX) */}
@@ -220,33 +235,33 @@ export function SoundSettingsModal() {
                 <Sparkles className="h-3.5 w-3.5 text-[#0F766E] stroke-[2.5]" aria-hidden="true" />
                 <span>Efeitos Sonoros</span>
               </label>
-              <span className="font-mono text-xs font-black text-[#0F766E] tabular-nums">
-                {Math.round(sfxVolume * 100)}%
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-black text-[#0F766E] tabular-nums">
+                  {Math.round(sfxVolume * 100)}%
+                </span>
+                <button
+                  type="button"
+                  onClick={handleTestSfx}
+                  title="Tocar efeito sonoro de teste"
+                  className="rounded-md border border-[#2A211B]/40 bg-[#FFFDF8] px-2 py-0.5 font-mono text-[9px] font-black uppercase text-[#2A211B] hover:bg-[#F3ECE0] shadow-[1px_1px_0px_#2A211B] active:translate-y-0.5 active:shadow-none cursor-pointer"
+                >
+                  Testar
+                </button>
+              </div>
             </div>
             <p className="font-mono text-[10px] text-[#78695D]">
               Motor do aspirador, sucção de poeira e bipes
             </p>
-            <div className="flex items-center gap-2">
-              <input
-                id="sfx-volume-slider"
-                type="range"
-                min="0"
-                max="100"
-                value={Math.round(sfxVolume * 100)}
-                onChange={(e) => handleSfxChange(Number(e.target.value) / 100)}
-                aria-label="Volume dos efeitos sonoros"
-                className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-[#E5DCD0] accent-[#0F766E]"
-              />
-              <button
-                type="button"
-                onClick={handleTestSfx}
-                title="Tocar efeito sonoro de teste"
-                className="shrink-0 rounded-md border border-[#2A211B]/40 bg-[#FFFDF8] px-1.5 py-0.5 font-mono text-[9px] font-black uppercase text-[#2A211B] hover:bg-[#F3ECE0] cursor-pointer"
-              >
-                Testar
-              </button>
-            </div>
+            <input
+              id="sfx-volume-slider"
+              type="range"
+              min="0"
+              max="100"
+              value={Math.round(sfxVolume * 100)}
+              onChange={(e) => handleSfxChange(Number(e.target.value) / 100)}
+              aria-label="Volume dos efeitos sonoros"
+              className="h-2.5 w-full cursor-pointer appearance-none rounded-lg bg-[#E5DCD0] accent-[#0F766E]"
+            />
           </div>
 
           {/* 3. Volume Geral (Master) */}
@@ -270,7 +285,7 @@ export function SoundSettingsModal() {
               value={Math.round(masterVolume * 100)}
               onChange={(e) => handleMasterChange(Number(e.target.value) / 100)}
               aria-label="Volume master geral"
-              className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-[#E5DCD0] accent-[#2A211B]"
+              className="h-2.5 w-full cursor-pointer appearance-none rounded-lg bg-[#E5DCD0] accent-[#2A211B]"
             />
           </div>
         </div>
@@ -278,7 +293,7 @@ export function SoundSettingsModal() {
         {/* Rodapé explicativo */}
         <div className="mt-4 rounded-xl border border-[#2A211B]/20 bg-[#F3ECE0]/60 p-2 text-center">
           <p className="font-mono text-[9px] font-bold text-[#6E5D4F]">
-            Áudio sintetizado 100% procedural via Web Audio API
+            Trilha sonora original e efeitos em síntese procedural Web Audio API
           </p>
         </div>
       </div>

@@ -25,11 +25,11 @@ export interface SoundStoreState {
 }
 
 export const useSoundStore = create<SoundStoreState>((set) => ({
-  isEnabled: false,
-  volume: 0.7,
-  masterVolume: 0.7,
-  musicVolume: 0.65,
-  sfxVolume: 0.75,
+  isEnabled: true, // Som e música ativos por padrão!
+  volume: 0.75,
+  masterVolume: 0.75,
+  musicVolume: 0.7,
+  sfxVolume: 0.8,
   isSettingsOpen: false,
 
   toggleSound: () => {
@@ -72,7 +72,26 @@ export const useSoundStore = create<SoundStoreState>((set) => ({
     set({ sfxVolume: clamped });
   },
 
-  openSettings: () => set({ isSettingsOpen: true }),
+  openSettings: () => {
+    soundManager.ensureAudioRunning();
+    set({ isSettingsOpen: true });
+  },
+
   closeSettings: () => set({ isSettingsOpen: false }),
-  toggleSettings: () => set((state) => ({ isSettingsOpen: !state.isSettingsOpen })),
+  toggleSettings: () => {
+    soundManager.ensureAudioRunning();
+    set((state) => ({ isSettingsOpen: !state.isSettingsOpen }));
+  },
 }));
+
+// Desbloqueia e inicia o áudio na primeira interação do usuário (clique, toque ou tecla)
+if (typeof window !== 'undefined') {
+  const unlockAudio = () => {
+    if (useSoundStore.getState().isEnabled) {
+      soundManager.ensureAudioRunning();
+    }
+  };
+  window.addEventListener('pointerdown', unlockAudio, { once: true });
+  window.addEventListener('keydown', unlockAudio, { once: true });
+  window.addEventListener('touchstart', unlockAudio, { once: true });
+}
