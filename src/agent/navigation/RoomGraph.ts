@@ -144,6 +144,57 @@ export class RoomGraph {
       targetRoom,
     };
   }
+
+  /**
+   * Gera sequência de 3 waypoints perpendiculares (aproximação, centro e saída)
+   * para assegurar que o robô atravesse o vão de portas sempre alinhado pelo meio,
+   * sem cortar quinas ou raspar em batentes.
+   */
+  public getPerpendicularDoorWaypoints(
+    doorCenter: Vector2D,
+    fromRoom: RoomId,
+    toRoom: RoomId
+  ): Vector2D[] {
+    const door = HOUSE_FLOOR_PLAN.doors.find(
+      (d) =>
+        (d.fromRoom === fromRoom && d.toRoom === toRoom) ||
+        (d.fromRoom === toRoom && d.toRoom === fromRoom)
+    );
+
+    if (!door) {
+      return [{ x: doorCenter.x, z: doorCenter.z }];
+    }
+
+    const offset = 0.55;
+
+    if (door.orientation === 'z') {
+      const isFromWest =
+        fromRoom === 'bedroom' ||
+        (fromRoom === 'hallway' && (toRoom === 'kitchen' || toRoom === 'living-room'));
+
+      const approachX = isFromWest ? door.position.x - offset : door.position.x + offset;
+      const exitX = isFromWest ? door.position.x + offset : door.position.x - offset;
+
+      return [
+        { x: approachX, z: door.position.z },
+        { x: door.position.x, z: door.position.z },
+        { x: exitX, z: door.position.z },
+      ];
+    } else {
+      const isFromNorth =
+        (fromRoom === 'hallway' && toRoom === 'bathroom') ||
+        (fromRoom === 'living-room' && toRoom === 'kitchen');
+
+      const approachZ = isFromNorth ? door.position.z - offset : door.position.z + offset;
+      const exitZ = isFromNorth ? door.position.z + offset : door.position.z - offset;
+
+      return [
+        { x: door.position.x, z: approachZ },
+        { x: door.position.x, z: door.position.z },
+        { x: door.position.x, z: exitZ },
+      ];
+    }
+  }
 }
 
 export const globalRoomGraph = new RoomGraph();

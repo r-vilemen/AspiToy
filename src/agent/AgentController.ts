@@ -6,7 +6,7 @@ import {
 import { GridMap } from './navigation/GridMap';
 import { PathPlanner } from './navigation/PathPlanner';
 import { globalRoomGraph } from './navigation/RoomGraph';
-import { getRoomAtPosition } from '@/world/House/FloorPlan';
+import { getRoomAtPosition, HOUSE_FLOOR_PLAN } from '@/world/House/FloorPlan';
 import type { EnvironmentObstacle } from '@/types/environment';
 import type { RobotOperationalState, Vector2D } from '@/types/robot';
 
@@ -140,8 +140,26 @@ export class AgentController {
       ...scan.rays.slice(centerIdx + 1).map((r) => r.distance)
     );
 
-    // Colisão iminente frontal (< 0.42m nos feixes em direção ao avanço)
-    const isImminentCollision = minFrontRay.distance < 0.42;
+    const centerRay = scan.rays[centerIdx];
+    const isCatInFront = frontRays.some(
+      (r) => r.hit && r.distance < 0.55 && r.obstacleLabel?.includes('Gato')
+    );
+
+    // Se estiver em aproximação ou passagem de vão de porta, os batentes laterais são esperados
+    const isNearDoorway =
+      this.detector.isMultiRoom &&
+      HOUSE_FLOOR_PLAN.doors.some(
+        (door) =>
+          door.isOpen &&
+          Math.hypot(position.x - door.position.x, position.z - door.position.z) < 1.3
+      );
+
+    // Colisão iminente: gato à frente, ou obstáculo frontal direto (< 0.32m),
+    // ou feixe oblíquo (< 0.40m) fora de vãos de porta
+    const isImminentCollision =
+      isCatInFront ||
+      centerRay.distance < 0.32 ||
+      (!isNearDoorway && minFrontRay.distance < 0.40);
 
     // Manobra de evasão ativa
     if (this.avoidanceTimer > 0) {
@@ -235,7 +253,20 @@ export class AgentController {
       if (this.detector.isMultiRoom) {
         const multiPlan = globalRoomGraph.planMultiRoomNavigation(position, goal);
         if (multiPlan && multiPlan.doorwayWaypoints.length > 0) {
-          const waypoints = [...multiPlan.doorwayWaypoints, goal];
+          const waypoints: Vector2D[] = [];
+          for (let i = 0; i < multiPlan.doorwayWaypoints.length; i++) {
+            const doorCenter = multiPlan.doorwayWaypoints[i];
+            const fromRoom = multiPlan.roomSequence[i];
+            const toRoom = multiPlan.roomSequence[i + 1];
+            const transitionWps = globalRoomGraph.getPerpendicularDoorWaypoints(
+              doorCenter,
+              fromRoom,
+              toRoom
+            );
+            waypoints.push(...transitionWps);
+          }
+          waypoints.push(goal);
+
           let currentStart = position;
           for (const wp of waypoints) {
             const segment = this.planner.findPath(currentStart, wp);

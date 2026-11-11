@@ -1,6 +1,6 @@
 import type { EnvironmentObstacle } from '@/types/environment';
 import type { Vector2D } from '@/types/robot';
-import { isPointInsideBounds } from '@/utils/coordinates';
+import { getDistanceToAABB, isPointInsideBounds } from '@/utils/coordinates';
 import { clamp } from '@/utils/math';
 import { HOUSE_FLOOR_PLAN } from '@/world/House/FloorPlan';
 
@@ -132,12 +132,13 @@ export class GridMap {
                 isPointInsideBounds(worldPos, door.traversableBounds)
             );
 
+          const effectivePadding = inDoorway ? 0.12 : robotPadding;
+
           for (const obs of obstacles) {
             if (!obs.collidable) continue;
-            // Se estiver no vão de porta aberta, ignora colisão com paredes
-            if (inDoorway && obs.category === 'wall') continue;
 
-            if (isPointInsideBounds(worldPos, obs.bounds, robotPadding)) {
+            const distInfo = getDistanceToAABB(worldPos, obs.bounds);
+            if (distInfo.distance < effectivePadding) {
               isOccupied = true;
               break;
             }

@@ -196,7 +196,7 @@ export function Robot() {
       const collisionResult = agent.resolveSafeMovement(
         { x: loc.x, z: loc.z },
         { x: desiredX, z: desiredZ },
-        0.31
+        0.29
       );
 
       loc.x = collisionResult.position.x;
@@ -319,16 +319,27 @@ export function Robot() {
         const collisionResult = agent.resolveSafeMovement(
           { x: loc.x, z: loc.z },
           { x: desiredX, z: desiredZ },
-          0.31
+          0.29
         );
+
+        const actualMovedDist = Math.hypot(
+          collisionResult.position.x - loc.x,
+          collisionResult.position.z - loc.z
+        );
+        const expectedDist = Math.max(0.0001, Math.abs(loc.speed) * delta);
 
         loc.x = collisionResult.position.x;
         loc.z = collisionResult.position.z;
 
         if (collisionResult.collided) {
           loc.bumperCompression = 0.028;
-          // Amortece velocidade linear para não insistir contra o obstáculo nem girar descontroladamente
-          loc.speed = damp(loc.speed, 0, 16.0, delta);
+          // Se o robô estiver efetivamente bloqueado sem conseguir deslizar, amortece a velocidade
+          if (actualMovedDist < expectedDist * 0.25) {
+            loc.speed = damp(loc.speed, 0, 14.0, delta);
+          } else {
+            // Se estiver deslizando suavemente pela quina/parede, preserva o avanço
+            loc.speed = damp(loc.speed, loc.speed * 0.88, 3.5, delta);
+          }
         }
       }
     }

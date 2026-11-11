@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { GridMap } from '../navigation/GridMap';
 import { PathPlanner } from '../navigation/PathPlanner';
+import { ObstacleDetector } from '../navigation/ObstacleDetector';
 import { INITIAL_DOCK_POSITION, INITIAL_OBSTACLES, INITIAL_ROOM_DIMENSIONS } from '@/store/environmentStore';
 
 describe('Inteligência e Navegação com Grade e Algoritmo A* (Sprint 2)', () => {
@@ -86,6 +87,40 @@ describe('Inteligência e Navegação com Grade e Algoritmo A* (Sprint 2)', () =
     const endPoint = pathToDock[pathToDock.length - 1];
     expect(Math.abs(endPoint.x - INITIAL_DOCK_POSITION.x)).toBeLessThanOrEqual(0.35);
     expect(Math.abs(endPoint.z - INITIAL_DOCK_POSITION.z)).toBeLessThanOrEqual(0.35);
+  });
+
+  it('desliza suavemente em cantos e quinas de batentes de portas sem travar', () => {
+    // Simula quina de batente de porta no corredor (parede em X=7.48, Z de 6.65 a 8.6)
+    const doorCornerObstacles = [
+      {
+        id: 'door-jamb-wall',
+        label: 'Batente da Porta da Cozinha',
+        category: 'wall' as const,
+        bounds: { minX: 7.48, maxX: 7.72, minZ: 6.65, maxZ: 8.6 },
+        collidable: true,
+        height: 3.0,
+      },
+    ];
+
+    const detector = new ObstacleDetector(
+      doorCornerObstacles,
+      22.6,
+      17.5
+    );
+
+    // Robô posicionado próximo à quina (7.20, 6.50), tentando avançar diagonalmente para (7.35, 6.68)
+    const current = { x: 7.2, z: 6.5 };
+    const desired = { x: 7.35, z: 6.68 };
+
+    const result = detector.resolveSafeMovement(current, desired, 0.29);
+
+    // Deve permitir deslocamento tangencial (deslizando pelo arco da quina) sem congelar na posição anterior
+    const moved = Math.hypot(result.position.x - current.x, result.position.z - current.z);
+    expect(moved).toBeGreaterThan(0.01);
+
+    // E a distância da quina sólida deve ser estritamente segura (>= 0.28m)
+    const distToCorner = Math.hypot(result.position.x - 7.48, result.position.z - 6.65);
+    expect(distToCorner).toBeGreaterThanOrEqual(0.28);
   });
 });
 

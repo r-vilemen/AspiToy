@@ -1,6 +1,6 @@
 import type { BoundingBox2D, EnvironmentObstacle } from '@/types/environment';
 import type { Vector2D } from '@/types/robot';
-import { isPointInsideBounds } from '@/utils/coordinates';
+import { getDistanceToAABB, isPointInsideBounds } from '@/utils/coordinates';
 import { clamp } from '@/utils/math';
 import { HOUSE_FLOOR_PLAN } from '@/world/House/FloorPlan';
 
@@ -51,13 +51,13 @@ export class ObstacleDetector {
   /**
    * Verifica se um ponto com raio de colisão intercepta paredes, móveis ou o gato.
    */
-  public isColliding(point: Vector2D, robotRadius = 0.32): boolean {
+  public isColliding(point: Vector2D, robotRadius = 0.30): boolean {
     return this.findCollidingObstacle(point, robotRadius) !== null;
   }
 
   public findCollidingObstacle(
     point: Vector2D,
-    robotRadius = 0.32
+    robotRadius = 0.30
   ): { id: string; label: string; bounds?: BoundingBox2D } | null {
     if (!this.isMultiRoom) {
       // Modo clássico quarto único
@@ -76,12 +76,12 @@ export class ObstacleDetector {
       // Modo residência completa:
       // Verifica se está dentro de algum cômodo da casa ou no vão de porta
       const inAnyRoom = Object.values(HOUSE_FLOOR_PLAN.rooms).some((room) =>
-        isPointInsideBounds(point, room.bounds, 0.08)
+        isPointInsideBounds(point, room.bounds, 0.12)
       );
       const inAnyDoor = HOUSE_FLOOR_PLAN.doors.some(
         (door) =>
           door.isOpen &&
-          isPointInsideBounds(point, door.traversableBounds, 0.08)
+          isPointInsideBounds(point, door.traversableBounds, 0.12)
       );
 
       if (!inAnyRoom && !inAnyDoor) {
@@ -89,7 +89,7 @@ export class ObstacleDetector {
       }
     }
 
-    // Se estiver no vão de porta aberta, ignora colisão com a parede de alvenaria
+    // Se estiver no vão de porta aberta, ignora colisão com paredes de alvenaria paralelas
     const inDoorway =
       this.isMultiRoom &&
       HOUSE_FLOOR_PLAN.doors.some(
@@ -101,7 +101,8 @@ export class ObstacleDetector {
       if (inDoorway && obs.category === 'wall') {
         continue;
       }
-      if (isPointInsideBounds(point, obs.bounds, robotRadius)) {
+      const info = getDistanceToAABB(point, obs.bounds);
+      if (info.distance < robotRadius) {
         return { id: obs.id, label: obs.label, bounds: obs.bounds };
       }
     }
@@ -111,66 +112,108 @@ export class ObstacleDetector {
 
   /**
    * Resolve fisicamente o movimento do robô (ou gato), impedindo atravessar qualquer objeto
-   * e aplicando deslizamento tangencial (sliding) ou repulsão segura.
+   * e aplicando deslizamento tangencial contínuo com normais radiais em quinas (evita travar em cantos de portas).
    */
   public resolveSafeMovement(
     currentPos: Vector2D,
     desiredPos: Vector2D,
-    actorRadius = 0.31
+    actorRadius = 0.29
   ): CollisionResolutionResult {
-    let clampedDesired: Vector2D;
+    let resolved: Vector2D;
 
     if (!this.isMultiRoom) {
       const halfW = this.roomWidth / 2 - actorRadius - 0.02;
       const halfD = this.roomDepth / 2 - actorRadius - 0.02;
-      clampedDesired = {
+      resolved = {
         x: clamp(desiredPos.x, -halfW, halfW),
         z: clamp(desiredPos.z, -halfD, halfD),
       };
     } else {
-      clampedDesired = {
+      resolved = {
         x: clamp(desiredPos.x, -5.0 + actorRadius, 17.6 - actorRadius),
         z: clamp(desiredPos.z, -4.0 + actorRadius, 13.5 - actorRadius),
       };
     }
 
-    const directHit = this.findCollidingObstacle(clampedDesired, actorRadius);
+    const directHit = this.findCollidingObstacle(resolved, actorRadius);
     if (!directHit) {
       return {
-        position: clampedDesired,
+        position: resolved,
         collided: false,
         obstacleId: null,
         obstacleLabel: null,
       };
     }
 
-    // Tenta deslizar apenas no eixo X
-    const slideX: Vector2D = { x: clampedDesired.x, z: currentPos.z };
-    if (!this.findCollidingObstacle(slideX, actorRadius)) {
+    let primaryObstacleId: string = directHit.id;
+    let primaryObstacleLabel: string = directHit.label;
+
+    const inDoorway =
+      this.isMultiRoom &&
+      HOUSE_FLOOR_PLAN.doors.some(
+        (door) =>
+          door.isOpen && isPointInsideBounds(resolved, door.traversableBounds)
+      );
+
+    // Resolução contínua com normais radiais (contorna quinas e batentes suavemente)
+    for (let iter = 0; iter < 4; iter++) {
+      let anyCorrection = false;
+
+      for (const obs of this.getAllCollidableObstacles()) {
+        if (inDoorway && obs.category === 'wall') continue;
+
+        const info = getDistanceToAABB(resolved, obs.bounds);
+        if (info.distance < actorRadius) {
+          anyCorrection = true;
+          primaryObstacleId = obs.id;
+          primaryObstacleLabel = obs.label;
+
+          const pen = actorRadius - info.distance + 0.002;
+          resolved.x += info.normal.x * pen;
+          resolved.z += info.normal.z * pen;
+        }
+      }
+
+      if (!anyCorrection) break;
+    }
+
+    // Se após a rotação contínua a posição resolvida estiver livre:
+    if (!this.findCollidingObstacle(resolved, actorRadius * 0.95)) {
       return {
-        position: slideX,
+        position: resolved,
         collided: true,
-        obstacleId: directHit.id,
-        obstacleLabel: directHit.label,
+        obstacleId: primaryObstacleId,
+        obstacleLabel: primaryObstacleLabel,
       };
     }
 
-    // Tenta deslizar apenas no eixo Z
-    const slideZ: Vector2D = { x: currentPos.x, z: clampedDesired.z };
-    if (!this.findCollidingObstacle(slideZ, actorRadius)) {
+    // Fallback: deslizar no eixo X
+    const slideX: Vector2D = { x: resolved.x, z: currentPos.z };
+    if (!this.findCollidingObstacle(slideX, actorRadius * 0.95)) {
+      return {
+        position: slideX,
+        collided: true,
+        obstacleId: primaryObstacleId,
+        obstacleLabel: primaryObstacleLabel,
+      };
+    }
+
+    // Fallback: deslizar no eixo Z
+    const slideZ: Vector2D = { x: currentPos.x, z: resolved.z };
+    if (!this.findCollidingObstacle(slideZ, actorRadius * 0.95)) {
       return {
         position: slideZ,
         collided: true,
-        obstacleId: directHit.id,
-        obstacleLabel: directHit.label,
+        obstacleId: primaryObstacleId,
+        obstacleLabel: primaryObstacleLabel,
       };
     }
 
     return {
       position: currentPos,
       collided: true,
-      obstacleId: directHit.id,
-      obstacleLabel: directHit.label,
+      obstacleId: primaryObstacleId,
+      obstacleLabel: primaryObstacleLabel,
     };
   }
 
@@ -202,18 +245,9 @@ export class ObstacleDetector {
     }
 
     for (const obs of this.getAllCollidableObstacles()) {
-      const clampedX = Math.max(
-        obs.bounds.minX,
-        Math.min(point.x, obs.bounds.maxX)
-      );
-      const clampedZ = Math.max(
-        obs.bounds.minZ,
-        Math.min(point.z, obs.bounds.maxZ)
-      );
-      const dist = Math.hypot(point.x - clampedX, point.z - clampedZ);
-
-      if (dist < minDistance) {
-        minDistance = dist;
+      const info = getDistanceToAABB(point, obs.bounds);
+      if (info.distance < minDistance) {
+        minDistance = info.distance;
         closestId = obs.id;
         closestLabel = obs.label;
       }

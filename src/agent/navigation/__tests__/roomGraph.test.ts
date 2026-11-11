@@ -79,4 +79,22 @@ describe('RoomGraph — Grafo Topológico da Residência Multicômodo', () => {
     expect(rooms).toContain('kitchen');
     expect(rooms).toContain('bathroom');
   });
+
+  it('gera waypoints de aproximação e saída perpendiculares para travessia segura de portas', () => {
+    // Porta Corredor -> Cozinha (x=7.6, z=6.0, orientation='z')
+    const wps = graph.getPerpendicularDoorWaypoints({ x: 7.6, z: 6.0 }, 'hallway', 'kitchen');
+    expect(wps).toHaveLength(3);
+
+    // 1. Aproximação no corredor (oeste da porta, x < 7.6)
+    expect(wps[0].x).toBeCloseTo(7.05, 2);
+    expect(wps[0].z).toBeCloseTo(6.0, 2);
+
+    // 2. Centro do vão da porta
+    expect(wps[1].x).toBeCloseTo(7.6, 2);
+    expect(wps[1].z).toBeCloseTo(6.0, 2);
+
+    // 3. Saída dentro da cozinha (leste da porta, x > 7.6)
+    expect(wps[2].x).toBeCloseTo(8.15, 2);
+    expect(wps[2].z).toBeCloseTo(6.0, 2);
+  });
 });
