@@ -37,10 +37,11 @@ export function Dashboard() {
 
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
-  // Quando o tutorial abre, abre o painel mobile para destacar os botões
+  // Garante que o drawer mobile permaneça fechado durante o tutorial,
+  // permitindo destacar diretamente os controles do HUD na tela do jogo
   useEffect(() => {
     if (showTutorial) {
-      setIsMobileDrawerOpen(true);
+      setIsMobileDrawerOpen(false);
     }
   }, [showTutorial]);
 
@@ -127,7 +128,7 @@ export function Dashboard() {
           {/* CONTROLE MOBILE FLUTUANTE ESTILO GAMEPAD PS2 (SMARTPHONE EM PÉ E DEITADO) */}
           <div className="pointer-events-auto mobile-gamepad sm:hidden w-full flex items-end justify-between gap-2 px-1">
             {/* Polegar Esquerdo: Analógico Virtual PS2 */}
-            <div className="flex flex-col items-center gap-1">
+            <div id="tour-mobile-joystick" className="flex flex-col items-center gap-1">
               <VirtualJoystick
                 size={110}
                 knobSize={48}
@@ -167,6 +168,7 @@ export function Dashboard() {
               <div className="flex items-center gap-1.5">
                 {/* Botão de Retornar à Base */}
                 <button
+                  id="tour-mobile-dock"
                   type="button"
                   title="Retornar à Base"
                   aria-label="Retornar à base de recarga"
@@ -179,6 +181,7 @@ export function Dashboard() {
 
                 {/* Botão de Alternar Câmera no Celular */}
                 <button
+                  id="tour-mobile-camera"
                   type="button"
                   title={`Câmera atual: ${cameraPreset} (Clique para alternar)`}
                   aria-label="Alternar modo de câmera"
@@ -196,8 +199,9 @@ export function Dashboard() {
 
                 {/* Botão de Abrir Drawer de Detalhes / Opções */}
                 <button
+                  id="tour-mobile-menu"
                   type="button"
-                  onClick={() => setIsMobileDrawerOpen(true)}
+                  onClick={() => !showTutorial && setIsMobileDrawerOpen(true)}
                   aria-label="Abrir painel de controles e direção manual"
                   className="flex h-9 w-9 items-center justify-center rounded-xl border-2 border-[#2A211B] bg-[#FBBF24] hover:bg-[#F59E0B] text-[#2A211B] shadow-[2px_2px_0px_#2A211B] active:translate-y-0.5 active:shadow-none transition cursor-pointer"
                 >
@@ -206,7 +210,7 @@ export function Dashboard() {
               </div>
 
               {/* Botão de Ação Primária Principal (Grande e Tátil para o Polegar Direito) */}
-              <div>
+              <div id="tour-mobile-cleaning" className="inline-flex">
                 {!isRunning && !isPaused ? (
                   <button
                     type="button"

@@ -199,4 +199,35 @@ describe('Responsividade Mobile e Desktop da Interface', () => {
     expect(link.getAttribute('target')).toBe('_blank');
     expect(link.getAttribute('rel')).toContain('noopener');
   });
+
+  it('Dashboard mantém o drawer mobile fechado durante o tutorial e expõe os IDs para o spotlight do jogo', () => {
+    // Abre o tutorial
+    useOnboardingStore.setState({
+      showIntro: false,
+      showTutorial: true,
+      tutorialStep: 0,
+    });
+
+    render(<Dashboard />);
+
+    // Garante que o drawer mobile NÃO está aberto cobrindo a tela
+    expect(
+      screen.queryByRole('dialog', {
+        name: /Painel de controle expandido do AspiToy/i,
+      })
+    ).toBeNull();
+
+    // Garante que o diálogo do tutorial está ativo na tela
+    expect(
+      screen.getByRole('dialog', {
+        name: /Tutorial interativo em jogo/i,
+      })
+    ).toBeDefined();
+
+    // Garante que os elementos de HUD mobile para o tutorial existem no documento
+    expect(document.getElementById('tour-mobile-cleaning')).not.toBeNull();
+    expect(document.getElementById('tour-mobile-joystick')).not.toBeNull();
+    expect(document.getElementById('tour-mobile-dock')).not.toBeNull();
+    expect(document.getElementById('tour-mobile-camera')).not.toBeNull();
+  });
 });

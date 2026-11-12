@@ -12,64 +12,93 @@ import { useOnboardingStore } from '@/store/onboardingStore';
 
 interface TourStepConfig {
   targetId: string;
+  targetMobileId?: string;
   badge: string;
   title: string;
+  mobileTitle?: string;
   description: string;
+  mobileDescription?: string;
   tip: string;
+  mobileTip?: string;
   icon: typeof Play;
   iconBg: string;
   iconColor: string;
   radiusPadding: number;
+  mobileRadiusPadding?: number;
 }
 
 const TOUR_STEPS: TourStepConfig[] = [
   {
     targetId: 'tour-cleaning-button',
+    targetMobileId: 'tour-mobile-cleaning',
     badge: 'Passo 1 de 4',
     title: 'Iniciar / Pausar Limpeza',
+    mobileTitle: 'Iniciar / Pausar Limpeza',
     description:
       'Clique no botão principal para iniciar a varredura autônoma da sala. O AspiToy navegará pelo chão limpando manchas de poeira e desviando dos móveis.',
+    mobileDescription:
+      'Toque no botão principal para iniciar a varredura autônoma da sala. O AspiToy navegará pelo chão limpando manchas e desviando dos obstáculos.',
     tip: 'Pode pausar a qualquer instante ou retomar a tarefa.',
+    mobileTip: 'Toque para pausar a qualquer instante ou retomar a limpeza.',
     icon: Play,
     iconBg: 'bg-[#FFEDD5]',
     iconColor: 'text-[#C2410C]',
     radiusPadding: 22,
+    mobileRadiusPadding: 14,
   },
   {
     targetId: 'tour-manual-controls',
+    targetMobileId: 'tour-mobile-joystick',
     badge: 'Passo 2 de 4',
     title: 'Pilotagem Manual (WASD / Setas)',
+    mobileTitle: 'Analógico Virtual PS2',
     description:
       'Pilote você mesmo pelo teclado usando as teclas W, A, S, D ou as Setas direcionais. Ao soltar as teclas, o robô para de imediato sem ativar a limpeza automática.',
+    mobileDescription:
+      'Pilote o robô em 360° com o polegar esquerdo arrastando o analógico virtual! Controle livre e ágil para navegar por toda a casa.',
     tip: 'W para avançar, S para ré, A/D para girar.',
+    mobileTip: 'Solte o analógico para parar o robô na hora.',
     icon: Gamepad2,
     iconBg: 'bg-[#CCFBF1]',
     iconColor: 'text-[#0F766E]',
     radiusPadding: 20,
+    mobileRadiusPadding: 12,
   },
   {
     targetId: 'tour-dock-button',
+    targetMobileId: 'tour-mobile-dock',
     badge: 'Passo 3 de 4',
     title: 'Base de Carregamento 3D',
+    mobileTitle: 'Retornar à Base',
     description:
       'Mande o robô voltar para a doca de energia. Você pode clicar neste botão ou clicar diretamente sobre a base 3D localizada no canto sudoeste da sala!',
+    mobileDescription:
+      'Toque no ícone da casinha para mandar o robô voltar direto à base de recarga (ou toque na própria doca 3D no chão do quarto)!',
     tip: 'O robô sobe a rampa e recarrega sua bateria na hora.',
+    mobileTip: 'O robô recalcula a rota e recarrega a bateria na doca.',
     icon: BatteryCharging,
     iconBg: 'bg-[#D1FAE5]',
     iconColor: 'text-[#047857]',
     radiusPadding: 24,
+    mobileRadiusPadding: 12,
   },
   {
     targetId: 'tour-camera-modes',
+    targetMobileId: 'tour-mobile-camera',
     badge: 'Passo 4 de 4',
     title: 'Câmeras e Exploração 3D',
+    mobileTitle: 'Câmeras e Ângulos 3D',
     description:
       'Alterne entre os ângulos de câmera ("Acompanhar", "Visão geral" e "Personagem"). Arraste a tela com o mouse para girar o ângulo e use o scroll para aproximar o zoom!',
+    mobileDescription:
+      'Toque para alternar o modo de câmera ("Acompanhar", "Visão geral" e "Personagem"). Arraste na tela 3D para orbitar e faça pinça para zoom!',
     tip: 'Clique no chão para mover o robô e empurre os brinquedos da sala.',
+    mobileTip: 'Toque no chão para mover o robô e empurre os brinquedos.',
     icon: Compass,
     iconBg: 'bg-[#FEF3C7]',
     iconColor: 'text-[#B45309]',
     radiusPadding: 18,
+    mobileRadiusPadding: 12,
   },
 ];
 
@@ -89,12 +118,26 @@ export function InGameTour() {
   const prevTutorialStep = useOnboardingStore((s) => s.prevTutorialStep);
   const setTutorialStep = useOnboardingStore((s) => s.setTutorialStep);
 
+  const [isMobile, setIsMobile] = useState(false);
   const [spotlight, setSpotlight] = useState<SpotlightCoords>({
     cx: -999,
     cy: -999,
     r: 80,
     rect: null,
   });
+
+  // Detecção contínua de modo mobile / viewport compacto
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(
+        typeof window !== 'undefined' &&
+          (window.innerWidth < 768 || window.innerHeight <= 550)
+      );
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const current = TOUR_STEPS[tutorialStep] ?? TOUR_STEPS[0];
   const Icon = current.icon;
@@ -104,7 +147,32 @@ export function InGameTour() {
   const updateSpotlight = useCallback(() => {
     if (!showTutorial) return;
 
-    const el = document.getElementById(current.targetId);
+    const checkIsMobile =
+      typeof window !== 'undefined' &&
+      (window.innerWidth < 768 || window.innerHeight <= 550);
+
+    let el: HTMLElement | null = null;
+
+    // Em mobile, busca primeiramente o elemento do HUD da página do jogo
+    if (checkIsMobile && current.targetMobileId) {
+      const mobileEl = document.getElementById(current.targetMobileId);
+      if (
+        mobileEl &&
+        (mobileEl.offsetParent !== null ||
+          mobileEl.getBoundingClientRect().width > 0)
+      ) {
+        el = mobileEl;
+      }
+    }
+
+    if (!el) {
+      el = document.getElementById(current.targetId);
+    }
+
+    if (!el && current.targetMobileId) {
+      el = document.getElementById(current.targetMobileId);
+    }
+
     if (!el) {
       // Fallback para o centro da tela se o elemento não for encontrado
       setSpotlight({
@@ -116,15 +184,18 @@ export function InGameTour() {
       return;
     }
 
-    // Garante que o elemento está visível no scroll do painel lateral
-    if (typeof el.scrollIntoView === 'function') {
+    // Garante que o elemento está visível no scroll do painel lateral (no Desktop)
+    if (!checkIsMobile && typeof el.scrollIntoView === 'function') {
       el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     const rect = el.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
-    const r = Math.max(rect.width, rect.height) / 2 + current.radiusPadding;
+    const padding = checkIsMobile
+      ? (current.mobileRadiusPadding ?? current.radiusPadding)
+      : current.radiusPadding;
+    const r = Math.max(rect.width, rect.height) / 2 + padding;
 
     setSpotlight({ cx, cy, r, rect });
   }, [showTutorial, current]);
@@ -170,14 +241,48 @@ export function InGameTour() {
 
   // Cálculo da posição do cartão explicativo flutuante
   const isTargetOnRight = spotlight.cx > window.innerWidth / 2;
-  const isTargetOnTop = spotlight.cy < window.innerHeight / 3;
+  const isTargetInBottomHalf =
+    spotlight.cy > (typeof window !== 'undefined' ? window.innerHeight * 0.5 : 350);
+  const isTargetOnTop =
+    spotlight.cy < (typeof window !== 'undefined' ? window.innerHeight * 0.35 : 200);
+
+  let cardPositionClasses = '';
+  if (isMobile) {
+    // Em mobile, os controles estão no gamepad inferior (ou cabeçalho)
+    // Se o alvo está na metade inferior da tela, posiciona o cartão no topo (top-14 sm:top-16)
+    // Se o alvo está na metade superior da tela, posiciona o cartão na parte inferior (bottom-4)
+    if (isTargetInBottomHalf) {
+      cardPositionClasses = 'left-1/2 -translate-x-1/2 top-14 sm:top-16';
+    } else {
+      cardPositionClasses = 'left-1/2 -translate-x-1/2 bottom-4 sm:bottom-6';
+    }
+  } else {
+    // Em desktop, posiciona em relação ao painel lateral direito ou topo
+    if (isTargetOnRight) {
+      cardPositionClasses =
+        'left-1/2 -translate-x-1/2 sm:left-auto sm:right-[380px] sm:translate-x-0 top-1/2 -translate-y-1/2';
+    } else if (isTargetOnTop) {
+      cardPositionClasses = 'left-1/2 -translate-x-1/2 top-[80px] sm:top-[120px]';
+    } else {
+      cardPositionClasses = 'left-1/2 -translate-x-1/2 bottom-4 sm:bottom-8';
+    }
+  }
+
+  const currentTitle =
+    isMobile && current.mobileTitle ? current.mobileTitle : current.title;
+  const currentDescription =
+    isMobile && current.mobileDescription
+      ? current.mobileDescription
+      : current.description;
+  const currentTip =
+    isMobile && current.mobileTip ? current.mobileTip : current.tip;
 
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label="Tutorial interativo em jogo"
-      className="fixed inset-0 z-40 select-none overflow-hidden"
+      className="fixed inset-0 z-50 select-none overflow-hidden"
     >
       {/* SVG MASK DE RECORTE COM SPOTLIGHT CIRCULAR */}
       <svg
@@ -222,15 +327,9 @@ export function InGameTour() {
 
       {/* CARTÃO EXPLICATIVO FLUTUANTE POSICIONADO PRÓXIMO AO ELEMENTO */}
       <div
-        className={`absolute z-50 p-2.5 sm:p-4 transition-all duration-300 ease-out w-full max-w-[calc(100vw-24px)] sm:max-w-md ${
-          isTargetOnRight
-            ? 'left-1/2 -translate-x-1/2 sm:left-auto sm:right-[380px] sm:translate-x-0 top-1/2 -translate-y-1/2'
-            : isTargetOnTop
-            ? 'left-1/2 -translate-x-1/2 top-[80px] sm:top-[120px]'
-            : 'left-1/2 -translate-x-1/2 bottom-4 sm:bottom-8'
-        }`}
+        className={`absolute z-50 p-2 sm:p-4 transition-all duration-300 ease-out w-full max-w-[calc(100vw-20px)] sm:max-w-md ${cardPositionClasses}`}
       >
-        <div className="rounded-3xl border-3 border-[#2A211B] bg-[#FFFDF8] p-5 sm:p-6 shadow-[6px_6px_0px_#2A211B] text-[#2A211B] space-y-4 animate-scale-in">
+        <div className="rounded-3xl border-3 border-[#2A211B] bg-[#FFFDF8] p-4 sm:p-6 shadow-[5px_5px_0px_#2A211B] text-[#2A211B] space-y-3 sm:space-y-4 max-h-[76dvh] overflow-y-auto animate-scale-in">
           {/* Cabeçalho no Estilo Cartucho / Missão de Jogo */}
           <div className="flex items-center justify-between">
             <div className="inline-flex items-center gap-2">
@@ -253,33 +352,33 @@ export function InGameTour() {
           </div>
 
           {/* Conteúdo com Emblema e Tipografia Arcade */}
-          <div className="space-y-3.5">
-            <div className="flex items-start gap-3.5">
+          <div className="space-y-3 sm:space-y-3.5">
+            <div className="flex items-start gap-3 sm:gap-3.5">
               <div
-                className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2.5 border-[#2A211B] ${current.iconBg} ${current.iconColor} shadow-[3px_3px_0px_#2A211B]`}
+                className={`flex h-11 w-11 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl border-2.5 border-[#2A211B] ${current.iconBg} ${current.iconColor} shadow-[3px_3px_0px_#2A211B]`}
               >
-                <Icon className="h-6 w-6 stroke-[2.2]" aria-hidden="true" />
+                <Icon className="h-5 w-5 sm:h-6 sm:w-6 stroke-[2.2]" aria-hidden="true" />
               </div>
 
               <div>
-                <h3 className="font-display text-xl font-black tracking-tight text-[#2A211B]">
-                  {current.title}
+                <h3 className="font-display text-lg sm:text-xl font-black tracking-tight text-[#2A211B]">
+                  {currentTitle}
                 </h3>
                 <p className="mt-1 text-xs sm:text-sm font-medium text-[#4B3B2F] leading-relaxed">
-                  {current.description}
+                  {currentDescription}
                 </p>
               </div>
             </div>
 
             {/* Dica no Estilo Segredo / Manual de Brinquedo */}
-            <div className="rounded-2xl border-2 border-dashed border-[#B45309] bg-[#FEF3C7] px-3.5 py-2.5 text-xs text-[#78350F] shadow-[2px_2px_0px_rgba(180,83,9,0.25)]">
+            <div className="rounded-2xl border-2 border-dashed border-[#B45309] bg-[#FEF3C7] px-3.5 py-2 sm:py-2.5 text-xs text-[#78350F] shadow-[2px_2px_0px_rgba(180,83,9,0.25)]">
               <span className="font-black text-[#92400E] uppercase tracking-wider">💡 Dica do Jogo: </span>
-              <span className="font-medium text-[#78350F]">{current.tip}</span>
+              <span className="font-medium text-[#78350F]">{currentTip}</span>
             </div>
           </div>
 
           {/* Indicador de Passos no Estilo Moedas / Fichas de Fliperama */}
-          <div className="flex items-center justify-center gap-2 pt-1">
+          <div className="flex items-center justify-center gap-2 pt-0.5 sm:pt-1">
             {TOUR_STEPS.map((_, idx) => (
               <button
                 key={idx}
@@ -296,12 +395,12 @@ export function InGameTour() {
           </div>
 
           {/* Rodapé com Botões Táteis 3D de Jogo */}
-          <div className="flex items-center justify-between pt-3 border-t-2 border-[#2A211B]/15">
+          <div className="flex items-center justify-between pt-2.5 sm:pt-3 border-t-2 border-[#2A211B]/15">
             <button
               type="button"
               onClick={prevTutorialStep}
               disabled={tutorialStep === 0}
-              className={`inline-flex items-center gap-1.5 rounded-xl border-2 border-[#2A211B] bg-[#F5ECE0] px-3.5 py-2 text-xs font-black uppercase tracking-wider text-[#2A211B] shadow-[0_3px_0px_#2A211B] hover:shadow-[0_1px_0px_#2A211B] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px] transition cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0`}
+              className={`inline-flex items-center gap-1.5 rounded-xl border-2 border-[#2A211B] bg-[#F5ECE0] px-3 sm:px-3.5 py-1.5 sm:py-2 text-xs font-black uppercase tracking-wider text-[#2A211B] shadow-[0_3px_0px_#2A211B] hover:shadow-[0_1px_0px_#2A211B] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px] transition cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0`}
             >
               <ArrowLeft className="h-4 w-4 stroke-[2.5]" aria-hidden="true" />
               <span>Voltar</span>
@@ -312,7 +411,7 @@ export function InGameTour() {
                 <button
                   type="button"
                   onClick={closeTutorial}
-                  className="rounded-xl border-2 border-transparent hover:border-[#2A211B]/30 px-3 py-2 text-xs font-black uppercase tracking-wider text-[#785E46] hover:text-[#2A211B] transition cursor-pointer"
+                  className="rounded-xl border-2 border-transparent hover:border-[#2A211B]/30 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-black uppercase tracking-wider text-[#785E46] hover:text-[#2A211B] transition cursor-pointer"
                 >
                   Pular
                 </button>
@@ -321,7 +420,7 @@ export function InGameTour() {
               <button
                 type="button"
                 onClick={nextTutorialStep}
-                className="inline-flex items-center gap-2 rounded-2xl border-2.5 border-[#2A211B] bg-linear-to-b from-[#FF6B4A] to-[#E05A36] px-5 py-2.5 text-xs sm:text-sm font-black uppercase tracking-wider text-white shadow-[0_4px_0px_#9A3412] hover:shadow-[0_2px_0px_#9A3412] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px] transition cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-2xl border-2.5 border-[#2A211B] bg-linear-to-b from-[#FF6B4A] to-[#E05A36] px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-black uppercase tracking-wider text-white shadow-[0_4px_0px_#9A3412] hover:shadow-[0_2px_0px_#9A3412] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px] transition cursor-pointer"
               >
                 <span>{isLast ? 'Começar a Brincar!' : 'Próximo'}</span>
                 <ArrowRight className="h-4 w-4 stroke-[2.5]" aria-hidden="true" />

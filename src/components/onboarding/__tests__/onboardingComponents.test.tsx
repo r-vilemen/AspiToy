@@ -65,4 +65,58 @@ describe('Componentes de Onboarding (IntroAnimation e InGameTour)', () => {
 
     document.body.removeChild(target1);
   });
+
+  it('adapta os passos e títulos do tutorial para o contexto mobile com analógico virtual', () => {
+    // Simula viewport mobile
+    window.innerWidth = 390;
+    window.innerHeight = 844;
+
+    const mobileCleaning = document.createElement('div');
+    mobileCleaning.id = 'tour-mobile-cleaning';
+    const mobileJoystick = document.createElement('div');
+    mobileJoystick.id = 'tour-mobile-joystick';
+    const mobileDock = document.createElement('div');
+    mobileDock.id = 'tour-mobile-dock';
+    const mobileCamera = document.createElement('div');
+    mobileCamera.id = 'tour-mobile-camera';
+
+    document.body.appendChild(mobileCleaning);
+    document.body.appendChild(mobileJoystick);
+    document.body.appendChild(mobileDock);
+    document.body.appendChild(mobileCamera);
+
+    useOnboardingStore.setState({
+      showIntro: false,
+      showTutorial: true,
+      tutorialStep: 0,
+    });
+
+    render(<InGameTour />);
+
+    // Passo 1 Mobile
+    expect(screen.getByText(/Iniciar \/ Pausar Limpeza/i)).toBeDefined();
+    const nextBtn = screen.getByRole('button', { name: /Próximo/i });
+    fireEvent.click(nextBtn);
+
+    // Passo 2 Mobile: Analógico Virtual PS2
+    expect(screen.getByText(/Analógico Virtual PS2/i)).toBeDefined();
+    expect(screen.getByText(/Pilote o robô em 360°/i)).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /Próximo/i }));
+
+    // Passo 3 Mobile: Retornar à Base
+    expect(screen.getByText(/Retornar à Base/i)).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /Próximo/i }));
+
+    // Passo 4 Mobile: Câmeras e Ângulos 3D
+    expect(screen.getByText(/Câmeras e Ângulos 3D/i)).toBeDefined();
+
+    document.body.removeChild(mobileCleaning);
+    document.body.removeChild(mobileJoystick);
+    document.body.removeChild(mobileDock);
+    document.body.removeChild(mobileCamera);
+
+    // Restaura tamanho de tela
+    window.innerWidth = 1024;
+    window.innerHeight = 768;
+  });
 });
