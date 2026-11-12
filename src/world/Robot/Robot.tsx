@@ -65,7 +65,6 @@ const ROOM_PATROL_POINTS: Record<string, Vector2D[]> = {
   ],
   kitchen: [
     { x: 9.2, z: 4.0 },
-    { x: 12.5, z: 3.4 },
     { x: 15.5, z: 3.4 },
     { x: 15.8, z: 5.5 },
     { x: 15.8, z: 6.6 },
