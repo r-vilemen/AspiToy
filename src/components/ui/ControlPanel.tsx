@@ -131,7 +131,7 @@ export function ControlPanel() {
         </button>
       </div>
 
-      {/* Controle direcional manual: Analógico Estilo PS2 + Teclado WASD / Setas */}
+      {/* Controle direcional manual: Teclado WASD / Setas no Desktop, Analógico no Mobile */}
       <div
         id="tour-manual-controls"
         className="rounded-2xl border-2 border-[#2A211B]/20 bg-[#F3ECE0]/70 p-3 space-y-2.5"
@@ -146,90 +146,91 @@ export function ControlPanel() {
                 ● ATIVO
               </span>
             ) : (
-              'WASD / Analógico'
+              <>
+                <span className="hidden sm:inline">WASD / Teclado</span>
+                <span className="sm:hidden">Analógico 360°</span>
+              </>
             )}
           </span>
         </div>
 
-        <div className="flex items-center justify-around gap-2 select-none touch-none">
-          {/* Analógico PS2 Interativo */}
-          <div className="flex flex-col items-center gap-1">
-            <VirtualJoystick size={104} knobSize={46} maxRadius={32} deadzone={5} />
-            <span className="text-[10px] font-mono font-bold text-[#6E5D4F]">
-              Analógico 360°
-            </span>
+        {/* No Desktop: Setas direcionais clássicas e indicação de teclado */}
+        <div className="hidden sm:flex flex-col items-center gap-1.5 select-none">
+          <div className="grid grid-cols-3 gap-1.5 max-w-[140px] select-none touch-none">
+            <div />
+            <button
+              type="button"
+              aria-label="Mover para frente"
+              onPointerDown={() => startManualMove(1, 0)}
+              onPointerUp={stopManualMove}
+              onPointerLeave={stopManualMove}
+              onPointerCancel={stopManualMove}
+              className={`flex h-9 w-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_2.5px_0px_#2A211B] transition cursor-pointer select-none touch-none ${
+                keys.forward
+                  ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
+                  : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
+              }`}
+            >
+              <ArrowUp className="h-4.5 w-4.5 stroke-[2.5]" />
+            </button>
+            <div />
+            <button
+              type="button"
+              aria-label="Girar para a esquerda"
+              onPointerDown={() => startManualMove(0.35, 1)}
+              onPointerUp={stopManualMove}
+              onPointerLeave={stopManualMove}
+              onPointerCancel={stopManualMove}
+              className={`flex h-9 w-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_2.5px_0px_#2A211B] transition cursor-pointer select-none touch-none ${
+                keys.left
+                  ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
+                  : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
+              }`}
+            >
+              <ArrowLeft className="h-4.5 w-4.5 stroke-[2.5]" />
+            </button>
+            <button
+              type="button"
+              aria-label="Mover para trás"
+              onPointerDown={() => startManualMove(-1, 0)}
+              onPointerUp={stopManualMove}
+              onPointerLeave={stopManualMove}
+              onPointerCancel={stopManualMove}
+              className={`flex h-9 w-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_2.5px_0px_#2A211B] transition cursor-pointer select-none touch-none ${
+                keys.backward
+                  ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
+                  : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
+              }`}
+            >
+              <ArrowDown className="h-4.5 w-4.5 stroke-[2.5]" />
+            </button>
+            <button
+              type="button"
+              aria-label="Girar para a direita"
+              onPointerDown={() => startManualMove(0.35, -1)}
+              onPointerUp={stopManualMove}
+              onPointerLeave={stopManualMove}
+              onPointerCancel={stopManualMove}
+              className={`flex h-9 w-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_2.5px_0px_#2A211B] transition cursor-pointer select-none touch-none ${
+                keys.right
+                  ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
+                  : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
+              }`}
+            >
+              <ArrowRight className="h-4.5 w-4.5 stroke-[2.5]" />
+            </button>
           </div>
+          <span className="text-[10px] font-mono font-bold text-[#6E5D4F]">
+            Use WASD ou Setas no teclado
+          </span>
+        </div>
 
-          {/* D-Pad / Botões Direcionais Tradicionais para Teclado/Mouse */}
-          <div className="flex flex-col items-center gap-1">
-            <div className="grid grid-cols-3 gap-1.5 max-w-[140px] select-none touch-none">
-              <div />
-              <button
-                type="button"
-                aria-label="Mover para frente"
-                onPointerDown={() => startManualMove(1, 0)}
-                onPointerUp={stopManualMove}
-                onPointerLeave={stopManualMove}
-                onPointerCancel={stopManualMove}
-                className={`flex h-9 w-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_2.5px_0px_#2A211B] transition cursor-pointer select-none touch-none ${
-                  keys.forward
-                    ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
-                    : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
-                }`}
-              >
-                <ArrowUp className="h-4.5 w-4.5 stroke-[2.5]" />
-              </button>
-              <div />
-              <button
-                type="button"
-                aria-label="Girar para a esquerda"
-                onPointerDown={() => startManualMove(0.35, 1)}
-                onPointerUp={stopManualMove}
-                onPointerLeave={stopManualMove}
-                onPointerCancel={stopManualMove}
-                className={`flex h-9 w-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_2.5px_0px_#2A211B] transition cursor-pointer select-none touch-none ${
-                  keys.left
-                    ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
-                    : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
-                }`}
-              >
-                <ArrowLeft className="h-4.5 w-4.5 stroke-[2.5]" />
-              </button>
-              <button
-                type="button"
-                aria-label="Mover para trás"
-                onPointerDown={() => startManualMove(-1, 0)}
-                onPointerUp={stopManualMove}
-                onPointerLeave={stopManualMove}
-                onPointerCancel={stopManualMove}
-                className={`flex h-9 w-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_2.5px_0px_#2A211B] transition cursor-pointer select-none touch-none ${
-                  keys.backward
-                    ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
-                    : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
-                }`}
-              >
-                <ArrowDown className="h-4.5 w-4.5 stroke-[2.5]" />
-              </button>
-              <button
-                type="button"
-                aria-label="Girar para a direita"
-                onPointerDown={() => startManualMove(0.35, -1)}
-                onPointerUp={stopManualMove}
-                onPointerLeave={stopManualMove}
-                onPointerCancel={stopManualMove}
-                className={`flex h-9 w-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_2.5px_0px_#2A211B] transition cursor-pointer select-none touch-none ${
-                  keys.right
-                    ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
-                    : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
-                }`}
-              >
-                <ArrowRight className="h-4.5 w-4.5 stroke-[2.5]" />
-              </button>
-            </div>
-            <span className="text-[10px] font-mono font-bold text-[#6E5D4F]">
-              D-Pad / WASD
-            </span>
-          </div>
+        {/* No Mobile: Analógico virtual substituindo as setas direcionais */}
+        <div className="flex sm:hidden flex-col items-center gap-1 select-none touch-none py-1">
+          <VirtualJoystick size={110} knobSize={48} maxRadius={34} deadzone={5} />
+          <span className="text-[10px] font-mono font-bold text-[#6E5D4F]">
+            Analógico 360° para pilotar
+          </span>
         </div>
       </div>
 
