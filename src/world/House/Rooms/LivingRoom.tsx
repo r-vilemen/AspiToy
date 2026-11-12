@@ -205,12 +205,12 @@ export const LivingRoom = memo(function LivingRoom() {
           position={[0, 0.42, 0]}
           material={sharedMaterials.furnitureWood}
         />
-        {/* Prateleira inferior para revistas */}
+        {/* Prateleira inferior para revistas (elevada para 20cm livres para permitir passagem do robô) */}
         <RoundedBox
           args={[1.7, 0.04, 0.85]}
           radius={0.02}
           smoothness={2}
-          position={[0, 0.18, 0]}
+          position={[0, 0.22, 0]}
           material={sharedMaterials.furnitureWoodDark}
         />
         {/* 4 Pés torneados */}
