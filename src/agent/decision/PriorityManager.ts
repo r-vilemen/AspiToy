@@ -23,7 +23,8 @@ export class PriorityManager {
     selectedRegionId: string,
     _regions: RoomRegion[],
     battery: number,
-    dockPos: Vector2D
+    dockPos: Vector2D,
+    coverageTarget?: Vector2D | null
   ): Vector2D | null {
     // 1. Regra de segurança de bateria crítica (< 18%): a base de recarga é prioridade absoluta
     if (battery <= 18) {
@@ -38,30 +39,37 @@ export class PriorityManager {
       candidateSpots = candidateSpots.filter((s) => s.regionId === selectedRegionId);
     }
 
-    if (candidateSpots.length === 0) {
-      return null; // Concluído: todas as manchas ativas deste cômodo foram limpas
-    }
+    if (candidateSpots.length > 0) {
+      let bestTarget: Vector2D | null = null;
+      let highestScore = -Infinity;
 
-    let bestTarget: Vector2D | null = null;
-    let highestScore = -Infinity;
+      for (const spot of candidateSpots) {
+        const dist = Math.hypot(spot.position.x - currentPos.x, spot.position.z - currentPos.z);
+        const isSelectedRegion = selectedRegionId === 'all' || spot.regionId === selectedRegionId;
 
-    for (const spot of candidateSpots) {
-      const dist = Math.hypot(spot.position.x - currentPos.x, spot.position.z - currentPos.z);
-      const isSelectedRegion = selectedRegionId === 'all' || spot.regionId === selectedRegionId;
+        // Fórmula de pontuação:
+        // + intensidade de sujeira * 40
+        // + bônus de região prioritária do usuário (+80)
+        // - penalidade por distância (dist * 8)
+        const regionBonus = isSelectedRegion ? 80 : 0;
+        const score = spot.intensity * 40 + regionBonus - dist * 8;
 
-      // Fórmula de pontuação:
-      // + intensidade de sujeira * 40
-      // + bônus de região prioritária do usuário (+80)
-      // - penalidade por distância (dist * 8)
-      const regionBonus = isSelectedRegion ? 80 : 0;
-      const score = spot.intensity * 40 + regionBonus - dist * 8;
+        if (score > highestScore) {
+          highestScore = score;
+          bestTarget = spot.position;
+        }
+      }
 
-      if (score > highestScore) {
-        highestScore = score;
-        bestTarget = spot.position;
+      if (bestTarget) {
+        return bestTarget;
       }
     }
 
-    return bestTarget;
+    // 3. Quando não há manchas concentradas de sujeira, avança para cobertura sistemática de 100% da área
+    if (coverageTarget) {
+      return coverageTarget;
+    }
+
+    return null;
   }
 }

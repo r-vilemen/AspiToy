@@ -2,7 +2,7 @@ import type { EnvironmentObstacle } from '@/types/environment';
 import type { Vector2D } from '@/types/robot';
 import { getDistanceToAABB, isPointInsideBounds } from '@/utils/coordinates';
 import { clamp } from '@/utils/math';
-import { HOUSE_FLOOR_PLAN } from '@/world/House/FloorPlan';
+import { HOUSE_FLOOR_PLAN, getRoomAtPosition } from '@/world/House/FloorPlan';
 
 export type CellState = 'FREE' | 'OCCUPIED' | 'CLEANED' | 'DIRTY' | 'UNKNOWN';
 
@@ -12,6 +12,7 @@ export interface GridCell {
   worldPos: Vector2D;
   state: CellState;
   explored: boolean;
+  visitCount: number;
 }
 
 export interface GridCellCoord {
@@ -151,6 +152,7 @@ export class GridMap {
           worldPos,
           state: isOccupied ? 'OCCUPIED' : 'FREE',
           explored: false,
+          visitCount: 0,
         };
       }
     }
@@ -193,6 +195,7 @@ export class GridMap {
           const dist = Math.hypot(cell.worldPos.x - point.x, cell.worldPos.z - point.z);
           if (dist <= radius) {
             cell.explored = true;
+            cell.visitCount = (cell.visitCount ?? 0) + 1;
             if (cell.state === 'FREE') {
               cell.state = 'CLEANED';
             }
@@ -213,5 +216,71 @@ export class GridMap {
       }
     }
     return list;
+  }
+
+  /**
+   * Encontra o próximo melhor alvo de cobertura para garantir 100% de área limpa:
+   * - Prioriza células inexploradas no cômodo atual ou selecionado.
+   * - Penaliza fortemente células já visitadas para forçar variação de rota.
+   * - Agrupa a varredura para cobrir o chão de forma sistemática e contígua.
+   */
+  public findBestCoverageTarget(
+    currentPos: Vector2D,
+    selectedRegionId?: string
+  ): Vector2D | null {
+    const unexplored = this.getUnexploredCells();
+    if (unexplored.length === 0) return null;
+
+    let candidates = unexplored;
+    if (this.isMultiRoom) {
+      if (selectedRegionId && selectedRegionId !== 'all') {
+        candidates = unexplored.filter(
+          (c) => getRoomAtPosition(c.worldPos) === selectedRegionId
+        );
+      } else {
+        // Modo residência completa: prioriza completar todas as células do cômodo atual antes de mudar
+        const currentRoom = getRoomAtPosition(currentPos);
+        const currentRoomCandidates = unexplored.filter(
+          (c) => getRoomAtPosition(c.worldPos) === currentRoom
+        );
+        if (currentRoomCandidates.length > 0) {
+          candidates = currentRoomCandidates;
+        }
+      }
+    }
+
+    if (candidates.length === 0) {
+      if (selectedRegionId && selectedRegionId !== 'all') return null;
+      candidates = unexplored;
+    }
+
+    let bestCell: GridCell | null = null;
+    let highestScore = -Infinity;
+
+    for (const cell of candidates) {
+      const d = Math.hypot(cell.worldPos.x - currentPos.x, cell.worldPos.z - currentPos.z);
+      // Ignora células coladas debaixo do chassi do robô (< 0.35m)
+      if (d < 0.35) continue;
+
+      // Pontuação para máxima cobertura e variação de trajetória:
+      // + Bônus para células nunca limpas (+100)
+      // - Penalidade pesada por revisitas (-30 por visita)
+      // - Penalidade suave por distância (-3 por metro) mantendo varredura contígua
+      const unvisitedBonus = !cell.explored ? 100 : 0;
+      const visitPenalty = (cell.visitCount ?? 0) * 30;
+      const distPenalty = Math.min(d, 8.0) * 3;
+
+      const score = unvisitedBonus - visitPenalty - distPenalty;
+      if (score > highestScore) {
+        highestScore = score;
+        bestCell = cell;
+      }
+    }
+
+    if (!bestCell && candidates.length > 0) {
+      bestCell = candidates[0];
+    }
+
+    return bestCell ? bestCell.worldPos : null;
   }
 }

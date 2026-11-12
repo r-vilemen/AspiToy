@@ -26,42 +26,100 @@ import { soundManager } from '@/services/soundManager';
 
 const ROOM_PATROL_POINTS: Record<string, Vector2D[]> = {
   bedroom: [
-    { x: -1.8, z: -0.2 },
-    { x: 2.3, z: -1.1 },
-    { x: -0.2, z: -2.6 },
-    { x: -2.2, z: 2.2 },
-    { x: 2.4, z: 1.8 },
+    { x: -3.5, z: 2.2 },
+    { x: -3.5, z: 0.0 },
+    { x: -3.5, z: -1.8 },
+    { x: -2.0, z: -2.4 },
+    { x: 0.0, z: -2.5 },
+    { x: 2.2, z: -2.4 },
+    { x: 3.0, z: -1.2 },
+    { x: 3.0, z: 0.8 },
+    { x: 3.0, z: 2.2 },
+    { x: 1.8, z: 2.4 },
+    { x: 0.0, z: 1.5 },
+    { x: -2.0, z: 1.8 },
+    { x: -1.4, z: 0.2 },
+    { x: -0.2, z: -0.2 },
   ],
   hallway: [
-    { x: 6.3, z: -1.5 },
-    { x: 6.3, z: 2.2 },
-    { x: 6.3, z: 6.5 },
+    { x: 6.3, z: -3.0 },
+    { x: 6.3, z: -1.0 },
+    { x: 6.8, z: 0.5 },
+    { x: 5.8, z: 2.3 },
+    { x: 6.3, z: 4.2 },
+    { x: 6.8, z: 6.0 },
+    { x: 6.3, z: 7.8 },
   ],
   'living-room': [
-    { x: 10.5, z: -0.8 },
-    { x: 14.5, z: -1.2 },
-    { x: 11.5, z: 1.5 },
-    { x: 14.8, z: 1.8 },
+    { x: 8.8, z: 0.5 },
+    { x: 8.8, z: -1.5 },
+    { x: 8.8, z: -2.6 },
+    { x: 10.8, z: -2.4 },
+    { x: 13.0, z: -2.4 },
+    { x: 15.5, z: -2.4 },
+    { x: 16.5, z: 0.0 },
+    { x: 15.5, z: 2.2 },
+    { x: 13.0, z: 2.3 },
+    { x: 10.2, z: 1.5 },
+    { x: 10.5, z: -0.6 },
   ],
   kitchen: [
-    { x: 10.5, z: 5.5 },
-    { x: 14.5, z: 5.8 },
-    { x: 12.8, z: 7.0 },
+    { x: 9.2, z: 4.0 },
+    { x: 12.5, z: 3.4 },
+    { x: 15.5, z: 3.4 },
+    { x: 15.8, z: 5.5 },
+    { x: 15.8, z: 6.6 },
+    { x: 14.2, z: 6.2 },
+    { x: 12.0, z: 6.2 },
+    { x: 9.8, z: 6.2 },
+    { x: 8.6, z: 5.8 },
+    { x: 9.5, z: 4.5 },
   ],
   bathroom: [
-    { x: 7.2, z: 9.8 },
-    { x: 8.5, z: 10.5 },
-    { x: 6.8, z: 11.8 },
-    { x: 8.2, z: 12.2 },
+    { x: 6.5, z: 9.4 },
+    { x: 7.6, z: 9.8 },
+    { x: 8.6, z: 9.8 },
+    { x: 8.2, z: 10.6 },
+    { x: 8.2, z: 12.0 },
+    { x: 7.2, z: 11.0 },
   ],
 };
 
 const GLOBAL_HOUSE_PATROL_POINTS: Vector2D[] = [
-  { x: 0.0, z: 0.0 },
-  { x: 6.3, z: 1.5 },
-  { x: 12.0, z: -0.5 },
-  { x: 12.0, z: 5.5 },
-  { x: 7.8, z: 10.5 },
+  // Quarto
+  { x: -2.0, z: 1.8 },
+  { x: -3.5, z: 0.0 },
+  { x: -2.0, z: -2.4 },
+  { x: 2.2, z: -2.4 },
+  { x: 2.8, z: 1.5 },
+  // Transição para o Corredor
+  { x: 4.6, z: 2.35 },
+  { x: 6.3, z: 2.35 },
+  { x: 6.3, z: -1.0 },
+  // Sala de Estar
+  { x: 8.8, z: -1.5 },
+  { x: 12.5, z: -2.4 },
+  { x: 15.5, z: -2.4 },
+  { x: 16.5, z: 0.2 },
+  { x: 13.0, z: 2.3 },
+  { x: 9.5, z: 1.5 },
+  // Cozinha
+  { x: 9.5, z: 4.2 },
+  { x: 15.5, z: 3.5 },
+  { x: 15.5, z: 6.5 },
+  { x: 12.0, z: 6.2 },
+  { x: 8.6, z: 5.8 },
+  // Corredor Sul e Banheiro
+  { x: 6.3, z: 5.5 },
+  { x: 6.3, z: 7.8 },
+  { x: 6.5, z: 9.4 },
+  { x: 8.6, z: 9.8 },
+  { x: 8.2, z: 12.0 },
+  { x: 7.4, z: 10.8 },
+  // Retorno integrado pelo Corredor ao Quarto
+  { x: 6.3, z: 5.0 },
+  { x: 6.3, z: 2.35 },
+  { x: 1.0, z: 0.2 },
 ];
 
 /**
@@ -120,6 +178,12 @@ export function Robot() {
     turnDirection: 1,
   });
 
+  // Alvo de cobertura dinâmica e memória de variação para 100% de área higienizada
+  const coverageGoalRef = useRef<Vector2D | null>(null);
+  const coverageTimerRef = useRef(0);
+  const patrolReverseRef = useRef(false);
+  const laneVariationIdxRef = useRef(0);
+
   useFrame((_, rawDelta) => {
     const delta = Math.min(rawDelta, 0.05);
     const loc = locomotionRef.current;
@@ -154,19 +218,47 @@ export function Robot() {
       robotState.state === 'EXPLORING' ||
       robotState.state === 'AVOIDING'
     ) {
+      coverageTimerRef.current += delta;
+      const currentPos = { x: loc.x, z: loc.z };
+
+      // Atualiza o alvo de cobertura inteligente quando o anterior foi atingido ou expirou (> 7.5s)
+      const distToCoverage = coverageGoalRef.current
+        ? distance2D(currentPos, coverageGoalRef.current)
+        : 0;
+
+      if (!coverageGoalRef.current || distToCoverage < 0.38 || coverageTimerRef.current > 7.5) {
+        coverageTimerRef.current = 0;
+        coverageGoalRef.current = agent.findBestCoverageTarget(currentPos, selectedId);
+      }
+
       const smartDustTarget = priorityManager.selectBestTarget(
-        { x: loc.x, z: loc.z },
+        currentPos,
         envState.dustSpots,
         envState.selectedRegionId,
         envState.regions,
         robotState.battery,
-        envState.dockPosition
+        envState.dockPosition,
+        coverageGoalRef.current
       );
 
-      targetPoint =
-        robotState.targetPosition ??
-        smartDustTarget ??
-        patrolPool[patrolIdxRef.current % patrolPool.length];
+      if (robotState.targetPosition) {
+        targetPoint = robotState.targetPosition;
+      } else if (smartDustTarget) {
+        targetPoint = smartDustTarget;
+      } else {
+        // Modo patrulha / varredura com variação contínua de faixas e alternância de sentido
+        const poolLen = patrolPool.length;
+        const rawIdx = patrolIdxRef.current % poolLen;
+        const effectiveIdx = patrolReverseRef.current ? poolLen - 1 - rawIdx : rawIdx;
+        const basePoint = patrolPool[effectiveIdx];
+
+        // Variação de faixas (boustrophedon sweep lane variation): micro-deslocamento suave para cobrir 100% da área
+        const laneOffset = ((laneVariationIdxRef.current % 3) - 1) * 0.12;
+        targetPoint = {
+          x: basePoint.x + laneOffset,
+          z: basePoint.z + (laneVariationIdxRef.current % 2 === 0 ? 0.08 : -0.08),
+        };
+      }
     } else if (robotState.state === 'RETURNING') {
       targetPoint = envState.dockPosition;
     }
@@ -353,8 +445,15 @@ export function Robot() {
                 if (robotState.targetPosition) {
                   robotState.setTargetPosition(null);
                 }
-                patrolIdxRef.current =
-                  (patrolIdxRef.current + 1) % patrolPool.length;
+                const nextIdx = patrolIdxRef.current + 1;
+                if (nextIdx >= patrolPool.length) {
+                  patrolIdxRef.current = 0;
+                  patrolReverseRef.current = !patrolReverseRef.current;
+                  laneVariationIdxRef.current = (laneVariationIdxRef.current + 1) % 6;
+                } else {
+                  patrolIdxRef.current = nextIdx;
+                }
+                coverageGoalRef.current = null;
               }
             }
           }

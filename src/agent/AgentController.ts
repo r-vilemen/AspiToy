@@ -6,7 +6,7 @@ import {
 import { GridMap } from './navigation/GridMap';
 import { PathPlanner } from './navigation/PathPlanner';
 import { globalRoomGraph } from './navigation/RoomGraph';
-import { getRoomAtPosition, HOUSE_FLOOR_PLAN } from '@/world/House/FloorPlan';
+import { HOUSE_FLOOR_PLAN } from '@/world/House/FloorPlan';
 import type { EnvironmentObstacle } from '@/types/environment';
 import type { RobotOperationalState, Vector2D } from '@/types/robot';
 
@@ -111,6 +111,18 @@ export class AgentController {
 
   public getCurrentPath(): Vector2D[] {
     return this.currentPath;
+  }
+
+  /**
+   * Identifica o próximo ponto de cobertura prioritário no mapa para varredura 100%:
+   * - Prioriza células não exploradas/não higienizadas na região selecionada ou cômodo atual
+   * - Aplica penalidade em células já visitadas para forçar variação contínua de rotas
+   */
+  public findBestCoverageTarget(
+    currentPos: Vector2D,
+    selectedRegionId?: string
+  ): Vector2D | null {
+    return this.grid.findBestCoverageTarget(currentPos, selectedRegionId);
   }
 
   public decide(
@@ -223,30 +235,7 @@ export class AgentController {
     let goal: Vector2D | null = targetPosition;
 
     if (!goal) {
-      let unexplored = this.grid.getUnexploredCells();
-
-      // Se um cômodo específico estiver selecionado, restringe busca de células inexploradas a ele
-      if (this.detector.isMultiRoom && currentRegionId && currentRegionId !== 'all') {
-        unexplored = unexplored.filter(
-          (c) => getRoomAtPosition(c.worldPos) === currentRegionId
-        );
-      }
-
-      if (unexplored.length > 0) {
-        let nearestDist = Infinity;
-        let chosenCell = unexplored[0];
-        for (const cell of unexplored) {
-          const d = Math.hypot(
-            cell.worldPos.x - position.x,
-            cell.worldPos.z - position.z
-          );
-          if (d < nearestDist && d > 0.65) {
-            nearestDist = d;
-            chosenCell = cell;
-          }
-        }
-        goal = chosenCell.worldPos;
-      }
+      goal = this.grid.findBestCoverageTarget(position, currentRegionId);
     }
 
     // Verifica se o alvo mudou (ex: usuário clicou em um novo ponto no chão)

@@ -36,5 +36,20 @@ describe('Sprint 3 — Limpeza Inteligente e Priorização', () => {
 
     expect(target).toEqual({ x: 12, z: 5 });
   });
+
+  it('retorna o alvo de cobertura sistemática quando não restarem manchas concentradas de sujeira', () => {
+    const coverageTarget = { x: 3.5, z: 2.0 };
+    const target = manager.selectBestTarget(
+      { x: 0, z: 0 },
+      [], // sem manchas ativas
+      'bedroom',
+      INITIAL_REGIONS,
+      80,
+      INITIAL_DOCK_POSITION,
+      coverageTarget
+    );
+
+    expect(target).toEqual(coverageTarget);
+  });
 });
 
