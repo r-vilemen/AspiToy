@@ -109,14 +109,13 @@ export const ALL_HOUSE_CAT_PERCHES: FurniturePerchSpot[] = [
     perchWaypoints: [{ x: 12.05, z: 3.5 }],
   },
 
-  // --- 5. QUARTO ADICIONAL (Ambiente Principal dos Gatos) ---
   {
-    id: 'bedroom-bed-foot',
-    name: 'Peseira da Cama (Quarto)',
-    room: 'bedroom',
-    surfaceY: 0.95,
-    stagingPoint: { x: -2.1, z: -0.8 },
-    perchWaypoints: [{ x: -2.7, z: -1.2 }],
+    id: 'living-coffee-table',
+    name: 'Mesa de Centro da Sala de Estar',
+    room: 'living-room',
+    surfaceY: 0.47,
+    stagingPoint: { x: 12.8, z: 0.2 },
+    perchWaypoints: [{ x: 12.8, z: -0.7 }],
   },
 ];
 
