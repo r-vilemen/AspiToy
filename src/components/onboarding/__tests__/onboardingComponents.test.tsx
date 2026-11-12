@@ -77,13 +77,13 @@ describe('Componentes de Onboarding (IntroAnimation e InGameTour)', () => {
     mobileJoystick.id = 'tour-mobile-joystick';
     const mobileDock = document.createElement('div');
     mobileDock.id = 'tour-mobile-dock';
-    const mobileCamera = document.createElement('div');
-    mobileCamera.id = 'tour-mobile-camera';
+    const cameraModes = document.createElement('div');
+    cameraModes.id = 'tour-camera-modes';
 
     document.body.appendChild(mobileCleaning);
     document.body.appendChild(mobileJoystick);
     document.body.appendChild(mobileDock);
-    document.body.appendChild(mobileCamera);
+    document.body.appendChild(cameraModes);
 
     useOnboardingStore.setState({
       showIntro: false,
@@ -113,7 +113,7 @@ describe('Componentes de Onboarding (IntroAnimation e InGameTour)', () => {
     document.body.removeChild(mobileCleaning);
     document.body.removeChild(mobileJoystick);
     document.body.removeChild(mobileDock);
-    document.body.removeChild(mobileCamera);
+    document.body.removeChild(cameraModes);
 
     // Restaura tamanho de tela
     window.innerWidth = 1024;

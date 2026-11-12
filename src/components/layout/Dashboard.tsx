@@ -2,13 +2,10 @@ import { useState, useEffect } from 'react';
 import {
   Bell,
   ChevronDown,
-  Eye,
   Home,
   Pause,
   Play,
-  Scan,
   SlidersHorizontal,
-  Video,
   X,
 } from 'lucide-react';
 import { Scene } from '@/world/Scene';
@@ -19,7 +16,7 @@ import { VirtualJoystick } from '@/components/ui/VirtualJoystick';
 import { IntroAnimation } from '@/components/onboarding/IntroAnimation';
 import { InGameTour } from '@/components/onboarding/InGameTour';
 import { useOnboardingStore } from '@/store/onboardingStore';
-import { useCommandStore, type CameraPreset } from '@/store/commandStore';
+import { useCommandStore } from '@/store/commandStore';
 import { useRobotStore } from '@/store/robotStore';
 import { useOperationClock } from '@/hooks/useRobotState';
 
@@ -30,8 +27,6 @@ export function Dashboard() {
   const notifications = useCommandStore((s) => s.notifications);
   const dismissNotification = useCommandStore((s) => s.dismissNotification);
   const dispatchCommand = useCommandStore((s) => s.dispatchCommand);
-  const cameraPreset = useCommandStore((s) => s.cameraPreset);
-  const setCameraPreset = useCommandStore((s) => s.setCameraPreset);
   const robotState = useRobotStore((s) => s.state);
   const battery = useRobotStore((s) => s.battery);
 
@@ -44,13 +39,6 @@ export function Dashboard() {
       setIsMobileDrawerOpen(false);
     }
   }, [showTutorial]);
-
-  const cycleCamera = () => {
-    const presets: CameraPreset[] = ['follow', 'overview', 'closeup'];
-    const currentIndex = presets.indexOf(cameraPreset);
-    const nextPreset = presets[(currentIndex + 1) % presets.length];
-    setCameraPreset(nextPreset);
-  };
 
   const isRunning =
     robotState === 'CLEANING' ||
@@ -164,7 +152,7 @@ export function Dashboard() {
 
             {/* Polegar Direito: Painel de Ações Rápidas do Jogo */}
             <div className="flex flex-col items-end gap-1.5">
-              {/* Botões Auxiliares Superiores (Dock, Câmera, Menu Drawer) */}
+              {/* Botões Auxiliares Superiores (Dock, Menu Drawer) */}
               <div className="flex items-center gap-1.5">
                 {/* Botão de Retornar à Base */}
                 <button
@@ -177,24 +165,6 @@ export function Dashboard() {
                   className="flex h-9 w-9 items-center justify-center rounded-xl border-2 border-[#2A211B] bg-[#FFFDF8] text-[#0F766E] shadow-[2px_2px_0px_#2A211B] active:translate-y-0.5 active:shadow-none disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
                 >
                   <Home className="h-4 w-4 stroke-[2.4]" />
-                </button>
-
-                {/* Botão de Alternar Câmera no Celular */}
-                <button
-                  id="tour-mobile-camera"
-                  type="button"
-                  title={`Câmera atual: ${cameraPreset} (Clique para alternar)`}
-                  aria-label="Alternar modo de câmera"
-                  onClick={cycleCamera}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl border-2 border-[#2A211B] bg-[#FFFDF8] text-[#2A211B] shadow-[2px_2px_0px_#2A211B] active:translate-y-0.5 active:shadow-none transition cursor-pointer"
-                >
-                  {cameraPreset === 'follow' ? (
-                    <Video className="h-4 w-4 stroke-[2.4] text-[#E05A36]" />
-                  ) : cameraPreset === 'overview' ? (
-                    <Scan className="h-4 w-4 stroke-[2.4] text-[#0F766E]" />
-                  ) : (
-                    <Eye className="h-4 w-4 stroke-[2.4] text-[#F59E0B]" />
-                  )}
                 </button>
 
                 {/* Botão de Abrir Drawer de Detalhes / Opções */}

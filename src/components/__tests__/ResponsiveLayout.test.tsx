@@ -155,20 +155,6 @@ describe('Responsividade Mobile e Desktop da Interface', () => {
     });
     expect(returnBaseBtn).toBeDefined();
 
-    const cycleCameraBtn = screen.getByRole('button', {
-      name: /Alternar modo de câmera/i,
-    });
-    expect(cycleCameraBtn).toBeDefined();
-
-    // Testa alternância de câmera cíclica no botão mobile
-    expect(useCommandStore.getState().cameraPreset).toBe('follow');
-    fireEvent.click(cycleCameraBtn);
-    expect(useCommandStore.getState().cameraPreset).toBe('overview');
-    fireEvent.click(cycleCameraBtn);
-    expect(useCommandStore.getState().cameraPreset).toBe('closeup');
-    fireEvent.click(cycleCameraBtn);
-    expect(useCommandStore.getState().cameraPreset).toBe('follow');
-
     // Inicia limpeza com o botão rápido
     fireEvent.click(mobileStartBtn);
     expect(useRobotStore.getState().state).toBe('CLEANING');
@@ -228,6 +214,7 @@ describe('Responsividade Mobile e Desktop da Interface', () => {
     expect(document.getElementById('tour-mobile-cleaning')).not.toBeNull();
     expect(document.getElementById('tour-mobile-joystick')).not.toBeNull();
     expect(document.getElementById('tour-mobile-dock')).not.toBeNull();
-    expect(document.getElementById('tour-mobile-camera')).not.toBeNull();
+    expect(document.getElementById('tour-camera-modes')).not.toBeNull();
+    expect(document.getElementById('tour-mobile-camera')).toBeNull();
   });
 });

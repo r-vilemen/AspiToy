@@ -84,21 +84,20 @@ const TOUR_STEPS: TourStepConfig[] = [
   },
   {
     targetId: 'tour-camera-modes',
-    targetMobileId: 'tour-mobile-camera',
     badge: 'Passo 4 de 4',
     title: 'Câmeras e Exploração 3D',
     mobileTitle: 'Câmeras e Ângulos 3D',
     description:
       'Alterne entre os ângulos de câmera ("Acompanhar", "Visão geral" e "Personagem"). Arraste a tela com o mouse para girar o ângulo e use o scroll para aproximar o zoom!',
     mobileDescription:
-      'Toque para alternar o modo de câmera ("Acompanhar", "Visão geral" e "Personagem"). Arraste na tela 3D para orbitar e faça pinça para zoom!',
+      'Alterne entre os ângulos de câmera no topo da tela ("Acompanhar", "Visão geral" e "Personagem"). Arraste o dedo na tela 3D para orbitar livremente!',
     tip: 'Clique no chão para mover o robô e empurre os brinquedos da sala.',
     mobileTip: 'Toque no chão para mover o robô e empurre os brinquedos.',
     icon: Compass,
     iconBg: 'bg-[#FEF3C7]',
     iconColor: 'text-[#B45309]',
     radiusPadding: 18,
-    mobileRadiusPadding: 12,
+    mobileRadiusPadding: 14,
   },
 ];
 
