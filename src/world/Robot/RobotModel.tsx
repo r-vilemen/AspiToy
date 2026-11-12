@@ -147,7 +147,7 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
           <mesh castShadow material={sharedMaterials.robotYellowTrim}>
             <cylinderGeometry args={[0.038, 0.044, 0.016, 24]} />
           </mesh>
-          <mesh position={[0, 0.009, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <mesh position={[0, 0.0095, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <ringGeometry args={[0.022, 0.03, 20]} />
             <meshBasicMaterial color={statusColor} />
           </mesh>
@@ -260,7 +260,7 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
           >
             <cylinderGeometry args={[0.062, 0.066, 0.014, 28]} />
           </mesh>
-          <mesh position={[0, 0.048, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <mesh position={[0, 0.049, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <ringGeometry args={[0.038, 0.054, 24]} />
             <meshBasicMaterial color={statusColor} />
           </mesh>

@@ -190,16 +190,19 @@ export class AgentController {
       HOUSE_FLOOR_PLAN.doors.some(
         (door) =>
           door.isOpen &&
-          Math.hypot(position.x - door.position.x, position.z - door.position.z) < 1.3
+          Math.hypot(position.x - door.position.x, position.z - door.position.z) < 1.4
       );
 
-    // Colisão iminente: gato à frente, ou qualquer feixe frontal perigosamente próximo (< 0.32m),
-    // ou feixe oblíquo (< 0.38m) fora de vãos de porta
     const minFrontDist = Math.min(...frontRays.map((r) => r.distance));
+    const centerRayDist = scan.rays[centerIdx]?.distance ?? 1.8;
+
+    // Colisão iminente: gato à frente, ou feixe central bloqueado (< 0.28m em portas, < 0.35m fora),
+    // ou feixe oblíquo (< 0.31m) fora de vãos de porta (onde os batentes não devem interferir).
     const isImminentCollision =
       isCatInFront ||
-      minFrontDist < 0.32 ||
-      (!isNearDoorway && minFrontDist < 0.38);
+      (isNearDoorway
+        ? centerRayDist < 0.28
+        : minFrontDist < 0.31 || centerRayDist < 0.35);
 
     // Manobra de evasão ativa
     if (this.avoidanceTimer > 0) {
@@ -224,7 +227,9 @@ export class AgentController {
       this.avoidTurnDirection = leftDist >= rightDist ? -1 : 1;
       this.avoidTargetHeading =
         rotationY + this.avoidTurnDirection * (Math.PI * 0.45);
-      this.currentPath = []; // Invalida rota para forçar replanejamento A* contornando o obstáculo
+      if (!isNearDoorway) {
+        this.currentPath = []; // Invalida rota para forçar replanejamento A* apenas fora de portas
+      }
       const obstacleName = minFrontRay.obstacleLabel ?? 'obstáculo';
       return {
         nextState: 'AVOIDING',

@@ -518,8 +518,8 @@ export function Robot() {
 
           if (isTryingToAdvance && isBlocked) {
             unstuck.stuckTimer += delta;
-            if (unstuck.stuckTimer > 0.28) {
-              // Dispara manobra de desengate imediata: ré para descolar + giro evasivo
+            if (unstuck.stuckTimer > 0.65) {
+              // Dispara manobra de desengate inteligente: ré para descolar + giro evasivo
               unstuck.phase = 'REVERSE';
               unstuck.phaseTimer = 0.35;
               unstuck.turnDirection = agent.notifyStuck(

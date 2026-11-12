@@ -77,30 +77,30 @@ export function FollowCamera() {
       trackedRobotPosRef.current.x = nextRobotX;
       trackedRobotPosRef.current.z = nextRobotZ;
 
-      if (transitionTimerRef.current > 0 && !isUserInteractingRef.current) {
-        // Transição suave inicial ao entrar no modo Acompanhar
+      if (!isUserInteractingRef.current) {
+        // Câmera estilo terceira pessoa: acompanha suavemente atrás do robô mantendo distância confortável (2.25m)
         controls.target.set(
           damp(controls.target.x, nextRobotX, 6.0, delta),
           damp(controls.target.y, 0.28, 6.0, delta),
           damp(controls.target.z, nextRobotZ, 6.0, delta)
         );
         const desiredCamX = clamp(
-          nextRobotX - Math.sin(robotMotionBridge.rotationY) * 2.2,
-          -4.5,
+          nextRobotX - Math.sin(robotMotionBridge.rotationY) * 2.25,
+          -4.6,
           17.2
         );
         const desiredCamZ = clamp(
-          nextRobotZ - Math.cos(robotMotionBridge.rotationY) * 2.2,
-          -3.5,
-          13.0
+          nextRobotZ - Math.cos(robotMotionBridge.rotationY) * 2.25,
+          -3.6,
+          13.1
         );
         state.camera.position.set(
-          damp(state.camera.position.x, desiredCamX, 5.5, delta),
-          damp(state.camera.position.y, 1.15, 5.5, delta),
-          damp(state.camera.position.z, desiredCamZ, 5.5, delta)
+          damp(state.camera.position.x, desiredCamX, 4.5, delta),
+          damp(state.camera.position.y, 1.22, 4.5, delta),
+          damp(state.camera.position.z, desiredCamZ, 4.5, delta)
         );
       } else {
-        // Translada câmera e alvo exatamente pelo mesmo delta (preserva 100% da rotação/zoom do mouse!)
+        // Quando o usuário está interagindo com o mouse ou analógico, translada proporcionalmente mantendo o ângulo
         controls.target.x += dx;
         controls.target.y = damp(controls.target.y, 0.28, 5.0, delta);
         controls.target.z += dz;
@@ -176,12 +176,6 @@ export function FollowCamera() {
     }
 
     controls.update();
-
-    // Evita que a câmera atravesse os limites externos da casa quando posicionada em baixa altitude
-    if (state.camera.position.y < 4.2) {
-      state.camera.position.x = clamp(state.camera.position.x, -4.75, 17.35);
-      state.camera.position.z = clamp(state.camera.position.z, -3.75, 13.25);
-    }
   });
 
   return (
@@ -195,7 +189,7 @@ export function FollowCamera() {
       panSpeed={0.85}
       keyPanSpeed={0}
       keys={{ LEFT: '', UP: '', RIGHT: '', BOTTOM: '' }}
-      minDistance={0.9}
+      minDistance={1.35}
       maxDistance={36.0}
       minPolarAngle={0.02}
       maxPolarAngle={Math.PI / 2 - 0.04}

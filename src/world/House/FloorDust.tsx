@@ -74,21 +74,21 @@ function isDustSpawnValid(x: number, z: number, regionId: string): boolean {
     }
   }
 
-  // 3. Distância contra obstáculos sólidos da residência
+  // 3. Distância contra obstáculos sólidos da residência (mínimo de 28cm para garantir 100% de alcançabilidade física)
   let nearbyCount = 0;
   for (let i = 0; i < ALL_HOUSE_OBSTACLES.length; i++) {
     const obs = ALL_HOUSE_OBSTACLES[i];
     if (!obs.collidable) continue;
 
     const distInfo = getDistanceToAABB({ x, z }, obs.bounds);
-    if (distInfo.isInside || distInfo.distance < 0.16) {
-      return false; // Dentro ou muito colado no móvel/parede
+    if (distInfo.isInside || distInfo.distance < 0.28) {
+      return false; // Dentro ou muito colado no móvel/parede onde o robô não consegue alcançar
     }
 
-    if (distInfo.distance < 0.35) {
+    if (distInfo.distance < 0.40) {
       nearbyCount++;
       if (nearbyCount >= 2) {
-        // Ponto prensado entre dois obstáculos (< 0.70m de vão livre entre eles)
+        // Ponto prensado entre dois obstáculos estreitos
         return false;
       }
     }
@@ -415,7 +415,7 @@ export const FloorDust = memo(function FloorDust() {
       manualControlBridge.active ||
       robotSpeed > 0.04;
 
-    const vacuumReach = 0.48; // Raio efetivo do chassi circular e escovas giratórias laterais estendidas
+    const vacuumReach = 0.54; // Raio efetivo do chassi circular e escovas giratórias laterais estendidas
     let clumpsNeedUpdate = false;
     let patchesNeedUpdate = false;
 
