@@ -98,8 +98,8 @@ describe('Componentes de Onboarding (IntroAnimation e InGameTour)', () => {
     const nextBtn = screen.getByRole('button', { name: /Próximo/i });
     fireEvent.click(nextBtn);
 
-    // Passo 2 Mobile: Analógico Virtual PS2
-    expect(screen.getByText(/Analógico Virtual PS2/i)).toBeDefined();
+    // Passo 2 Mobile: Analógico Virtual
+    expect(screen.getByRole('heading', { name: /Analógico Virtual/i })).toBeDefined();
     expect(screen.getByText(/Pilote o robô em 360°/i)).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: /Próximo/i }));
 

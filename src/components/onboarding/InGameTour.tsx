@@ -51,11 +51,11 @@ const TOUR_STEPS: TourStepConfig[] = [
     targetMobileId: 'tour-mobile-joystick',
     badge: 'Passo 2 de 4',
     title: 'Pilotagem Manual (WASD / Setas)',
-    mobileTitle: 'Analógico Virtual PS2',
+    mobileTitle: 'Analógico Virtual',
     description:
       'Pilote você mesmo pelo teclado usando as teclas W, A, S, D ou as Setas direcionais. Ao soltar as teclas, o robô para de imediato sem ativar a limpeza automática.',
     mobileDescription:
-      'Pilote o robô em 360° com o polegar esquerdo arrastando o analógico virtual! Controle livre e ágil para navegar por toda a casa.',
+      'Pilote o robô em 360° com o polegar direito arrastando o analógico virtual! Controle livre e ágil para navegar por toda a casa.',
     tip: 'W para avançar, S para ré, A/D para girar.',
     mobileTip: 'Solte o analógico para parar o robô na hora.',
     icon: Gamepad2,

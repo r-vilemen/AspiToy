@@ -110,48 +110,13 @@ export function Dashboard() {
           </div>
         )}
 
-        {/* CONTAINER INFERIOR: HUD DE CONTROLE MOBILE (ANALÓGICO PS2 + AÇÕES) & ASIDE DESKTOP */}
+        {/* CONTAINER INFERIOR: HUD DE CONTROLE MOBILE (AÇÕES + ANALÓGICO) & ASIDE DESKTOP */}
         <div className="flex flex-1 flex-col justify-end p-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-6 sm:gap-3 sm:flex-row sm:items-end sm:justify-end sm:p-6">
           
-          {/* CONTROLE MOBILE FLUTUANTE ESTILO GAMEPAD PS2 (SMARTPHONE EM PÉ E DEITADO) */}
+          {/* CONTROLE MOBILE FLUTUANTE (SMARTPHONE EM PÉ E DEITADO) */}
           <div className="pointer-events-auto mobile-gamepad sm:hidden w-full flex items-end justify-between gap-2 px-1">
-            {/* Polegar Esquerdo: Analógico Virtual PS2 */}
-            <div id="tour-mobile-joystick" className="flex flex-col items-center gap-1">
-              <VirtualJoystick
-                size={110}
-                knobSize={48}
-                maxRadius={34}
-                deadzone={5}
-                className="shadow-[0_4px_12px_rgba(0,0,0,0.4)]"
-              />
-              <span className="rounded-md border border-[#2A211B]/30 bg-[#2A211B]/80 px-1.5 py-0.5 font-mono text-[8px] font-black uppercase tracking-wider text-[#FBF7F0] shadow-xs backdrop-blur-xs">
-                Analógico PS2
-              </span>
-            </div>
-
-            {/* Centro: Pílula Compacta de Status & Bateria */}
-            <div className="flex flex-col items-center gap-1 mb-1">
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FFFDF8]/92 border-1.5 border-[#2A211B] shadow-[1.5px_1.5px_0px_#2A211B] backdrop-blur-md">
-                <span
-                  className={`h-2 w-2 rounded-full border border-[#2A211B] ${
-                    isRunning
-                      ? 'bg-[#10B981] animate-pulse'
-                      : isPaused
-                      ? 'bg-[#F59E0B]'
-                      : 'bg-[#6B7280]'
-                  }`}
-                />
-                <span className="font-mono text-[10px] font-black tabular-nums text-[#2A211B]">
-                  {Math.round(battery)}%
-                </span>
-                <span className="text-[9px] text-[#6E5D4F] font-black uppercase truncate max-w-[55px] sm:max-w-[70px]">
-                  {robotState}
-                </span>
-              </div>
-            </div>
-
-            {/* Polegar Direito: Painel de Ações Rápidas do Jogo */}
-            <div className="flex flex-col items-end gap-1.5">
+            {/* Lado Esquerdo: Painel de Ações Rápidas do Jogo */}
+            <div className="flex flex-col items-start gap-1.5">
               {/* Botões Auxiliares Superiores (Dock, Menu Drawer) */}
               <div className="flex items-center gap-1.5">
                 {/* Botão de Retornar à Base */}
@@ -179,7 +144,7 @@ export function Dashboard() {
                 </button>
               </div>
 
-              {/* Botão de Ação Primária Principal (Grande e Tátil para o Polegar Direito) */}
+              {/* Botão de Ação Primária Principal (Grande e Tátil para o Polegar Esquerdo) */}
               <div id="tour-mobile-cleaning" className="inline-flex">
                 {!isRunning && !isPaused ? (
                   <button
@@ -210,6 +175,38 @@ export function Dashboard() {
                   </button>
                 )}
               </div>
+            </div>
+
+            {/* Centro: Pílula Compacta de Status & Bateria */}
+            <div className="flex flex-col items-center gap-1 mb-1">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FFFDF8]/92 border-1.5 border-[#2A211B] shadow-[1.5px_1.5px_0px_#2A211B] backdrop-blur-md">
+                <span
+                  className={`h-2 w-2 rounded-full border border-[#2A211B] ${
+                    isRunning
+                      ? 'bg-[#10B981] animate-pulse'
+                      : isPaused
+                      ? 'bg-[#F59E0B]'
+                      : 'bg-[#6B7280]'
+                  }`}
+                />
+                <span className="font-mono text-[10px] font-black tabular-nums text-[#2A211B]">
+                  {Math.round(battery)}%
+                </span>
+                <span className="text-[9px] text-[#6E5D4F] font-black uppercase truncate max-w-[55px] sm:max-w-[70px]">
+                  {robotState}
+                </span>
+              </div>
+            </div>
+
+            {/* Lado Direito: Analógico Virtual */}
+            <div id="tour-mobile-joystick" className="flex flex-col items-end">
+              <VirtualJoystick
+                size={110}
+                knobSize={48}
+                maxRadius={34}
+                deadzone={5}
+                className="shadow-[0_4px_12px_rgba(0,0,0,0.4)]"
+              />
             </div>
           </div>
 
