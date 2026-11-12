@@ -77,35 +77,35 @@ export function Dashboard() {
       <div className="pointer-events-none relative z-10 flex h-full flex-col justify-between">
         <Header />
 
-        {/* Notificação Flutuante (estilo toast de jogo, compacta no topo em mobile e desktop) */}
+        {/* Notificação Flutuante (estilo toast de jogo, exclusivo para Desktop) */}
         {latestNotification && (
-          <div className="pointer-events-auto px-2.5 sm:px-6 pt-1 max-w-xs sm:max-w-md w-full">
+          <div className="pointer-events-auto desktop-alert hidden sm:block px-2.5 sm:px-6 pt-1 max-w-sm sm:max-w-md w-full">
             <div
               role="status"
               aria-live="polite"
-              className="flex items-center gap-2 rounded-xl sm:rounded-2xl border-1.5 sm:border-2 border-[#2A211B] bg-[#FFFDF8] p-2 sm:p-3 shadow-[2.5px_2.5px_0px_#2A211B] animate-bounce-in"
+              className="flex items-start gap-2.5 rounded-2xl border-2 sm:border-2.5 border-[#2A211B] bg-[#FFFDF8] p-2.5 sm:p-3.5 shadow-[3px_3px_0px_#2A211B] sm:shadow-[4px_4px_0px_#2A211B] animate-bounce-in"
             >
-              <div className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg sm:rounded-xl border border-[#2A211B] bg-[#FFEDD5] text-[#C2410C]">
+              <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl border-1.5 sm:border-2 border-[#2A211B] bg-[#FFEDD5] text-[#C2410C] shadow-[1.5px_1.5px_0px_#2A211B] sm:shadow-[2px_2px_0px_#2A211B]">
                 <Bell
-                  className="h-3.5 w-3.5 stroke-[2.2] fill-[#FDBA74]"
+                  className="h-3.5 w-3.5 sm:h-4 sm:w-4 stroke-[2.2] fill-[#FDBA74]"
                   aria-hidden="true"
                 />
               </div>
               <div className="min-w-0 flex-1 text-xs">
-                <div className="flex items-center justify-between gap-1">
+                <div className="flex items-center justify-between gap-1.5">
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="inline-block rounded border border-[#2A211B] bg-[#FEF08A] px-1 py-0.2 font-mono text-[8px] sm:text-[9px] font-black uppercase text-[#854D0E]">
+                    <span className="inline-block rounded-md border border-[#2A211B] bg-[#FEF08A] px-1.5 py-0.5 font-mono text-[9px] font-black uppercase tracking-wider text-[#854D0E] shadow-[1px_1px_0px_#2A211B]">
                       ALERTA
                     </span>
                     <p className="font-display font-black text-xs text-[#2A211B] truncate">
                       {latestNotification.title}
                     </p>
                   </div>
-                  <span className="font-mono text-[9px] sm:text-[10px] font-bold tabular-nums text-[#6E5D4F] shrink-0">
+                  <span className="font-mono text-[10px] font-bold tabular-nums text-[#6E5D4F] rounded border border-[#2A211B]/20 bg-[#F5ECE0] px-1.5 py-0.5 shrink-0">
                     {latestNotification.timestamp}
                   </span>
                 </div>
-                <p className="mt-0.5 font-semibold text-[11px] sm:text-xs text-[#4B3B2F] line-clamp-1 sm:line-clamp-2 leading-tight">
+                <p className="mt-1 font-semibold text-xs text-[#4B3B2F] leading-snug">
                   {latestNotification.message}
                 </p>
               </div>
@@ -113,9 +113,9 @@ export function Dashboard() {
                 type="button"
                 onClick={() => dismissNotification(latestNotification.id)}
                 aria-label="Fechar notificação"
-                className="rounded-lg border border-[#2A211B] bg-[#F5ECE0] p-1 text-[#2A211B] shadow-[1px_1px_0px_#2A211B] hover:bg-[#E8DAC7] active:translate-y-0.5 cursor-pointer shrink-0"
+                className="rounded-lg border-1.5 border-[#2A211B] bg-[#F5ECE0] p-1 text-[#2A211B] shadow-[1px_1px_0px_#2A211B] hover:bg-[#E8DAC7] active:shadow-none active:translate-y-0.5 cursor-pointer transition shrink-0"
               >
-                <X className="h-3 w-3 sm:h-3.5 sm:w-3.5 stroke-[2.5]" aria-hidden="true" />
+                <X className="h-3.5 w-3.5 stroke-[2.5]" aria-hidden="true" />
               </button>
             </div>
           </div>

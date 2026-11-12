@@ -67,6 +67,9 @@
   .desktop-footer {
     display: none !important;
   }
+  .desktop-alert {
+    display: none !important;
+  }
 }
 
 /* Em telas de desktop autênticas (largura >= 768px E altura suficiente >= 551px): */
@@ -79,6 +82,9 @@
   }
   .desktop-footer {
     display: flex !important;
+  }
+  .desktop-alert {
+    display: block !important;
   }
 }
 
