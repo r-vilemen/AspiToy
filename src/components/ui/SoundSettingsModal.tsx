@@ -106,7 +106,7 @@ export function SoundSettingsModal() {
         role="dialog"
         aria-modal="true"
         aria-label="Configurações de Áudio do AspiToy"
-        className="pointer-events-auto fixed sm:absolute right-2 sm:right-0 top-16 sm:top-full mt-2 w-[calc(100vw-1rem)] sm:w-88 md:w-96 max-w-sm rounded-2xl border-2 sm:border-2.5 border-[#2A211B] bg-[#FFFDF8] p-4 sm:p-5 shadow-[4px_4px_0px_#2A211B] sm:shadow-[5px_5px_0px_#2A211B] z-50 animate-in fade-in zoom-in-95 duration-150"
+        className="pointer-events-auto fixed sm:absolute right-2 sm:right-0 top-12 sm:top-full mt-2 w-[calc(100vw-1rem)] sm:w-88 md:w-96 max-w-sm max-h-[86dvh] overflow-y-auto rounded-2xl border-2 sm:border-2.5 border-[#2A211B] bg-[#FFFDF8] p-4 sm:p-5 shadow-[4px_4px_0px_#2A211B] sm:shadow-[5px_5px_0px_#2A211B] z-50 animate-in fade-in zoom-in-95 duration-150"
       >
         {/* Cabeçalho */}
         <div className="flex items-center justify-between border-b-2 border-[#2A211B]/15 pb-3">

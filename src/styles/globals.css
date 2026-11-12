@@ -49,3 +49,36 @@
   background: #A89274;
 }
 
+/* ============================================================
+   RESPONSIVIDADE INTELIGENTE MOBILE (EM PÉ & DEITADO) VS DESKTOP
+   ============================================================ */
+/* Em telas mobile (largura < 768px OU altura curta de celular deitado <= 550px):
+   - O painel desktop lateral NUNCA deve bloquear a cena 3D
+   - O controle mobile estilo Gamepad PS2 deve estar ativo e visível
+   - O rodapé fixo não deve obstruir os botões de ação do jogo
+*/
+@media (max-width: 767px), (max-height: 550px) {
+  .desktop-panel {
+    display: none !important;
+  }
+  .mobile-gamepad {
+    display: flex !important;
+  }
+  .desktop-footer {
+    display: none !important;
+  }
+}
+
+/* Em telas de desktop autênticas (largura >= 768px E altura suficiente >= 551px): */
+@media (min-width: 768px) and (min-height: 551px) {
+  .desktop-panel {
+    display: block !important;
+  }
+  .mobile-gamepad {
+    display: none !important;
+  }
+  .desktop-footer {
+    display: flex !important;
+  }
+}
+
