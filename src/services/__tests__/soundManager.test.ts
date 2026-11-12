@@ -92,4 +92,40 @@ describe('AspiToy Sound System — Gerenciador de Áudio e Sons do Projeto', () 
     expect(() => soundManager.playCleanPop()).not.toThrow();
     expect(() => soundManager.playClick()).not.toThrow();
   });
+
+  it('permite silenciar e restaurar a trilha sonora mantendo intacto o volume configurado', () => {
+    soundManager.setEnabled(true);
+    soundManager.setMusicVolume(0.85);
+    expect(soundManager.getMusicVolume()).toBe(0.85);
+    expect(soundManager.getIsMusicMuted()).toBe(false);
+
+    // Muta
+    soundManager.setMusicMuted(true);
+    expect(soundManager.getIsMusicMuted()).toBe(true);
+    // Volume configurado permanece 0.85
+    expect(soundManager.getMusicVolume()).toBe(0.85);
+    expect(soundManager.getEffectiveMusicGain()).toBe(0);
+
+    // Desmuta
+    soundManager.setMusicMuted(false);
+    expect(soundManager.getIsMusicMuted()).toBe(false);
+    expect(soundManager.getMusicVolume()).toBe(0.85);
+    expect(soundManager.getEffectiveMusicGain()).toBeCloseTo(0.85 * 0.75, 4);
+  });
+
+  it('salva e recupera as configurações de som do usuário no localStorage', () => {
+    useSoundStore.getState().setMasterVolume(0.6);
+    useSoundStore.getState().setMusicVolume(0.4);
+    useSoundStore.getState().setSfxVolume(0.7);
+    useSoundStore.getState().setMusicMuted(true);
+
+    const savedRaw = localStorage.getItem('aspitoy_sound_settings_v1');
+    expect(savedRaw).not.toBeNull();
+    const parsed = JSON.parse(savedRaw!);
+
+    expect(parsed.masterVolume).toBe(0.6);
+    expect(parsed.musicVolume).toBe(0.4);
+    expect(parsed.sfxVolume).toBe(0.7);
+    expect(parsed.isMusicMuted).toBe(true);
+  });
 });

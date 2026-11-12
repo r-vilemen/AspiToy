@@ -74,4 +74,53 @@ describe('SoundSettingsModal — Configurações de Áudio e Volume', () => {
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(useSoundStore.getState().isSettingsOpen).toBe(false);
   });
+
+  it('ao clicar no botão de silenciar a trilha sonora, preserva o volume configurado e apenas muta/desmuta', () => {
+    render(<SoundSettingsModal />);
+
+    // Inicialmente musicVolume = 0.65 (65%) e não está mutado
+    expect(useSoundStore.getState().musicVolume).toBe(0.65);
+    expect(useSoundStore.getState().isMusicMuted).toBe(false);
+    expect(soundManager.getIsMusicMuted()).toBe(false);
+
+    const muteBtn = screen.getByRole('button', { name: /silenciar trilha sonora/i });
+    expect(muteBtn).toBeDefined();
+
+    // 1. Clica para mutar
+    fireEvent.click(muteBtn);
+
+    // O volume deve SE MANTER em 0.65 (65%), mudando apenas o estado mutado
+    expect(useSoundStore.getState().musicVolume).toBe(0.65);
+    expect(useSoundStore.getState().isMusicMuted).toBe(true);
+    expect(soundManager.getIsMusicMuted()).toBe(true);
+    expect(soundManager.getEffectiveMusicGain()).toBe(0);
+
+    const musicSlider = screen.getByLabelText(/volume da trilha sonora/i) as HTMLInputElement;
+    expect(musicSlider.value).toBe('65');
+    expect(screen.getByText('(Mudo)')).toBeDefined();
+
+    // 2. Clica novamente para desmutar
+    const unmuteBtn = screen.getByRole('button', { name: /restaurar trilha sonora/i });
+    fireEvent.click(unmuteBtn);
+
+    expect(useSoundStore.getState().musicVolume).toBe(0.65);
+    expect(useSoundStore.getState().isMusicMuted).toBe(false);
+    expect(soundManager.getIsMusicMuted()).toBe(false);
+    expect(soundManager.getEffectiveMusicGain()).toBeCloseTo(0.65 * 0.75, 4);
+    expect(musicSlider.value).toBe('65');
+  });
+
+  it('desmuta automaticamente a trilha sonora se o usuário arrastar o slider de volume', () => {
+    useSoundStore.getState().setMusicMuted(true);
+    render(<SoundSettingsModal />);
+
+    expect(useSoundStore.getState().isMusicMuted).toBe(true);
+
+    const musicSlider = screen.getByLabelText(/volume da trilha sonora/i);
+    fireEvent.change(musicSlider, { target: { value: '80' } });
+
+    expect(useSoundStore.getState().musicVolume).toBe(0.8);
+    expect(useSoundStore.getState().isMusicMuted).toBe(false);
+    expect(soundManager.getIsMusicMuted()).toBe(false);
+  });
 });

@@ -15,11 +15,14 @@ export function SoundSettingsModal() {
   const masterVolume = useSoundStore((s) => s.masterVolume);
   const musicVolume = useSoundStore((s) => s.musicVolume);
   const sfxVolume = useSoundStore((s) => s.sfxVolume);
+  const isMusicMuted = useSoundStore((s) => s.isMusicMuted);
   const toggleSound = useSoundStore((s) => s.toggleSound);
   const enableSound = useSoundStore((s) => s.enableSound);
   const setMasterVolume = useSoundStore((s) => s.setMasterVolume);
   const setMusicVolume = useSoundStore((s) => s.setMusicVolume);
   const setSfxVolume = useSoundStore((s) => s.setSfxVolume);
+  const toggleMusicMute = useSoundStore((s) => s.toggleMusicMute);
+  const setMusicMuted = useSoundStore((s) => s.setMusicMuted);
   const closeSettings = useSoundStore((s) => s.closeSettings);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -192,20 +195,40 @@ export function SoundSettingsModal() {
                 <span>Trilha Sonora</span>
               </label>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-black text-[#F2724D] tabular-nums">
+                <span
+                  className={`font-mono text-xs font-black tabular-nums transition-colors ${
+                    isMusicMuted ? 'text-[#78695D]' : 'text-[#F2724D]'
+                  }`}
+                >
                   {Math.round(musicVolume * 100)}%
+                  {isMusicMuted && (
+                    <span className="ml-1 text-[10px] font-bold uppercase tracking-wider text-[#EF4444]">
+                      (Mudo)
+                    </span>
+                  )}
                 </span>
                 <button
                   type="button"
-                  onClick={() => handleMusicChange(musicVolume > 0 ? 0 : 0.75)}
-                  title={musicVolume > 0 ? 'Silenciar trilha sonora' : 'Restaurar trilha sonora'}
-                  aria-label={musicVolume > 0 ? 'Silenciar trilha sonora' : 'Restaurar trilha sonora'}
-                  className="flex h-5 w-5 items-center justify-center rounded border border-[#2A211B]/40 bg-[#FFFDF8] hover:bg-[#F3ECE0] transition cursor-pointer"
+                  onClick={() => {
+                    if (!isEnabled) {
+                      enableSound();
+                    }
+                    soundManager.ensureAudioRunning();
+                    toggleMusicMute();
+                  }}
+                  title={isMusicMuted ? 'Restaurar trilha sonora' : 'Silenciar trilha sonora'}
+                  aria-label={isMusicMuted ? 'Restaurar trilha sonora' : 'Silenciar trilha sonora'}
+                  aria-pressed={isMusicMuted}
+                  className={`flex h-6 w-6 items-center justify-center rounded-lg border transition cursor-pointer shadow-[1px_1px_0px_#2A211B] active:translate-y-0.5 active:shadow-none ${
+                    isMusicMuted
+                      ? 'border-[#EF4444] bg-[#FEF2F2] text-[#EF4444]'
+                      : 'border-[#2A211B]/40 bg-[#FFFDF8] hover:bg-[#F3ECE0] text-[#F2724D]'
+                  }`}
                 >
-                  {musicVolume > 0 ? (
-                    <Volume2 className="h-3 w-3 text-[#F2724D]" aria-hidden="true" />
+                  {isMusicMuted ? (
+                    <VolumeX className="h-3.5 w-3.5 stroke-[2.4]" aria-hidden="true" />
                   ) : (
-                    <VolumeX className="h-3 w-3 text-[#78695D]" aria-hidden="true" />
+                    <Volume2 className="h-3.5 w-3.5 stroke-[2.4]" aria-hidden="true" />
                   )}
                 </button>
               </div>
@@ -219,9 +242,17 @@ export function SoundSettingsModal() {
               min="0"
               max="100"
               value={Math.round(musicVolume * 100)}
-              onChange={(e) => handleMusicChange(Number(e.target.value) / 100)}
+              onChange={(e) => {
+                const val = Number(e.target.value) / 100;
+                if (isMusicMuted && val > 0) {
+                  setMusicMuted(false);
+                }
+                handleMusicChange(val);
+              }}
               aria-label="Volume da trilha sonora"
-              className="h-2.5 w-full cursor-pointer appearance-none rounded-lg bg-[#E5DCD0] accent-[#F2724D]"
+              className={`h-2.5 w-full cursor-pointer appearance-none rounded-lg bg-[#E5DCD0] ${
+                isMusicMuted ? 'accent-[#78695D] opacity-60' : 'accent-[#F2724D]'
+              }`}
             />
           </div>
 

@@ -183,6 +183,7 @@ export class SoundManager {
   private volume = 0.75; // Master volume (0 to 1)
   private musicVolume = 0.7; // Volume da trilha sonora (0 to 1)
   private sfxVolume = 0.8; // Volume dos efeitos sonoros (0 to 1)
+  private isMusicMuted = false; // Estado mutado da trilha sonora (preserva o volume configurado)
 
   // Gerador de Ruído de Aspiração (Motor AspiToy)
   private noiseNode: AudioBufferSourceNode | null = null;
@@ -221,7 +222,7 @@ export class SoundManager {
 
       // Barramento de Música (Trilha Sonora BGM)
       this.musicGain = this.ctx.createGain();
-      this.musicGain.gain.setValueAtTime(this.musicVolume * 0.75, this.ctx.currentTime);
+      this.musicGain.gain.setValueAtTime(this.getEffectiveMusicGain(), this.ctx.currentTime);
       this.musicGain.connect(this.masterGain);
 
       // Barramento de Efeitos Sonoros (SFX)
@@ -338,6 +339,7 @@ export class SoundManager {
 
     if (enabled) {
       const activate = () => {
+        this.updateMusicGain();
         this.playChime(true);
         this.startMusicScheduler();
       };
@@ -381,14 +383,47 @@ export class SoundManager {
   }
 
   /**
+   * Retorna o ganho efetivo da música considerando o volume e o estado mutado.
+   */
+  public getEffectiveMusicGain(): number {
+    if (this.isMusicMuted || !this.isEnabled) return 0;
+    return this.musicVolume * 0.75;
+  }
+
+  private updateMusicGain(): void {
+    if (this.musicGain && this.ctx) {
+      this.musicGain.gain.setTargetAtTime(
+        this.getEffectiveMusicGain(),
+        this.ctx.currentTime,
+        0.05
+      );
+    }
+  }
+
+  /**
+   * Muta ou desmuta a trilha sonora preservando o valor numérico do volume configurado.
+   */
+  public setMusicMuted(muted: boolean): void {
+    this.isMusicMuted = muted;
+    this.updateMusicGain();
+  }
+
+  public getIsMusicMuted(): boolean {
+    return this.isMusicMuted;
+  }
+
+  public toggleMusicMuted(): boolean {
+    this.setMusicMuted(!this.isMusicMuted);
+    return this.isMusicMuted;
+  }
+
+  /**
    * Configura o volume da trilha sonora (BGM) [0, 1].
    */
   public setMusicVolume(val: number): void {
     this.musicVolume = Math.max(0, Math.min(1, val));
     this.ensureAudioRunning();
-    if (this.musicGain && this.ctx) {
-      this.musicGain.gain.setTargetAtTime(this.musicVolume * 0.75, this.ctx.currentTime, 0.05);
-    }
+    this.updateMusicGain();
   }
 
   public getMusicVolume(): number {
