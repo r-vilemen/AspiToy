@@ -20,7 +20,6 @@ import {
   type FurniturePerchSpot,
 } from './catNavigation';
 
-export { ALL_HOUSE_CAT_PERCHES as WHITE_CAT_PERCHES };
 
 const whiteCatMaterials = {
   furWhite: new THREE.MeshStandardMaterial({

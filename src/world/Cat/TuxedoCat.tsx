@@ -20,7 +20,6 @@ import {
   type FurniturePerchSpot,
 } from './catNavigation';
 
-export { ALL_HOUSE_CAT_PERCHES as TUXEDO_CAT_PERCHES };
 
 const tuxedoCatMaterials = {
   furBlack: new THREE.MeshStandardMaterial({
