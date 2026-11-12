@@ -26,3 +26,26 @@
   font-family: var(--font-mono);
 }
 
+/* Scrollbar retro estilizada e discreta */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #D4C3AC #F5ECE0;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F5ECE0;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: #D4C3AC;
+  border-radius: 4px;
+  border: 1px solid #2A211B;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #A89274;
+}
+

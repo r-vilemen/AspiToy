@@ -136,22 +136,17 @@ export function ControlPanel() {
         id="tour-manual-controls"
         className="rounded-2xl border-2 border-[#2A211B]/20 bg-[#F3ECE0]/70 p-3 space-y-2.5"
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-black uppercase tracking-wider text-[#2A211B]">
-              Pilotagem Manual
-            </span>
-            <span className="rounded-md border border-[#2A211B]/30 bg-[#2A211B] px-1.5 py-0.2 font-mono text-[9px] font-black uppercase tracking-tight text-white shadow-xs">
-              PS2 STICK
-            </span>
-          </div>
+        <div className="flex items-center justify-between gap-1">
+          <span className="text-xs font-black uppercase tracking-wider text-[#2A211B]">
+            Pilotagem Manual
+          </span>
           <span className="font-mono text-[10px] font-bold text-[#6E5D4F]">
             {keys.forward || keys.backward || keys.left || keys.right ? (
               <span className="inline-flex items-center gap-1 rounded bg-[#E05A36] px-1.5 py-0.2 text-[10px] font-black uppercase text-white shadow-xs">
                 ● ATIVO
               </span>
             ) : (
-              'Analógico / WASD'
+              'WASD / Analógico'
             )}
           </span>
         </div>

@@ -122,7 +122,7 @@ export function Dashboard() {
         )}
 
         {/* CONTAINER INFERIOR: HUD DE CONTROLE MOBILE (ANALÓGICO PS2 + AÇÕES) & ASIDE DESKTOP */}
-        <div className="flex flex-1 flex-col justify-end p-2.5 pb-8 sm:pb-6 sm:gap-3 sm:flex-row sm:items-end sm:justify-between sm:p-6">
+        <div className="flex flex-1 flex-col justify-end p-2.5 pb-8 sm:pb-6 sm:gap-3 sm:flex-row sm:items-end sm:justify-end sm:p-6">
           
           {/* CONTROLE MOBILE FLUTUANTE ESTILO GAMEPAD PS2 (SMARTPHONE) */}
           <div className="pointer-events-auto sm:hidden w-full flex items-end justify-between gap-2">
@@ -239,10 +239,10 @@ export function Dashboard() {
             </div>
           </div>
 
-          {/* PAINEL LATERAL DESKTOP (Inalterado para PC conforme solicitado) */}
+          {/* PAINEL LATERAL DESKTOP (Fixado no lado direito da tela) */}
           <aside
             aria-label="Painel de controle do AspiToy"
-            className="pointer-events-auto hidden sm:block sm:w-[340px] rounded-3xl border-2.5 border-[#2A211B] bg-[#FFFDF8]/96 p-4 sm:p-5 shadow-[5px_5px_0px_#2A211B] backdrop-blur-md space-y-4 max-h-[78dvh] overflow-y-auto"
+            className="pointer-events-auto hidden sm:block sm:w-[340px] sm:ml-auto rounded-3xl border-2.5 border-[#2A211B] bg-[#FFFDF8]/96 p-4 sm:p-5 shadow-[5px_5px_0px_#2A211B] backdrop-blur-md space-y-4 max-h-[82dvh] overflow-y-auto"
           >
             <StatusCard />
             <hr className="border-t-2 border-[#2A211B]/15" />
