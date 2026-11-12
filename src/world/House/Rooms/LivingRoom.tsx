@@ -355,19 +355,19 @@ export const LivingRoom = memo(function LivingRoom() {
 
       {/* 7. Planta Ornamental Grande de Interior (Ficus / Costela de Adão) */}
       <group position={[16.6, 0, -3.2]}>
-        {/* Vaso cerâmico */}
-        <mesh castShadow material={sharedMaterials.plantPotCeramic}>
+        {/* Vaso cerâmico perfeitamente assentado sobre o piso (base em Y = 0) */}
+        <mesh castShadow position={[0, 0.34, 0]} material={sharedMaterials.plantPotCeramic}>
           <cylinderGeometry args={[0.38, 0.28, 0.68, 20]} />
         </mesh>
-        <mesh position={[0, 0.35, 0]} material={sharedMaterials.plantSoil}>
+        <mesh position={[0, 0.67, 0]} material={sharedMaterials.plantSoil}>
           <cylinderGeometry args={[0.36, 0.36, 0.05, 20]} />
         </mesh>
         {/* Folhagem em camadas volumétricas */}
         {[
-          [0, 0.9, 0, 0.55],
-          [-0.2, 1.25, 0.15, 0.48],
-          [0.2, 1.45, -0.1, 0.52],
-          [0, 1.75, 0.1, 0.45],
+          [0, 1.24, 0, 0.55],
+          [-0.2, 1.59, 0.15, 0.48],
+          [0.2, 1.79, -0.1, 0.52],
+          [0, 2.09, 0.1, 0.45],
         ].map(([fx, fy, fz, fr], idx) => (
           <mesh
             key={idx}

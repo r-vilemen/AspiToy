@@ -230,11 +230,17 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
         const targetRegion = env.resolveRegionAtPoint({ x: cleanX, z: cleanZ });
         label = `Ir até (${cleanX}m, ${cleanZ}m)`;
         robot.setTargetPosition({ x: cleanX, z: cleanZ });
-        const nextMode =
-          robot.state === 'CLEANING' ? 'CLEANING' : 'EXPLORING';
+        const isPaused = robot.state === 'PAUSED';
+        const nextMode = isPaused
+          ? 'PAUSED'
+          : robot.state === 'CLEANING'
+          ? 'CLEANING'
+          : 'EXPLORING';
         robot.setOperationalState(
           nextMode,
-          `Deslocando-se até ponto selecionado em ${targetRegion.label} (${cleanX}m, ${cleanZ}m)`
+          isPaused
+            ? `Posicionamento manual (Pausado): deslocando até ${targetRegion.label} (${cleanX}m, ${cleanZ}m)`
+            : `Deslocando-se até ponto selecionado em ${targetRegion.label} (${cleanX}m, ${cleanZ}m)`
         );
         get().pushNotification(
           'Destino definido',

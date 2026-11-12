@@ -205,7 +205,11 @@ export class AgentController {
     if (this.avoidanceTimer > 0) {
       this.avoidanceTimer -= delta;
       const resumedState: RobotOperationalState =
-        this.avoidanceTimer <= 0 ? 'CLEANING' : 'AVOIDING';
+        this.avoidanceTimer <= 0
+          ? currentState === 'AVOIDING'
+            ? 'CLEANING'
+            : currentState
+          : 'AVOIDING';
       return {
         nextState: resumedState,
         desiredSpeed: baseSpeed * 0.35,

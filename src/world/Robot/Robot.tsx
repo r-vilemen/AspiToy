@@ -211,52 +211,59 @@ export function Robot() {
         : GLOBAL_HOUSE_PATROL_POINTS;
 
     let targetPoint: { x: number; z: number } | null = null;
+    const isManualPointToPoint =
+      robotState.state === 'PAUSED' && robotState.targetPosition !== null;
 
     if (
       robotState.state === 'CLEANING' ||
       robotState.state === 'EXPLORING' ||
-      robotState.state === 'AVOIDING'
+      robotState.state === 'AVOIDING' ||
+      isManualPointToPoint
     ) {
-      coverageTimerRef.current += delta;
-      const currentPos = { x: loc.x, z: loc.z };
-
-      // Atualiza o alvo de cobertura inteligente quando o anterior foi atingido ou expirou (> 7.5s)
-      const distToCoverage = coverageGoalRef.current
-        ? distance2D(currentPos, coverageGoalRef.current)
-        : 0;
-
-      if (!coverageGoalRef.current || distToCoverage < 0.38 || coverageTimerRef.current > 7.5) {
-        coverageTimerRef.current = 0;
-        coverageGoalRef.current = agent.findBestCoverageTarget(currentPos, selectedId);
-      }
-
-      const smartDustTarget = priorityManager.selectBestTarget(
-        currentPos,
-        envState.dustSpots,
-        envState.selectedRegionId,
-        envState.regions,
-        robotState.battery,
-        envState.dockPosition,
-        coverageGoalRef.current
-      );
-
-      if (robotState.targetPosition) {
+      if (isManualPointToPoint) {
         targetPoint = robotState.targetPosition;
-      } else if (smartDustTarget) {
-        targetPoint = smartDustTarget;
       } else {
-        // Modo patrulha / varredura com variação contínua de faixas e alternância de sentido
-        const poolLen = patrolPool.length;
-        const rawIdx = patrolIdxRef.current % poolLen;
-        const effectiveIdx = patrolReverseRef.current ? poolLen - 1 - rawIdx : rawIdx;
-        const basePoint = patrolPool[effectiveIdx];
+        coverageTimerRef.current += delta;
+        const currentPos = { x: loc.x, z: loc.z };
 
-        // Variação de faixas (boustrophedon sweep lane variation): micro-deslocamento suave para cobrir 100% da área
-        const laneOffset = ((laneVariationIdxRef.current % 3) - 1) * 0.12;
-        targetPoint = {
-          x: basePoint.x + laneOffset,
-          z: basePoint.z + (laneVariationIdxRef.current % 2 === 0 ? 0.08 : -0.08),
-        };
+        // Atualiza o alvo de cobertura inteligente quando o anterior foi atingido ou expirou (> 7.5s)
+        const distToCoverage = coverageGoalRef.current
+          ? distance2D(currentPos, coverageGoalRef.current)
+          : 0;
+
+        if (!coverageGoalRef.current || distToCoverage < 0.38 || coverageTimerRef.current > 7.5) {
+          coverageTimerRef.current = 0;
+          coverageGoalRef.current = agent.findBestCoverageTarget(currentPos, selectedId);
+        }
+
+        const smartDustTarget = priorityManager.selectBestTarget(
+          currentPos,
+          envState.dustSpots,
+          envState.selectedRegionId,
+          envState.regions,
+          robotState.battery,
+          envState.dockPosition,
+          coverageGoalRef.current
+        );
+
+        if (robotState.targetPosition) {
+          targetPoint = robotState.targetPosition;
+        } else if (smartDustTarget) {
+          targetPoint = smartDustTarget;
+        } else {
+          // Modo patrulha / varredura com variação contínua de faixas e alternância de sentido
+          const poolLen = patrolPool.length;
+          const rawIdx = patrolIdxRef.current % poolLen;
+          const effectiveIdx = patrolReverseRef.current ? poolLen - 1 - rawIdx : rawIdx;
+          const basePoint = patrolPool[effectiveIdx];
+
+          // Variação de faixas (boustrophedon sweep lane variation): micro-deslocamento suave para cobrir 100% da área
+          const laneOffset = ((laneVariationIdxRef.current % 3) - 1) * 0.12;
+          targetPoint = {
+            x: basePoint.x + laneOffset,
+            z: basePoint.z + (laneVariationIdxRef.current % 2 === 0 ? 0.08 : -0.08),
+          };
+        }
       }
     } else if (robotState.state === 'RETURNING') {
       targetPoint = envState.dockPosition;
@@ -313,10 +320,11 @@ export function Robot() {
       // Quando não há controle manual ativo:
       // Se o robô estiver em repouso (IDLE, PAUSED, RECHARGING ou COMPLETED), garante parada imediata sem movimentação autônoma
       if (
-        robotState.state === 'IDLE' ||
-        robotState.state === 'PAUSED' ||
-        robotState.state === 'RECHARGING' ||
-        robotState.state === 'COMPLETED'
+        (robotState.state === 'IDLE' ||
+          robotState.state === 'PAUSED' ||
+          robotState.state === 'RECHARGING' ||
+          robotState.state === 'COMPLETED') &&
+        !isManualPointToPoint
       ) {
         unstuckRef.current.phase = 'IDLE';
         unstuckRef.current.stuckTimer = 0;
@@ -390,12 +398,13 @@ export function Robot() {
                   'warning'
                 );
               }
-            } else if (
-              robotState.state === 'AVOIDING' &&
-              decision.nextState === 'CLEANING'
-            ) {
+            } else if (robotState.state === 'AVOIDING') {
+              const resumeState =
+                robotState.previousActiveState === 'PAUSED' || isManualPointToPoint
+                  ? 'PAUSED'
+                  : decision.nextState;
               robotState.setOperationalState(
-                'CLEANING',
+                resumeState,
                 'Trajetória livre retomada após desvio'
               );
             }
@@ -429,6 +438,13 @@ export function Robot() {
                   'Acoplamento concluído',
                   'AspiToy conectado à base e recarregando bateria.',
                   'success'
+                );
+              } else if (isManualPointToPoint) {
+                loc.speed = 0;
+                robotState.setTargetPosition(null);
+                robotState.setOperationalState(
+                  'PAUSED',
+                  'Chegou ao ponto selecionado. Limpeza permanece pausada.'
                 );
               } else if (
                 robotState.state === 'EXPLORING' &&
@@ -544,13 +560,9 @@ export function Robot() {
     robotMotionBridge.currentSpeed = loc.speed;
     robotMotionBridge.wheelSpin = loc.wheelSpin;
 
-    // Sincroniza áudio procedural do motor do aspirador em tempo real (sem re-renders)
+    // Sincroniza áudio procedural do motor do aspirador em tempo real (somente quando higienização está ativa)
     const isOperating =
-      (robotState.state === 'CLEANING' ||
-        robotState.state === 'EXPLORING' ||
-        robotState.state === 'AVOIDING' ||
-        manualControlBridge.active) &&
-      Math.abs(loc.speed) > 0.03;
+      robotState.state === 'CLEANING' && Math.abs(loc.speed) > 0.03;
     soundManager.setMotorOperating(isOperating, Math.abs(loc.speed));
 
     // Altura vertical do piso: sobre a base de recarga (y = 0.04m) ou sobre o tapete (y = 0.023m)
@@ -581,12 +593,7 @@ export function Robot() {
       const region = envState.resolveRegionAtPoint(point);
       robotState.syncTelemetryFromBridge(region.id, region.label);
 
-      if (
-        robotState.state === 'CLEANING' ||
-        robotState.state === 'EXPLORING' ||
-        robotState.state === 'AVOIDING' ||
-        manualControlBridge.active
-      ) {
+      if (robotState.state === 'CLEANING') {
         envState.cleanDustNearPoint(point, 0.65, 0.14);
         robotState.updateBattery(-0.08);
 
@@ -602,6 +609,13 @@ export function Robot() {
             'warning'
           );
         }
+      } else if (
+        manualControlBridge.active ||
+        isManualPointToPoint ||
+        robotState.state === 'EXPLORING'
+      ) {
+        // Deslocamento manual ou navegação sem sucção consome menos bateria e não aspira poeira
+        robotState.updateBattery(-0.02);
       } else if (
         robotState.state === 'RECHARGING' &&
         robotState.battery < 100
@@ -631,7 +645,7 @@ export function Robot() {
         expression={expression}
       />
       <RobotEffects
-        isCleaning={state === 'CLEANING' || manualControlBridge.active}
+        isCleaning={state === 'CLEANING'}
         isRecharging={state === 'RECHARGING'}
       />
     </group>

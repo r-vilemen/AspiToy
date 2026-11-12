@@ -56,5 +56,19 @@ describe('Navegação Interativa por Clique no Chão da Casa Inteira', () => {
     // Destino inicial deve ser o centro do banheiro
     expect(getRoomAtPosition(target!)).toBe('bathroom');
   });
+
+  it('quando a limpeza está PAUSED, clique no chão preserva estritamente o estado PAUSED sem iniciar limpeza automaticamente', () => {
+    const dispatchCommand = useCommandStore.getState().dispatchCommand;
+    // Coloca o robô em PAUSED
+    useRobotStore.getState().setOperationalState('PAUSED', 'Limpeza pausada pelo usuário');
+    expect(useRobotStore.getState().state).toBe('PAUSED');
+
+    // Usuário clica no chão da sala de estar para deslocar manualmente
+    dispatchCommand('MOVE_TO_POINT', { point: { x: 12.0, z: 0.0 } });
+
+    // Destino deve ser definido, mas estado operacional permanece estritamente PAUSED
+    expect(useRobotStore.getState().targetPosition).toEqual({ x: 12.0, z: 0.0 });
+    expect(useRobotStore.getState().state).toBe('PAUSED');
+  });
 });
 

@@ -152,20 +152,29 @@ export class ObstacleDetector {
           primaryObstacleLabel = obs.label;
 
           if (info.isInside) {
-            // Robô penetrou no interior do AABB: ejeta de volta na face por onde entrou
-            if (currentPos.x + actorRadius <= obs.bounds.minX + 0.08) {
-              resolved.x = obs.bounds.minX - actorRadius - 0.002;
-            } else if (currentPos.x - actorRadius >= obs.bounds.maxX - 0.08) {
-              resolved.x = obs.bounds.maxX + actorRadius + 0.002;
-            } else if (currentPos.z + actorRadius <= obs.bounds.minZ + 0.08) {
-              resolved.z = obs.bounds.minZ - actorRadius - 0.002;
-            } else if (currentPos.z - actorRadius >= obs.bounds.maxZ - 0.08) {
-              resolved.z = obs.bounds.maxZ + actorRadius + 0.002;
-            } else {
-              const pen = actorRadius + 0.005;
-              resolved.x += info.normal.x * pen;
-              resolved.z += info.normal.z * pen;
+            // Robô penetrou no interior do AABB: ejeta de volta na direção de onde veio (currentPos)
+            const cx = (obs.bounds.minX + obs.bounds.maxX) / 2;
+            const cz = (obs.bounds.minZ + obs.bounds.maxZ) / 2;
+            const clampedX = Math.max(obs.bounds.minX, Math.min(currentPos.x, obs.bounds.maxX));
+            const clampedZ = Math.max(obs.bounds.minZ, Math.min(currentPos.z, obs.bounds.maxZ));
+
+            let dirX = currentPos.x - clampedX;
+            let dirZ = currentPos.z - clampedZ;
+            let len = Math.hypot(dirX, dirZ);
+
+            if (len < 1e-4) {
+              dirX = currentPos.x - cx;
+              dirZ = currentPos.z - cz;
+              len = Math.hypot(dirX, dirZ);
+              if (len < 1e-4) {
+                dirX = 0;
+                dirZ = 1;
+                len = 1;
+              }
             }
+
+            resolved.x = clampedX + (dirX / len) * (actorRadius + 0.003);
+            resolved.z = clampedZ + (dirZ / len) * (actorRadius + 0.003);
           } else {
             // Contato externo: empurra ao longo da normal de contato (deslizamento suave)
             const pen = actorRadius - info.distance + 0.002;

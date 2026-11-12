@@ -205,5 +205,38 @@ describe('Inteligência e Navegação com Grade e Algoritmo A* (Sprint 2)', () =
     // O robô deve parar encostado na face externa do vidro: X = 7.15 + 0.29 = 7.44m (e não a 7.89m com 45cm de ar!)
     expect(result.position.x).toBeCloseTo(7.44, 2);
   });
+
+  it('impede penetração do robô nos pés finos da mesa de centro (Bedroom Coffee Table Leg)', () => {
+    // Pé de mesa fino com apenas 8cm de espessura (X: -2.21 a -2.13, Z: -1.63 a -1.55)
+    const legObstacle = [
+      {
+        id: 'coffee-table-leg-nw',
+        label: 'Pé da Mesa (Noroeste)',
+        category: 'furniture' as const,
+        bounds: { minX: -2.21, maxX: -2.13, minZ: -1.63, maxZ: -1.55 },
+        collidable: true,
+        height: 0.65,
+      },
+    ];
+
+    const detector = new ObstacleDetector(legObstacle, 10.0, 8.0);
+
+    // O robô se move em direção ao pé vindo do sul: current em Z = -1.2, desired passando direto por dentro do pé em Z = -1.59
+    const current = { x: -2.17, z: -1.2 };
+    const desired = { x: -2.17, z: -1.59 };
+
+    const result = detector.resolveSafeMovement(current, desired, 0.29);
+
+    expect(result.collided).toBe(true);
+    // O robô NUNCA deve penetrar nem atravessar o pé fino
+    expect(result.position.z).toBeGreaterThanOrEqual(-1.55 + 0.285);
+    // Verifica que não está dentro do AABB do obstáculo
+    expect(
+      result.position.x >= -2.21 &&
+      result.position.x <= -2.13 &&
+      result.position.z >= -1.63 &&
+      result.position.z <= -1.55
+    ).toBe(false);
+  });
 });
 
