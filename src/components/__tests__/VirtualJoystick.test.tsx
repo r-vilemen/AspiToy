@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { VirtualJoystick } from '../ui/VirtualJoystick';
 import { manualControlBridge, useRobotStore } from '@/store/robotStore';
+import { soundManager } from '@/services/soundManager';
 
 // Polyfill PointerEvent em ambiente jsdom para suportar clientX/clientY
 if (typeof window !== 'undefined' && !window.PointerEvent) {
@@ -175,5 +176,17 @@ describe('VirtualJoystick — Analógico Virtual Estilo PS2', () => {
     const state = useRobotStore.getState();
     expect(state.state).toBe('IDLE');
     expect(state.targetPosition).toBeNull();
+  });
+
+  it('desperta o contexto de áudio ao receber toque no analógico', () => {
+    const ensureAudioSpy = vi.spyOn(soundManager, 'ensureAudioRunning');
+
+    render(<VirtualJoystick size={120} maxRadius={40} deadzone={5} />);
+    const joystick = screen.getByTestId('virtual-joystick');
+
+    fireEvent.pointerDown(joystick, { clientX: 160, clientY: 125, pointerId: 1 });
+
+    expect(ensureAudioSpy).toHaveBeenCalled();
+    ensureAudioSpy.mockRestore();
   });
 });

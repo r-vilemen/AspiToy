@@ -560,10 +560,32 @@ export function Robot() {
     robotMotionBridge.currentSpeed = loc.speed;
     robotMotionBridge.wheelSpin = loc.wheelSpin;
 
-    // Sincroniza áudio procedural do motor do aspirador em tempo real (somente quando higienização está ativa)
-    const isOperating =
-      robotState.state === 'CLEANING' && Math.abs(loc.speed) > 0.03;
-    soundManager.setMotorOperating(isOperating, Math.abs(loc.speed));
+    // Sincroniza áudio procedural do motor do aspirador em tempo real
+    // Ativa tanto em navegação autônoma quanto em pilotagem manual ou clique de navegação
+    const isManualMoving =
+      manualControlBridge.active &&
+      (Math.abs(loc.speed) > 0.02 ||
+        Math.abs(manualControlBridge.forward) > 0.04 ||
+        Math.abs(manualControlBridge.turn) > 0.04);
+
+    const isAutonomousMoving =
+      (robotState.state === 'CLEANING' ||
+        robotState.state === 'EXPLORING' ||
+        robotState.state === 'AVOIDING' ||
+        robotState.state === 'RETURNING' ||
+        robotState.targetPosition !== null) &&
+      Math.abs(loc.speed) > 0.03;
+
+    const isOperating = isManualMoving || isAutonomousMoving;
+    const currentSpeed = isManualMoving
+      ? Math.max(
+          Math.abs(loc.speed),
+          Math.abs(manualControlBridge.forward) * 0.8,
+          Math.abs(manualControlBridge.turn) * 0.65
+        )
+      : Math.abs(loc.speed);
+
+    soundManager.setMotorOperating(isOperating, currentSpeed);
 
     // Altura vertical do piso: sobre a base de recarga (y = 0.04m) ou sobre o tapete (y = 0.023m)
     const dockDist = Math.hypot(loc.x - (-4.15), loc.z - 3.2);

@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { manualControlBridge, useRobotStore } from '@/store/robotStore';
+import { soundManager } from '@/services/soundManager';
 
 export interface VirtualJoystickProps {
   /** Diâmetro total da base do joystick em pixels (padrão: 124) */
@@ -110,6 +111,9 @@ export function VirtualJoystick({
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
+
+    // Desperta o contexto de áudio em navegadores que exigem gesto do usuário
+    soundManager.ensureAudioRunning();
 
     // Bloqueia múltiplos toques concorrentes no mesmo analógico
     if (activePointerIdRef.current !== null) return;

@@ -18,6 +18,7 @@ import { manualControlBridge, useRobotStore } from '@/store/robotStore';
 import { useEnvironmentStore } from '@/store/environmentStore';
 import { useCommandStore } from '@/store/commandStore';
 import { useKeyboardControls } from '@/hooks/useKeyboardControls';
+import { soundManager } from '@/services/soundManager';
 
 function getRegionIcon(id: string) {
   switch (id) {
@@ -54,6 +55,7 @@ export function ControlPanel() {
   const isReturning = state === 'RETURNING';
 
   const startManualMove = (forward: number, turn: number) => {
+    soundManager.ensureAudioRunning();
     manualControlBridge.forward = forward;
     manualControlBridge.turn = turn;
     manualControlBridge.active = true;

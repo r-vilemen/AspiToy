@@ -460,8 +460,13 @@ export class SoundManager {
 
     this.isMotorRunning = isOperating;
 
-    if (!this.ctx || !this.motorGain) {
-      return;
+    if (!this.ctx || !this.motorGain || this.ctx.state === 'suspended') {
+      if (isOperating) {
+        this.ensureAudioRunning();
+      }
+      if (!this.ctx || !this.motorGain) {
+        return;
+      }
     }
 
     const t = this.ctx.currentTime;

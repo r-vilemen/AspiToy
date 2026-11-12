@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { manualControlBridge, useRobotStore } from '@/store/robotStore';
+import { soundManager } from '@/services/soundManager';
 
 export type DirectionKey = 'forward' | 'backward' | 'left' | 'right';
 
@@ -117,6 +118,9 @@ export function useKeyboardControls() {
 
       const dir = normalizeDirectionKey(e);
       if (!dir) return;
+
+      // Desperta o contexto de áudio em navegadores que exigem interação do usuário
+      soundManager.ensureAudioRunning();
 
       // Evita rolagem da janela pelas setas direcionais
       e.preventDefault();
