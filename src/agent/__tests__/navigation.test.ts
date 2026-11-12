@@ -163,7 +163,7 @@ describe('Inteligência e Navegação com Grade e Algoritmo A* (Sprint 2)', () =
         id: 'kitchen-stool-west',
         label: 'Cadeira / Banqueta da Ilha (Oeste)',
         category: 'furniture' as const,
-        bounds: { minX: 11.75, maxX: 12.35, minZ: 3.2, maxZ: 3.8 },
+        bounds: { minX: 11.9, maxX: 12.2, minZ: 3.35, maxZ: 3.65 },
         collidable: true,
         height: 0.85,
       },
@@ -177,8 +177,33 @@ describe('Inteligência e Navegação com Grade e Algoritmo A* (Sprint 2)', () =
     const result = detector.resolveSafeMovement(current, desired, 0.29);
 
     expect(result.collided).toBe(true);
-    // Robô deve ser bloqueado antes dos pés da banqueta
-    expect(result.position.x).toBeLessThanOrEqual(11.75 - 0.28);
+    // Robô deve ser bloqueado antes dos pés da banqueta com precisão
+    expect(result.position.x).toBeLessThanOrEqual(11.9 - 0.28);
+  });
+
+  it('permite que o robô se aproxime com precisão do box de vidro do banheiro sem distância fantasma', () => {
+    const showerObstacle = [
+      {
+        id: 'bathroom-shower-box',
+        label: 'Box de Vidro com Chuveiro',
+        category: 'furniture' as const,
+        bounds: { minX: 5.0, maxX: 7.15, minZ: 11.25, maxZ: 13.5 },
+        collidable: true,
+        height: 3.0,
+      },
+    ];
+
+    const detector = new ObstacleDetector(showerObstacle, 22.6, 17.5);
+
+    // Robô vindo do lado leste do banheiro (X = 7.8) em direção ao vidro (X = 7.15)
+    const current = { x: 7.8, z: 12.0 };
+    const desired = { x: 7.3, z: 12.0 };
+
+    const result = detector.resolveSafeMovement(current, desired, 0.29);
+
+    expect(result.collided).toBe(true);
+    // O robô deve parar encostado na face externa do vidro: X = 7.15 + 0.29 = 7.44m (e não a 7.89m com 45cm de ar!)
+    expect(result.position.x).toBeCloseTo(7.44, 2);
   });
 });
 
