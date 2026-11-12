@@ -6,6 +6,9 @@ import { useEnvironmentStore } from '@/store/environmentStore';
 import { useCommandStore } from '@/store/commandStore';
 import { ALL_HOUSE_OBSTACLES } from './HouseObstacles';
 import { soundManager } from '@/services/soundManager';
+import { getDistanceToAABB } from '@/utils/coordinates';
+import { HOUSE_FLOOR_PLAN } from './FloorPlan';
+import type { RoomId } from '@/types/house';
 
 interface DustSeed {
   x: number;
@@ -38,23 +41,55 @@ function pseudoRandom(seed: number) {
 }
 
 /**
- * Verifica se um ponto no piso colide com móveis pesados e paredes intransitáveis.
+ * Validação rigorosa de alcançabilidade física da poeira:
+ * - Garante que nenhuma semente ou mancha seja gerada em fendas estreitas (< 0.65m)
+ *   ou cantos inacessíveis onde o robô (chassi de 0.62m de diâmetro) não consiga chegar.
+ * - Exige distância mínima de 0.16m de qualquer obstáculo sólido.
+ * - Rejeita pontos que fiquem a menos de 0.35m de múltiplos obstáculos (zonas de aperto/estrangulamento).
  */
-function isInsideObstacle(x: number, z: number): boolean {
+function isDustSpawnValid(x: number, z: number, regionId: string): boolean {
+  // 1. Limites do cômodo com margem segura de parede (18cm)
+  const room = HOUSE_FLOOR_PLAN.rooms[regionId as RoomId];
+  if (room) {
+    if (
+      x < room.bounds.minX + 0.18 ||
+      x > room.bounds.maxX - 0.18 ||
+      z < room.bounds.minZ + 0.18 ||
+      z > room.bounds.maxZ - 0.18
+    ) {
+      return false;
+    }
+  }
+
+  // 2. Zonas de aperto conhecidas entre móveis e paredes:
+  if (regionId === 'kitchen') {
+    // Vão estreito de 40cm entre a divisória da sala (X: 7.6 a 12.0, Z=3.35) e a ilha/banqueta (Z=3.25 a 3.85)
+    if (x >= 11.2 && x <= 12.3 && z >= 3.0 && z <= 3.85) {
+      return false;
+    }
+  }
+
+  // 3. Distância contra obstáculos sólidos da residência
+  let nearbyCount = 0;
   for (let i = 0; i < ALL_HOUSE_OBSTACLES.length; i++) {
     const obs = ALL_HOUSE_OBSTACLES[i];
     if (!obs.collidable) continue;
-    const b = obs.bounds;
-    if (
-      x >= b.minX - 0.08 &&
-      x <= b.maxX + 0.08 &&
-      z >= b.minZ - 0.08 &&
-      z <= b.maxZ + 0.08
-    ) {
-      return true;
+
+    const distInfo = getDistanceToAABB({ x, z }, obs.bounds);
+    if (distInfo.isInside || distInfo.distance < 0.16) {
+      return false; // Dentro ou muito colado no móvel/parede
+    }
+
+    if (distInfo.distance < 0.35) {
+      nearbyCount++;
+      if (nearbyCount >= 2) {
+        // Ponto prensado entre dois obstáculos (< 0.70m de vão livre entre eles)
+        return false;
+      }
     }
   }
-  return false;
+
+  return true;
 }
 
 const DUST_PALETTE = [
@@ -98,14 +133,14 @@ function generateDustSeeds(): { seeds: DustSeed[]; patches: GroundPatchSeed[] } 
   for (const def of roomDefs) {
     let generated = 0;
     let attempts = 0;
-    const maxAttempts = def.targetCount * 8;
+    const maxAttempts = def.targetCount * 12;
 
     while (generated < def.targetCount && attempts < maxAttempts) {
       attempts++;
       const x = def.minX + prng() * (def.maxX - def.minX);
       const z = def.minZ + prng() * (def.maxZ - def.minZ);
 
-      if (isInsideObstacle(x, z)) continue;
+      if (!isDustSpawnValid(x, z, def.regionId)) continue;
 
       // Determina altura base dependendo do tapete do quarto
       let y = 0.015;
@@ -160,11 +195,11 @@ function generateDustSeeds(): { seeds: DustSeed[]; patches: GroundPatchSeed[] } 
     // Gera manchas de poeira suaves no piso
     let pGen = 0;
     let pAttempts = 0;
-    while (pGen < def.patchCount && pAttempts < def.patchCount * 6) {
+    while (pGen < def.patchCount && pAttempts < def.patchCount * 12) {
       pAttempts++;
       const px = def.minX + prng() * (def.maxX - def.minX);
       const pz = def.minZ + prng() * (def.maxZ - def.minZ);
-      if (isInsideObstacle(px, pz)) continue;
+      if (!isDustSpawnValid(px, pz, def.regionId)) continue;
 
       let py = 0.006;
       if (def.regionId === 'bedroom') {
@@ -391,7 +426,7 @@ export const FloorDust = memo(function FloorDust() {
       manualControlBridge.active ||
       robotSpeed > 0.04;
 
-    const vacuumReach = 0.38; // Raio efetivo do chassi circular e escovas giratórias laterais
+    const vacuumReach = 0.48; // Raio efetivo do chassi circular e escovas giratórias laterais estendidas
     let clumpsNeedUpdate = false;
     let patchesNeedUpdate = false;
 
@@ -506,8 +541,8 @@ export const FloorDust = memo(function FloorDust() {
 
         totalCleanedHouse += cleanedInRoom;
 
-        // Normalização de alcance: rodapés e cantos estreitos ocupam ~8% de margem
-        const reachableTotal = totalInRoom * 0.92;
+        // Com a validação rigorosa de alcançabilidade, 100% dos itens gerados são fisicamente limpáveis
+        const reachableTotal = totalInRoom;
         const pct = Math.min(100, Math.round((cleanedInRoom / Math.max(1, reachableTotal)) * 100));
         roomPcts[id] = pct;
 
@@ -515,7 +550,7 @@ export const FloorDust = memo(function FloorDust() {
         totalCleanedM2 += (pct / 100) * roomArea;
       }
 
-      const totalHouseReachable = totalItemsHouse * 0.92;
+      const totalHouseReachable = totalItemsHouse;
       const housePct = Math.min(
         100,
         Math.round((totalCleanedHouse / Math.max(1, totalHouseReachable)) * 100)
