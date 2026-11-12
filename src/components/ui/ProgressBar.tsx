@@ -7,8 +7,12 @@ export function ProgressBar() {
   const cleanedAreaM2 = useRobotStore((s) => s.cleanedAreaM2);
   const totalAreaM2 = useRobotStore((s) => s.totalAreaM2);
   const selectedRegionId = useEnvironmentStore((s) => s.selectedRegionId);
+  const regions = useEnvironmentStore((s) => s.regions);
 
-  const scopeLabel = selectedRegionId === 'all' ? 'total' : 'cômodo';
+  const selectedRegion = regions.find((r) => r.id === selectedRegionId);
+  const isRoomSpecific = selectedRegionId && selectedRegionId !== 'all';
+  const scopeLabel = isRoomSpecific ? 'cômodo' : 'total';
+  const regionLabel = isRoomSpecific ? selectedRegion?.label ?? 'Cômodo' : null;
 
   return (
     <div
@@ -16,11 +20,13 @@ export function ProgressBar() {
       aria-label={`Progresso da limpeza em ${cleaningProgress}%`}
     >
       <div className="flex items-center justify-between text-xs text-[#6E5D4F]">
-        <span className="inline-flex items-center gap-1.5 font-bold text-[#2A211B]">
-          <Broom className="h-4 w-4 stroke-[2.2] text-[#E05A36]" aria-hidden="true" />
-          Área higienizada
+        <span className="inline-flex items-center gap-1.5 font-bold text-[#2A211B] truncate mr-1">
+          <Broom className="h-4 w-4 shrink-0 stroke-[2.2] text-[#E05A36]" aria-hidden="true" />
+          <span className="truncate">
+            Área higienizada{regionLabel ? ` (${regionLabel})` : ''}
+          </span>
         </span>
-        <span className="font-mono font-black tabular-nums text-[#2A211B]">
+        <span className="shrink-0 font-mono font-black tabular-nums text-[#2A211B]">
           {cleaningProgress}%
         </span>
       </div>
@@ -37,4 +43,3 @@ export function ProgressBar() {
     </div>
   );
 }
-

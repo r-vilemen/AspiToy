@@ -530,20 +530,24 @@ export const FloorDust = memo(function FloorDust() {
 
         totalCleanedHouse += cleanedInRoom;
 
-        // Com a validação rigorosa de alcançabilidade, 100% dos itens gerados são fisicamente limpáveis
+        // Regra estrita: 100% só pode ser exibido se absolutamente TODOS os itens do cômodo foram fisicamente limpos
         const reachableTotal = totalInRoom;
-        const pct = Math.min(100, Math.round((cleanedInRoom / Math.max(1, reachableTotal)) * 100));
+        const pct =
+          cleanedInRoom >= reachableTotal
+            ? 100
+            : Math.min(99, Math.floor((cleanedInRoom / Math.max(1, reachableTotal)) * 100));
         roomPcts[id] = pct;
 
         const roomArea = ROOM_WALKABLE_AREAS[id] ?? 20;
-        totalCleanedM2 += (pct / 100) * roomArea;
+        totalCleanedM2 += (cleanedInRoom / Math.max(1, reachableTotal)) * roomArea;
       }
 
       const totalHouseReachable = totalItemsHouse;
-      const housePct = Math.min(
-        100,
-        Math.round((totalCleanedHouse / Math.max(1, totalHouseReachable)) * 100)
-      );
+      // Regra estrita: 100% da residência só quando 100% de todos os tufos e manchas da casa foram limpos
+      const housePct =
+        totalCleanedHouse >= totalHouseReachable
+          ? 100
+          : Math.min(99, Math.floor((totalCleanedHouse / Math.max(1, totalHouseReachable)) * 100));
 
       const currentRoomPct = roomPcts[robotRegion] ?? 0;
 
@@ -551,9 +555,18 @@ export const FloorDust = memo(function FloorDust() {
       let cleanedM2: number;
       let totalM2: number;
 
-      if (currentSelectedRegion && currentSelectedRegion !== 'all') {
-        activeProgress = roomPcts[currentSelectedRegion] ?? 0;
-        totalM2 = ROOM_WALKABLE_AREAS[currentSelectedRegion] ?? 20;
+      // Se o usuário estiver pilotando manualmente ou clicando no chão em outro cômodo,
+      // a barra de progresso principal não deve ficar congelada em um cômodo anterior que já terminou
+      const isManualBrowsing =
+        manualControlBridge.active ||
+        robotState.state === 'PAUSED' ||
+        robotState.targetPosition !== null;
+
+      const effectiveRegion = isManualBrowsing ? 'all' : currentSelectedRegion;
+
+      if (effectiveRegion && effectiveRegion !== 'all') {
+        activeProgress = roomPcts[effectiveRegion] ?? 0;
+        totalM2 = ROOM_WALKABLE_AREAS[effectiveRegion] ?? 20;
         cleanedM2 = Number(((activeProgress / 100) * totalM2).toFixed(1));
       } else {
         activeProgress = housePct;
@@ -574,10 +587,10 @@ export const FloorDust = memo(function FloorDust() {
         );
 
         if (activeProgress >= 100 && robotState.state === 'CLEANING') {
-          const isHouse = !currentSelectedRegion || currentSelectedRegion === 'all';
+          const isHouse = !effectiveRegion || effectiveRegion === 'all';
           const targetName = isHouse
             ? 'Toda a residência'
-            : ROOM_DISPLAY_NAMES[currentSelectedRegion] ?? 'Região selecionada';
+            : ROOM_DISPLAY_NAMES[effectiveRegion] ?? 'Região selecionada';
 
           robotState.setOperationalState(
             'COMPLETED',

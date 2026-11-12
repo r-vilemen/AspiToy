@@ -96,6 +96,9 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
           robot.setCleaningProgress(0);
         }
 
+        // O comando geral "INICIAR LIMPEZA" opera na residência inteira
+        env.setSelectedRegion('all');
+
         // Se estiver acoplado na base recarregando, desacopla para frente da estação
         if (robot.state === 'RECHARGING') {
           robotMotionBridge.x = -3.8;
