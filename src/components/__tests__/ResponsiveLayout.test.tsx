@@ -139,6 +139,51 @@ describe('Responsividade Mobile e Desktop da Interface', () => {
     ).toBeNull();
   });
 
+  it('Dashboard renderiza analógico virtual PS2 e botões de ação rápida no celular sem bloquear a tela', () => {
+    render(<Dashboard />);
+
+    // Verifica que o analógico virtual PS2 está presente no layout móvel
+    const joysticks = screen.getAllByTestId('virtual-joystick');
+    expect(joysticks.length).toBeGreaterThanOrEqual(1);
+
+    // Verifica botões de ação rápida para celular
+    const mobileStartBtn = screen.getByRole('button', { name: /Limpar/i });
+    expect(mobileStartBtn).toBeDefined();
+
+    const returnBaseBtn = screen.getByRole('button', {
+      name: /Retornar à base de recarga/i,
+    });
+    expect(returnBaseBtn).toBeDefined();
+
+    const cycleCameraBtn = screen.getByRole('button', {
+      name: /Alternar modo de câmera/i,
+    });
+    expect(cycleCameraBtn).toBeDefined();
+
+    // Testa alternância de câmera cíclica no botão mobile
+    expect(useCommandStore.getState().cameraPreset).toBe('follow');
+    fireEvent.click(cycleCameraBtn);
+    expect(useCommandStore.getState().cameraPreset).toBe('overview');
+    fireEvent.click(cycleCameraBtn);
+    expect(useCommandStore.getState().cameraPreset).toBe('closeup');
+    fireEvent.click(cycleCameraBtn);
+    expect(useCommandStore.getState().cameraPreset).toBe('follow');
+
+    // Inicia limpeza com o botão rápido
+    fireEvent.click(mobileStartBtn);
+    expect(useRobotStore.getState().state).toBe('CLEANING');
+
+    // Botão se transforma em Pausar (botão móvel exato)
+    const mobilePauseBtn = screen.getByRole('button', { name: /^Pausar$/i });
+    expect(mobilePauseBtn).toBeDefined();
+    fireEvent.click(mobilePauseBtn);
+    expect(useRobotStore.getState().state).toBe('PAUSED');
+
+    // Retornar à base
+    fireEvent.click(returnBaseBtn);
+    expect(useRobotStore.getState().state).toBe('RETURNING');
+  });
+
   it('Dashboard renderiza rodapé fixo e compacto com créditos e link para o LinkedIn da RVACODE', () => {
     render(<Dashboard />);
 
