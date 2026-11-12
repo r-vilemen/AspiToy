@@ -64,7 +64,6 @@ import {
   type FurniturePerchSpot,
 } from './catNavigation';
 
-export { ALL_HOUSE_CAT_PERCHES as CAT_FURNITURE_PERCHES };
 export type { FurniturePerchSpot };
 
 const FLOOR_CAT_STATES: CatBehaviorState[] = [
