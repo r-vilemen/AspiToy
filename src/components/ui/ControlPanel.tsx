@@ -18,7 +18,6 @@ import { manualControlBridge, useRobotStore } from '@/store/robotStore';
 import { useEnvironmentStore } from '@/store/environmentStore';
 import { useCommandStore } from '@/store/commandStore';
 import { useKeyboardControls } from '@/hooks/useKeyboardControls';
-import { VirtualJoystick } from './VirtualJoystick';
 
 function getRegionIcon(id: string) {
   switch (id) {
@@ -131,10 +130,10 @@ export function ControlPanel() {
         </button>
       </div>
 
-      {/* Controle direcional manual: Teclado WASD / Setas no Desktop, Analógico no Mobile */}
+      {/* Controle direcional manual: Exclusivo para Desktop (Teclado WASD / Setas D-Pad) */}
       <div
         id="tour-manual-controls"
-        className="rounded-2xl border-2 border-[#2A211B]/20 bg-[#F3ECE0]/70 p-3 space-y-2.5"
+        className="hidden sm:block rounded-2xl border-2 border-[#2A211B]/20 bg-[#F3ECE0]/70 p-3 space-y-2.5"
       >
         <div className="flex items-center justify-between gap-1">
           <span className="text-xs font-black uppercase tracking-wider text-[#2A211B]">
@@ -146,16 +145,13 @@ export function ControlPanel() {
                 ● ATIVO
               </span>
             ) : (
-              <>
-                <span className="hidden sm:inline">WASD / Teclado</span>
-                <span className="sm:hidden">Analógico 360°</span>
-              </>
+              'WASD / Teclado'
             )}
           </span>
         </div>
 
-        {/* No Desktop: Setas direcionais clássicas e indicação de teclado */}
-        <div className="hidden sm:flex flex-col items-center gap-1.5 select-none">
+        {/* Setas direcionais clássicas e indicação de teclado para Desktop */}
+        <div className="flex flex-col items-center gap-1.5 select-none">
           <div className="grid grid-cols-3 gap-1.5 max-w-[140px] select-none touch-none">
             <div />
             <button
@@ -222,14 +218,6 @@ export function ControlPanel() {
           </div>
           <span className="text-[10px] font-mono font-bold text-[#6E5D4F]">
             Use WASD ou Setas no teclado
-          </span>
-        </div>
-
-        {/* No Mobile: Analógico virtual substituindo as setas direcionais */}
-        <div className="flex sm:hidden flex-col items-center gap-1 select-none touch-none py-1">
-          <VirtualJoystick size={110} knobSize={48} maxRadius={34} deadzone={5} />
-          <span className="text-[10px] font-mono font-bold text-[#6E5D4F]">
-            Analógico 360° para pilotar
           </span>
         </div>
       </div>
