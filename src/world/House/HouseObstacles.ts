@@ -512,6 +512,14 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     collidable: true,
     height: 1.8,
   },
+  {
+    id: 'living-floor-lamp',
+    label: 'Abajur de Coluna da Sala',
+    category: 'furniture',
+    bounds: { minX: 16.54, maxX: 17.06, minZ: 1.54, maxZ: 2.06 },
+    collidable: true,
+    height: 2.4,
+  },
 
   // --- COZINHA ---
   {
