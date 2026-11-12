@@ -122,5 +122,63 @@ describe('Inteligência e Navegação com Grade e Algoritmo A* (Sprint 2)', () =
     const distToCorner = Math.hypot(result.position.x - 7.48, result.position.z - 6.65);
     expect(distToCorner).toBeGreaterThanOrEqual(0.28);
   });
+
+  it('impede penetração de paredes e batentes mesmo dentro da área de travessia de portas', () => {
+    const wallObstacles = [
+      {
+        id: 'wall-hallway-east-2',
+        label: 'Parede Leste do Corredor Norte',
+        category: 'wall' as const,
+        bounds: { minX: 7.5, maxX: 7.7, minZ: 1.4, maxZ: 5.35 },
+        collidable: true,
+        height: 4.6,
+      },
+      {
+        id: 'wall-hallway-east-3',
+        label: 'Parede Leste do Corredor Sul',
+        category: 'wall' as const,
+        bounds: { minX: 7.5, maxX: 7.7, minZ: 6.65, maxZ: 8.6 },
+        collidable: true,
+        height: 4.6,
+      },
+    ];
+
+    const detector = new ObstacleDetector(wallObstacles, 22.6, 17.5);
+
+    // Robô dentro de traversableBounds da porta da cozinha [minX: 6.8, maxX: 8.4, minZ: 5.35, maxZ: 6.65]
+    // Tentando se mover contra a parede sólida em (7.6, 5.25)
+    const current = { x: 7.2, z: 5.4 };
+    const desired = { x: 7.6, z: 5.25 }; // Dentro do volume da parede
+
+    const result = detector.resolveSafeMovement(current, desired, 0.29);
+
+    // Não pode penetrar: deve colidir e ser repelido
+    expect(result.collided).toBe(true);
+    expect(result.position.x).toBeLessThan(7.5 - 0.28);
+  });
+
+  it('impede penetração do robô nas banquetas da cozinha', () => {
+    const stoolObstacles = [
+      {
+        id: 'kitchen-stool-west',
+        label: 'Cadeira / Banqueta da Ilha (Oeste)',
+        category: 'furniture' as const,
+        bounds: { minX: 11.75, maxX: 12.35, minZ: 3.2, maxZ: 3.8 },
+        collidable: true,
+        height: 0.85,
+      },
+    ];
+
+    const detector = new ObstacleDetector(stoolObstacles, 22.6, 17.5);
+
+    const current = { x: 11.4, z: 3.5 };
+    const desired = { x: 12.05, z: 3.5 }; // Centro exato da banqueta
+
+    const result = detector.resolveSafeMovement(current, desired, 0.29);
+
+    expect(result.collided).toBe(true);
+    // Robô deve ser bloqueado antes dos pés da banqueta
+    expect(result.position.x).toBeLessThanOrEqual(11.75 - 0.28);
+  });
 });
 

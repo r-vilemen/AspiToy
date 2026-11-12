@@ -7,7 +7,12 @@ import { useCommandStore } from '@/store/commandStore';
 import { ALL_HOUSE_OBSTACLES } from './HouseObstacles';
 import { soundManager } from '@/services/soundManager';
 import { getDistanceToAABB } from '@/utils/coordinates';
-import { HOUSE_FLOOR_PLAN } from './FloorPlan';
+import {
+  HOUSE_FLOOR_PLAN,
+  ROOM_DISPLAY_NAMES,
+  ROOM_WALKABLE_AREAS,
+  TOTAL_HOUSE_WALKABLE_AREA,
+} from './FloorPlan';
 import type { RoomId } from '@/types/house';
 
 interface DustSeed {
@@ -222,22 +227,6 @@ function generateDustSeeds(): { seeds: DustSeed[]; patches: GroundPatchSeed[] } 
   return { seeds, patches };
 }
 
-export const ROOM_WALKABLE_AREAS: Record<string, number> = {
-  bedroom: 32.0,
-  hallway: 18.0,
-  'living-room': 36.0,
-  kitchen: 24.0,
-  bathroom: 12.0,
-};
-export const TOTAL_HOUSE_WALKABLE_AREA = 122.0;
-
-export const ROOM_DISPLAY_NAMES: Record<string, string> = {
-  bedroom: 'Quarto',
-  hallway: 'Corredor',
-  'living-room': 'Sala de Estar',
-  kitchen: 'Cozinha',
-  bathroom: 'Banheiro',
-};
 
 /**
  * Sistema de Poeira Dinâmica no Piso do AspiToy:

@@ -89,18 +89,10 @@ export class ObstacleDetector {
       }
     }
 
-    // Se estiver no vão de porta aberta, ignora colisão com paredes de alvenaria paralelas
-    const inDoorway =
-      this.isMultiRoom &&
-      HOUSE_FLOOR_PLAN.doors.some(
-        (door) =>
-          door.isOpen && isPointInsideBounds(point, door.traversableBounds)
-      );
-
+    // Paredes perimétricas e móveis sólidos: os vãos das portas já são recortados
+    // fisicamente em HOUSE_WALL_OBSTACLES, garantindo que as ombreiras e paredes sólidas
+    // nunca sejam atravessadas pelo robô ou gato mesmo nas passagens entre cômodos.
     for (const obs of this.getAllCollidableObstacles()) {
-      if (inDoorway && obs.category === 'wall') {
-        continue;
-      }
       const info = getDistanceToAABB(point, obs.bounds);
       if (info.distance < robotRadius) {
         return { id: obs.id, label: obs.label, bounds: obs.bounds };
@@ -148,29 +140,38 @@ export class ObstacleDetector {
     let primaryObstacleId: string = directHit.id;
     let primaryObstacleLabel: string = directHit.label;
 
-    const inDoorway =
-      this.isMultiRoom &&
-      HOUSE_FLOOR_PLAN.doors.some(
-        (door) =>
-          door.isOpen && isPointInsideBounds(resolved, door.traversableBounds)
-      );
-
-    // Resolução contínua com normais radiais (contorna quinas e batentes suavemente)
+    // Resolução contínua com normais radiais (contorna quinas, batentes e móveis suavemente)
     for (let iter = 0; iter < 4; iter++) {
       let anyCorrection = false;
 
       for (const obs of this.getAllCollidableObstacles()) {
-        if (inDoorway && obs.category === 'wall') continue;
-
         const info = getDistanceToAABB(resolved, obs.bounds);
         if (info.distance < actorRadius) {
           anyCorrection = true;
           primaryObstacleId = obs.id;
           primaryObstacleLabel = obs.label;
 
-          const pen = actorRadius - info.distance + 0.002;
-          resolved.x += info.normal.x * pen;
-          resolved.z += info.normal.z * pen;
+          if (info.isInside) {
+            // Robô penetrou no interior do AABB: ejeta de volta na face por onde entrou
+            if (currentPos.x + actorRadius <= obs.bounds.minX + 0.08) {
+              resolved.x = obs.bounds.minX - actorRadius - 0.002;
+            } else if (currentPos.x - actorRadius >= obs.bounds.maxX - 0.08) {
+              resolved.x = obs.bounds.maxX + actorRadius + 0.002;
+            } else if (currentPos.z + actorRadius <= obs.bounds.minZ + 0.08) {
+              resolved.z = obs.bounds.minZ - actorRadius - 0.002;
+            } else if (currentPos.z - actorRadius >= obs.bounds.maxZ - 0.08) {
+              resolved.z = obs.bounds.maxZ + actorRadius + 0.002;
+            } else {
+              const pen = actorRadius + 0.005;
+              resolved.x += info.normal.x * pen;
+              resolved.z += info.normal.z * pen;
+            }
+          } else {
+            // Contato externo: empurra ao longo da normal de contato (deslizamento suave)
+            const pen = actorRadius - info.distance + 0.002;
+            resolved.x += info.normal.x * pen;
+            resolved.z += info.normal.z * pen;
+          }
         }
       }
 

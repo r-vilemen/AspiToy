@@ -20,7 +20,7 @@ export const Bathroom = memo(function Bathroom() {
       {/* 1. Piso Cerâmico do Banheiro (X: 5.0 a 10.6, Z: 8.5 a 13.5) */}
       <mesh
         receiveShadow
-        position={[7.8, -0.01, 11.0]}
+        position={[7.8, 0.005, 11.0]}
         rotation={[-Math.PI / 2, 0, 0]}
         onClick={handleFloorClick}
       >

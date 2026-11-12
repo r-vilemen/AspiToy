@@ -8,7 +8,7 @@ import {
   ROOM_WALKABLE_AREAS,
   TOTAL_HOUSE_WALKABLE_AREA,
   ROOM_DISPLAY_NAMES,
-} from '../FloorDust';
+} from '../FloorPlan';
 
 describe('Telemetria Realista da Área Higienizada', () => {
   beforeEach(() => {

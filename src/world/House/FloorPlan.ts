@@ -179,3 +179,22 @@ export function getRoomAtPosition(point: Vector2D): RoomId {
   if (point.x > 7.6) return 'living-room';
   return 'hallway';
 }
+
+export const ROOM_WALKABLE_AREAS: Record<string, number> = {
+  bedroom: 34.0,
+  hallway: 18.0,
+  'living-room': 34.0,
+  kitchen: 24.0,
+  bathroom: 12.0,
+};
+
+export const TOTAL_HOUSE_WALKABLE_AREA = 122.0;
+
+export const ROOM_DISPLAY_NAMES: Record<string, string> = {
+  bedroom: 'Quarto',
+  hallway: 'Corredor',
+  'living-room': 'Sala de Estar',
+  kitchen: 'Cozinha',
+  bathroom: 'Banheiro',
+};
+

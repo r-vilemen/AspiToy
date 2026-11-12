@@ -20,7 +20,7 @@ export const Kitchen = memo(function Kitchen() {
       {/* 1. Piso Cerâmico Xadrez da Cozinha (X: 7.6 a 17.6, Z: 3.2 a 8.5) */}
       <mesh
         receiveShadow
-        position={[12.6, -0.01, 5.85]}
+        position={[12.6, 0.005, 5.85]}
         rotation={[-Math.PI / 2, 0, 0]}
         onClick={handleFloorClick}
       >
