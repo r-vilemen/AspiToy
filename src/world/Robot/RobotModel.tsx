@@ -343,11 +343,6 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
             <meshBasicMaterial color={statusColor} />
           </mesh>
         </group>
-          <mesh position={[0, 0.049, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[0.038, 0.054, 24]} />
-            <meshBasicMaterial color={statusColor} />
-          </mesh>
-        </group>
 
         {/* 5. VISOR CURVO OLED INTEGRADO E FACE EXPRESSIVA (7 ESTADOS) */}
         <group position={[0, 0.018, 0.258]}>

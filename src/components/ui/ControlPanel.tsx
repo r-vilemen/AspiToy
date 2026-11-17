@@ -101,7 +101,7 @@ export function ControlPanel() {
               className="w-full inline-flex items-center justify-center gap-2 rounded-2xl border-2.5 border-[#2A211B] bg-linear-to-b from-[#14B8A6] to-[#0F766E] px-4 py-3 text-sm font-black uppercase tracking-wider text-white shadow-[0_4px_0px_#042F2E] hover:shadow-[0_2px_0px_#042F2E] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px] transition cursor-pointer"
             >
               <Play className="h-4 w-4 fill-current stroke-[2]" aria-hidden="true" />
-              Retomar operação
+              Retomar limpeza
             </button>
           ) : (
             <button

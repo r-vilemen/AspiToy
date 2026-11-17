@@ -1,11 +1,3 @@
-import { DustParticles } from './DustParticles';
-
-/**
- * Iluminação Cinematográfica de Animação 3D (Seção 5 da Direção de Arte):
- * - Atmosfera aconchegante de fim de tarde entrando pelas janelas
- * - Contraste equilibrado com preenchimento suave para manter o AspiToy sempre legível
- * - Sombras suaves de alta definição (2048x2048) e feixes de luz natural com partículas
- */
 import { memo } from 'react';
 import { useEnvironmentStore } from '@/store/environmentStore';
 import { DustParticles } from './DustParticles';
