@@ -120,6 +120,41 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
         break;
       }
 
+      case 'START_ORGANIZING': {
+        manualControlBridge.active = false;
+        manualControlBridge.forward = 0;
+        manualControlBridge.turn = 0;
+
+        if (robot.state === 'ORGANIZING') {
+          accepted = false;
+          label = 'Guardar brinquedos';
+          reason = 'O AspiToy já está organizando os brinquedos no tapete.';
+          break;
+        }
+
+        env.setSelectedRegion('bedroom');
+
+        // Se estiver acoplado na base recarregando, desacopla para frente da estação
+        if (robot.state === 'RECHARGING') {
+          robotMotionBridge.x = -3.8;
+          robotMotionBridge.z = 2.6;
+          robotMotionBridge.rotationY = 0;
+        }
+
+        robot.setTargetPosition(null);
+        label = 'Guardar brinquedos no tapete';
+        robot.setOperationalState(
+          'ORGANIZING',
+          'Arrumando os brinquedos do quarto em direção ao tapete'
+        );
+        get().pushNotification(
+          'Missão: Guarda-Brinquedos!',
+          'O AspiToy começou a empurrar os brinquedos espalhados para a área do tapete.',
+          'info'
+        );
+        break;
+      }
+
       case 'PAUSE_CLEANING': {
         manualControlBridge.active = false;
         manualControlBridge.forward = 0;
@@ -127,6 +162,7 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
 
         if (
           robot.state !== 'CLEANING' &&
+          robot.state !== 'ORGANIZING' &&
           robot.state !== 'EXPLORING' &&
           robot.state !== 'RETURNING' &&
           robot.state !== 'AVOIDING' &&

@@ -1,8 +1,10 @@
-import { forwardRef } from 'react';
+import { forwardRef, useMemo } from 'react';
 import { RoundedBox } from '@react-three/drei';
 import * as THREE from 'three';
 import { sharedMaterials, WORLD_PALETTE } from '../Environment/Materials';
 import type { RobotExpression, RobotOperationalState } from '@/types/robot';
+import { ROBOT_SKINS, useRobotStore } from '@/store/robotStore';
+import { useEnvironmentStore } from '@/store/environmentStore';
 
 interface RobotModelProps {
   wheelSpin?: number;
@@ -15,13 +17,13 @@ interface RobotModelProps {
 }
 
 /**
- * Protagonista AspiToy — Design Industrial de Personagem de Animação 3D (Seção 6 da Direção de Arte):
- * - Corpo circular suavemente esculpido (36 segmentos) com cúpula superior boleada
- * - Para-choque frontal articulado com faixa de amortecimento emborrachada
- * - Compartimento traseiro translúcido de coleta de pó com filtro visível
+ * Protagonista AspiToy — Design Industrial de Personagem de Animação 3D:
+ * - Corpo circular com suporte a skins customizáveis da Oficina Toy Box (Clássico, Patrulheiro, Xerife, Cyber)
+ * - Faróis ópticos frontais com feixe luminoso no piso para o modo noturno e operações
+ * - Para-choque frontal articulado com amortecimento
+ * - Compartimento traseiro translúcido de coleta de pó
  * - Torre óptica de sensores ToF/LiDAR com anel luminoso de estado
- * - Visor OLED curvo integrado ao chassi comunicando 7 estados emocionais distintos
- * - Rodas emborrachadas integradas e escovas laterais giratórias funcionais
+ * - Visor OLED curvo comunicando 7 estados emocionais distintos
  */
 export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function RobotModel(
   {
@@ -35,16 +37,56 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
   },
   ref
 ) {
+  const currentSkinId = useRobotStore((s) => s.skin);
+  const timeOfDay = useEnvironmentStore((s) => s.timeOfDay);
+
+  const skin = ROBOT_SKINS[currentSkinId] ?? ROBOT_SKINS.classic;
+  const isNight = timeOfDay === 'night';
+  const isOperating =
+    state === 'CLEANING' || state === 'ORGANIZING' || state === 'EXPLORING';
+
+  // Materiais dinâmicos derivados da Skin equipada na Oficina Toy Box
+  const skinMaterials = useMemo(() => {
+    return {
+      shell: new THREE.MeshPhysicalMaterial({
+        color: skin.shellColor,
+        roughness: skin.isTranslucent ? 0.18 : 0.35,
+        metalness: 0.05,
+        clearcoat: skin.isTranslucent ? 0.85 : 0.35,
+        transparent: !!skin.isTranslucent,
+        opacity: skin.isTranslucent ? 0.74 : 1.0,
+        transmission: skin.isTranslucent ? 0.45 : 0,
+      }),
+      coralTrim: new THREE.MeshStandardMaterial({
+        color: skin.coralTrimColor,
+        roughness: 0.38,
+        metalness: 0.1,
+      }),
+      blueTrim: new THREE.MeshStandardMaterial({
+        color: skin.blueTrimColor,
+        roughness: 0.4,
+        metalness: 0.08,
+      }),
+      yellowTrim: new THREE.MeshStandardMaterial({
+        color: skin.yellowTrimColor,
+        roughness: 0.35,
+        metalness: 0.08,
+      }),
+    };
+  }, [skin]);
+
   const statusColor =
     state === 'CLEANING'
-      ? WORLD_PALETTE.robotCoral
-      : state === 'AVOIDING' || state === 'PAUSED'
-        ? WORLD_PALETTE.ledAmber
-        : state === 'RETURNING'
-          ? '#F97316'
-          : state === 'COMPLETED'
-            ? WORLD_PALETTE.ledEmerald
-            : WORLD_PALETTE.sensorCyan;
+      ? skin.coralTrimColor
+      : state === 'ORGANIZING'
+        ? '#F59E0B'
+        : state === 'AVOIDING' || state === 'PAUSED'
+          ? WORLD_PALETTE.ledAmber
+          : state === 'RETURNING'
+            ? '#F97316'
+            : state === 'COMPLETED'
+              ? WORLD_PALETTE.ledEmerald
+              : skin.eyeColor;
 
   const eyeColor =
     expression === 'alert'
@@ -54,8 +96,8 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
         : expression === 'happy'
           ? '#4ADE80'
           : expression === 'focused'
-            ? '#38BDF8'
-            : WORLD_PALETTE.sensorCyan;
+            ? skin.eyeColor
+            : skin.eyeColor;
 
   // Parametrização das 7 expressões faciais integradas ao visor industrial
   const eyeScaleY =
@@ -117,7 +159,7 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
       {/* Corpo articulado com física de suspensão (pitch, roll, bobY) */}
       <group position={[0, 0.098 + bobY, 0]} rotation={[pitch, 0, roll]}>
         {/* 1. CHASSI PRINCIPAL ARREDONDADO DE ACABAMENTO INDUSTRIAL */}
-        <mesh castShadow receiveShadow material={sharedMaterials.robotShell}>
+        <mesh castShadow receiveShadow material={skinMaterials.shell}>
           <cylinderGeometry args={[0.268, 0.284, 0.118, 36]} />
         </mesh>
 
@@ -127,24 +169,24 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
           receiveShadow
           position={[0, 0.058, 0]}
           scale={[1, 0.22, 1]}
-          material={sharedMaterials.robotShell}
+          material={skinMaterials.shell}
         >
           <sphereGeometry args={[0.266, 36, 18, 0, Math.PI * 2, 0, Math.PI / 2]} />
         </mesh>
 
-        {/* Anel de acabamento superior coral acetinado */}
+        {/* Anel de acabamento superior */}
         <mesh
           castShadow
           position={[0, 0.064, 0]}
           rotation={[Math.PI / 2, 0, 0]}
-          material={sharedMaterials.robotCoralTrim}
+          material={skinMaterials.coralTrim}
         >
           <torusGeometry args={[0.22, 0.016, 14, 36]} />
         </mesh>
 
         {/* Painel de controle superior com botão de acionamento iluminado */}
         <group position={[0, 0.088, 0.095]}>
-          <mesh castShadow material={sharedMaterials.robotYellowTrim}>
+          <mesh castShadow material={skinMaterials.yellowTrim}>
             <cylinderGeometry args={[0.038, 0.044, 0.016, 24]} />
           </mesh>
           <mesh position={[0, 0.0095, 0]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -153,10 +195,10 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
           </mesh>
         </group>
 
-        {/* 2. PARA-CHOQUE FRONTAL COM AMORTECIMENTO E BORRACHA PROTETORA */}
+        {/* 2. PARA-CHOQUE FRONTAL COM FARÓIS ÓPTICOS E AMORTECIMENTO */}
         <group position={[0, -0.004, 0.012 - bumperCompression]}>
-          {/* Carenagem frontal azul do amortecedor */}
-          <mesh castShadow material={sharedMaterials.robotBlueTrim}>
+          {/* Carenagem frontal do amortecedor */}
+          <mesh castShadow material={skinMaterials.blueTrim}>
             <cylinderGeometry
               args={[
                 0.292,
@@ -170,6 +212,42 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
               ]}
             />
           </mesh>
+
+          {/* FARÓIS ÓPTICOS FRONTAIS LED (ACESOS À NOITE OU EM OPERAÇÃO) */}
+          <group position={[0, 0.012, 0.286]}>
+            {[-0.105, 0.105].map((lx, idx) => (
+              <group key={idx} position={[lx, 0, 0]}>
+                {/* Aro metálico do farol */}
+                <mesh rotation={[Math.PI / 2, 0, 0]} material={sharedMaterials.metalChrome}>
+                  <torusGeometry args={[0.022, 0.0045, 8, 16]} />
+                </mesh>
+                {/* Lente convexa iluminada */}
+                <mesh position={[0, 0, 0.003]} rotation={[Math.PI / 2, 0, 0]}>
+                  <circleGeometry args={[0.019, 16]} />
+                  <meshBasicMaterial
+                    color={isNight ? '#FEF08A' : isOperating ? '#FFFBEB' : '#FDE68A'}
+                    transparent
+                    opacity={isNight ? 0.95 : isOperating ? 0.75 : 0.4}
+                  />
+                </mesh>
+              </group>
+            ))}
+
+            {/* Feixe direcional cônico iluminando o piso à frente do robô */}
+            {(isNight || isOperating) && (
+              <group position={[0, 0.04, 0.02]}>
+                <spotLight
+                  intensity={isNight ? 2.6 : 1.1}
+                  distance={4.8}
+                  angle={Math.PI / 5}
+                  penumbra={0.7}
+                  color="#FEF9C3"
+                  castShadow={false}
+                />
+              </group>
+            )}
+          </group>
+
           {/* Faixa emborrachada de impacto na parte inferior do para-choque */}
           <mesh
             position={[0, -0.026, 0]}
@@ -210,13 +288,13 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
             smoothness={3}
             material={sharedMaterials.robotDustBin}
           />
-          {/* Filtro HEPA amarelo visível dentro do compartimento translúcido */}
+          {/* Filtro HEPA visível dentro do compartimento translúcido */}
           <RoundedBox
             args={[0.14, 0.048, 0.06]}
             radius={0.01}
             smoothness={2}
             position={[0, 0, 0.01]}
-            material={sharedMaterials.robotYellowTrim}
+            material={skinMaterials.yellowTrim}
           />
           {/* Alça metálica de liberação do reservatório */}
           <RoundedBox
@@ -241,7 +319,7 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
         {/* 4. TORRE DE SENSORES LIDAR / TOF E INDICADOR LUMINOSO */}
         <group position={[0, 0.088, -0.035]}>
           {/* Base cônica da torre de navegação */}
-          <mesh castShadow material={sharedMaterials.robotBlueTrim}>
+          <mesh castShadow material={skinMaterials.blueTrim}>
             <cylinderGeometry args={[0.068, 0.086, 0.044, 28]} />
           </mesh>
           {/* Disco óptico giratório cromado */}
@@ -256,10 +334,15 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
           <mesh
             castShadow
             position={[0, 0.04, 0]}
-            material={sharedMaterials.robotCoralTrim}
+            material={skinMaterials.coralTrim}
           >
             <cylinderGeometry args={[0.062, 0.066, 0.014, 28]} />
           </mesh>
+          <mesh position={[0, 0.049, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[0.038, 0.054, 24]} />
+            <meshBasicMaterial color={statusColor} />
+          </mesh>
+        </group>
           <mesh position={[0, 0.049, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <ringGeometry args={[0.038, 0.054, 24]} />
             <meshBasicMaterial color={statusColor} />
@@ -367,11 +450,11 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
             >
               <cylinderGeometry args={[0.056, 0.056, 0.044, 24]} />
             </mesh>
-            {/* Calota amarela industrial */}
+            {/* Calota com acabamento da skin */}
             <mesh
               position={[idx === 0 ? -0.023 : 0.023, 0, 0]}
               rotation={[0, 0, Math.PI / 2]}
-              material={sharedMaterials.robotYellowTrim}
+              material={skinMaterials.yellowTrim}
             >
               <cylinderGeometry args={[0.034, 0.034, 0.008, 18]} />
             </mesh>
@@ -393,7 +476,7 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
             position={[bx, -0.074, 0.185]}
             rotation={[0, (idx === 0 ? -1 : 1) * wheelSpin * 2.4, 0]}
           >
-            <mesh material={sharedMaterials.robotYellowTrim}>
+            <mesh material={skinMaterials.yellowTrim}>
               <cylinderGeometry args={[0.022, 0.022, 0.014, 14]} />
             </mesh>
             {[0, (Math.PI * 2) / 3, (Math.PI * 4) / 3].map((ang, i) => (

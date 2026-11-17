@@ -6,7 +6,24 @@ export type RobotOperationalState =
   | 'RETURNING'
   | 'RECHARGING'
   | 'PAUSED'
-  | 'COMPLETED';
+  | 'COMPLETED'
+  | 'ORGANIZING';
+
+export type RobotSkinId = 'classic' | 'space-ranger' | 'sheriff' | 'cyber-translucent';
+
+export interface RobotSkin {
+  id: RobotSkinId;
+  name: string;
+  tagline: string;
+  description: string;
+  requiredM2: number;
+  shellColor: string;
+  coralTrimColor: string;
+  blueTrimColor: string;
+  yellowTrimColor: string;
+  eyeColor: string;
+  isTranslucent?: boolean;
+}
 
 export type RobotExpression =
   | 'neutral'
@@ -27,6 +44,9 @@ export interface RobotTelemetry {
   state: RobotOperationalState;
   previousActiveState: RobotOperationalState | null;
   expression: RobotExpression;
+  skin: RobotSkinId;
+  organizedToysCount: number;
+  totalToysToOrganize: number;
   position: Vector2D;
   rotationY: number;
   battery: number;

@@ -38,8 +38,16 @@
 - **Iluminação Cinematográfica**: Sol matinal dourado com sombras de alta resolução (2048x2048) e contato suave (`ContactShadows`).
 - **Garantia de Qualidade**: 60 testes automatizados no Vitest (100% aprovados), tipagem estrita sem erros no `tsc --noEmit` e bundle de produção com code-splitting (`three`, `r3f`, `app`).
 
-### Melhorias Recentes Solicitadas pelo Usuário
-- **Transparência Dinâmica de Paredes**: Todas as paredes perimetrais e divisórias da casa possuem oclusão translúcida inteligente voltada para a câmera, impedindo bloqueio de visão no ângulo isométrico.
-- **Responsividade Mobile**: Layout otimizado para dispositivos móveis com barra de ação rápida inferior flutuante, drawer expansível e botões de controle tátil D-pad de 44px, preservando integralmente o layout desktop.
-- **Remoção de Elementos Decorativos**: Remoção das estrelas e esferas da tela de carregamento inicial, garantindo estética limpa e profissional.
-- **Telemetria Realista de Área Higienizada**: Sincronização direta e contínua entre a aspiração real do piso (tufos e manchas) e o painel de telemetria, exibindo porcentagem fiel do cômodo ativo e da residência completa com metragem quadrada real higienizada ($m^2$).
+### Inovações Recentes Implementadas
+
+#### Fase 2 — Ciclo Circadiano Dia / Pôr do Sol / Noite & Faróis Ópticos
+- **Ciclo Dinâmico (`environmentStore.ts`)**: Alternância contínua entre Dia (`day`), Pôr do Sol (`sunset`) e Noite (`night`) via botão no topo da interface.
+- **Iluminação Residencial Noturna (`Lighting.tsx` & `Scene.tsx`)**: No modo noturno, a luz solar se atenua para um luar índigo profundo, o fog atmosférico se adapta, e 5 pontos de luz residencial quente acendem pelo interior da casa (abajur do quarto, arandelas do corredor, luminária da sala, pendentes da cozinha e espelho do banheiro).
+- **Faróis Ópticos Frontais LED (`RobotModel.tsx`)**: Faróis circulares de lente convexa com anéis de cromo no para-choque do robô, além de um foco cônico de luz (`SpotLight`) que ilumina o chão à frente do robô no escuro ou durante operações ativas.
+- **Áudio Circadiano Adaptativo (`soundManager.ts`)**: No período noturno, o som de colisão com os brinquedos adota um timbre de caixinha de música (*Music Box / Celesta*) em onda senoidal pura e harmônicos agudos suaves, e o motor opera em Modo Silencioso Noturno com atenuação de 55% no ganho e corte suave de frequências.
+
+#### Fase 4 — Modo "Guarda-Brinquedos" & Oficina Toy Box
+- **Inteligência de Arrumação (`ToyOrganizer.ts`)**: Algoritmo que calcula vetores de aproximação e empurrão para os 16 brinquedos físicos espalhados pelo quarto, conduzindo-os autonomamente até a zona de armazenamento delimitada no tapete do Andy (`TOY_STORAGE_ZONE`).
+- **Anel Indicador Visual no Tapete (`ToyStoryFigures.tsx`)**: Marcação visual pulsante no tapete durante o modo de arrumação, com feedback sonoro de sino de celebração (`playToyCelebrationChime`) a cada brinquedo guardado.
+- **Oficina Toy Box de Customização (`ToyBoxModal.tsx` & `robotStore.ts`)**: Sistema de progressão e personalização com 4 pinturas exclusivas (*AspiToy Clássico*, *Patrulheiro Espacial*, *Xerife do Quarto* e *Cyber Translúcido*), desbloqueadas conforme o jogador acumula metros quadrados ($m^2$) limpos na residência.
+- **Botão de Missão Especial no Painel (`ControlPanel.tsx`)**: Botão "Guardar Brinquedos" com contador em tempo real de brinquedos organizados no tapete (`X/16 NO TAPETE`).

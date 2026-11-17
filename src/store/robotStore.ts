@@ -3,11 +3,65 @@ import type {
   RobotExpression,
   RobotMotionBridge,
   RobotOperationalState,
+  RobotSkin,
+  RobotSkinId,
   RobotTelemetry,
   Vector2D,
 } from '@/types/robot';
 import { INITIAL_DOCK_POSITION } from './environmentStore';
 import { clamp } from '@/utils/math';
+
+export const ROBOT_SKINS: Record<RobotSkinId, RobotSkin> = {
+  classic: {
+    id: 'classic',
+    name: 'AspiToy Clássico',
+    tagline: 'Edição de Fábrica MK-I',
+    description: 'Pintura original inspirada em eletrodomésticos retrô de brinquedo.',
+    requiredM2: 0,
+    shellColor: '#F4EFE6',
+    coralTrimColor: '#E05A36',
+    blueTrimColor: '#0284C7',
+    yellowTrimColor: '#FBBF24',
+    eyeColor: '#06B6D4',
+  },
+  'space-ranger': {
+    id: 'space-ranger',
+    name: 'Patrulheiro Espacial',
+    tagline: 'Ao Infinito e Além!',
+    description: 'Armadura espacial branca e verde-limão com acabamento em roxo cósmico.',
+    requiredM2: 25,
+    shellColor: '#F8FAFC',
+    coralTrimColor: '#7E22CE',
+    blueTrimColor: '#84CC16',
+    yellowTrimColor: '#EF4444',
+    eyeColor: '#22C55E',
+  },
+  sheriff: {
+    id: 'sheriff',
+    name: 'Xerife do Quarto',
+    tagline: 'Tem uma Cobra na Minha Bota!',
+    description: 'Inspirado no traje do cowboy com amarelo xadrez, lenço vermelho e botas.',
+    requiredM2: 50,
+    shellColor: '#F5BC16',
+    coralTrimColor: '#DC2626',
+    blueTrimColor: '#78350F',
+    yellowTrimColor: '#FBBF24',
+    eyeColor: '#F59E0B',
+  },
+  'cyber-translucent': {
+    id: 'cyber-translucent',
+    name: 'Cyber Translúcido',
+    tagline: 'Edição Especial Anos 2000',
+    description: 'Chassi translúcido em acrílico neon com interior tecnológico de brinquedo.',
+    requiredM2: 90,
+    shellColor: '#06B6D4',
+    coralTrimColor: '#EC4899',
+    blueTrimColor: '#1E1E2E',
+    yellowTrimColor: '#22D3EE',
+    eyeColor: '#F43F5E',
+    isTranslucent: true,
+  },
+};
 
 /**
  * Bridge mutável de alta frequência (60 FPS) lida/atualizada dentro de `useFrame`.
@@ -42,6 +96,8 @@ function mapStateToExpression(state: RobotOperationalState): RobotExpression {
       return 'curious';
     case 'CLEANING':
       return 'focused';
+    case 'ORGANIZING':
+      return 'focused';
     case 'AVOIDING':
       return 'alert';
     case 'RETURNING':
@@ -66,6 +122,8 @@ export interface RobotStoreState extends RobotTelemetry {
     cleanedM2: number,
     totalM2: number
   ) => void;
+  setRobotSkin: (skinId: RobotSkinId) => void;
+  setOrganizedToysCount: (count: number) => void;
   tickOperationTimer: () => void;
   setTargetPosition: (target: Vector2D | null) => void;
   resetRobot: () => void;
@@ -76,6 +134,9 @@ const INITIAL_TELEMETRY: RobotTelemetry = {
   state: 'IDLE',
   previousActiveState: null,
   expression: 'neutral',
+  skin: 'classic',
+  organizedToysCount: 0,
+  totalToysToOrganize: 16,
   position: { ...INITIAL_DOCK_POSITION },
   rotationY: Math.PI / 2,
   battery: 96,
@@ -103,6 +164,14 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
       expression: mapStateToExpression(nextState),
       lastAction: actionDescription ?? current.lastAction,
     });
+  },
+
+  setRobotSkin: (skinId) => {
+    set({ skin: skinId });
+  },
+
+  setOrganizedToysCount: (count) => {
+    set({ organizedToysCount: clamp(count, 0, get().totalToysToOrganize) });
   },
 
   syncTelemetryFromBridge: (regionId, regionLabel) => {
@@ -140,6 +209,7 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
     if (
       state === 'EXPLORING' ||
       state === 'CLEANING' ||
+      state === 'ORGANIZING' ||
       state === 'AVOIDING' ||
       state === 'RETURNING'
     ) {
@@ -150,6 +220,7 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
   setTargetPosition: (target) => set({ targetPosition: target }),
 
   resetRobot: () => {
+    const currentSkin = get().skin;
     robotMotionBridge.x = INITIAL_DOCK_POSITION.x;
     robotMotionBridge.z = INITIAL_DOCK_POSITION.z;
     robotMotionBridge.rotationY = Math.PI / 2;
@@ -161,6 +232,7 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
 
     set({
       ...INITIAL_TELEMETRY,
+      skin: currentSkin,
       position: { ...INITIAL_DOCK_POSITION },
     });
   },

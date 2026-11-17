@@ -1,5 +1,7 @@
 import type { Vector2D } from './robot';
 
+export type TimeOfDay = 'day' | 'sunset' | 'night';
+
 export type ObstacleCategory =
   | 'wall'
   | 'furniture'

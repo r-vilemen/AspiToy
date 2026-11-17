@@ -1,5 +1,6 @@
 export type UserCommandType =
   | 'START_CLEANING'
+  | 'START_ORGANIZING'
   | 'PAUSE_CLEANING'
   | 'RESUME_CLEANING'
   | 'RETURN_TO_BASE'

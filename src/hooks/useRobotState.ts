@@ -58,6 +58,12 @@ export const STATE_DESCRIPTORS: Record<RobotOperationalState, OperationalStateDe
     dotColorClass: 'bg-[#10B981]',
     badgeClass: 'bg-[#10B981]/18 text-[#065F46] border-[#10B981]/40',
   },
+  ORGANIZING: {
+    label: 'Guardando brinquedos',
+    shortNote: 'Arrumando o quarto no tapete',
+    dotColorClass: 'bg-[#F59E0B]',
+    badgeClass: 'bg-[#F59E0B]/16 text-[#B45309] border-[#F59E0B]/40',
+  },
 };
 
 export function formatDuration(seconds: number): string {

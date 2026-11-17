@@ -7,11 +7,13 @@ import type {
   PushableToyState,
   RoomDimensions,
   RoomRegion,
+  TimeOfDay,
 } from '@/types/environment';
 import type { Vector2D } from '@/types/robot';
 import { isPointInsideBounds } from '@/utils/coordinates';
 import { clamp } from '@/utils/math';
 import { ALL_HOUSE_OBSTACLES, INITIAL_BEDROOM_OBSTACLES } from '@/world/House/HouseObstacles';
+import { soundManager } from '@/services/soundManager';
 
 export const INITIAL_DOCK_POSITION: Vector2D = { x: -4.15, z: 3.2 };
 
@@ -591,9 +593,12 @@ export interface EnvironmentStoreState {
   obstacles: EnvironmentObstacle[];
   dustSpots: DustSpot[];
   selectedRegionId: string;
+  timeOfDay: TimeOfDay;
   catState: CatBehaviorState;
   catPosition: Vector2D;
   setSelectedRegion: (regionId: string) => void;
+  setTimeOfDay: (time: TimeOfDay) => void;
+  cycleTimeOfDay: () => TimeOfDay;
   setCatTelemetry: (state: CatBehaviorState, position: Vector2D) => void;
   cycleCatBehavior: () => CatBehaviorState;
   resolveRegionAtPoint: (point: Vector2D) => RoomRegion;
@@ -609,8 +614,23 @@ export const useEnvironmentStore = create<EnvironmentStoreState>((set, get) => (
   obstacles: ALL_HOUSE_OBSTACLES,
   dustSpots: INITIAL_DUST_SPOTS,
   selectedRegionId: 'all',
+  timeOfDay: 'sunset',
   catState: 'WALKING',
   catPosition: { ...INITIAL_CAT_POSITION },
+
+  setTimeOfDay: (time) => {
+    soundManager.setTimeOfDay(time);
+    set({ timeOfDay: time });
+  },
+
+  cycleTimeOfDay: () => {
+    const current = get().timeOfDay;
+    const next: TimeOfDay =
+      current === 'day' ? 'sunset' : current === 'sunset' ? 'night' : 'day';
+    soundManager.setTimeOfDay(next);
+    set({ timeOfDay: next });
+    return next;
+  },
 
   setSelectedRegion: (regionId) => {
     const exists = get().regions.some((r) => r.id === regionId);

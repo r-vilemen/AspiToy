@@ -5,6 +5,7 @@ import {
   ArrowUp,
   Bath,
   Bed,
+  Boxes,
   Compass,
   Home,
   Pause,
@@ -41,6 +42,8 @@ function getRegionIcon(id: string) {
 
 export function ControlPanel() {
   const state = useRobotStore((s) => s.state);
+  const organizedToysCount = useRobotStore((s) => s.organizedToysCount);
+  const totalToysToOrganize = useRobotStore((s) => s.totalToysToOrganize);
   const regions = useEnvironmentStore((s) => s.regions);
   const selectedRegionId = useEnvironmentStore((s) => s.selectedRegionId);
   const dispatchCommand = useCommandStore((s) => s.dispatchCommand);
@@ -48,6 +51,7 @@ export function ControlPanel() {
 
   const isRunning =
     state === 'CLEANING' ||
+    state === 'ORGANIZING' ||
     state === 'EXPLORING' ||
     state === 'AVOIDING' ||
     state === 'RETURNING';
@@ -97,7 +101,7 @@ export function ControlPanel() {
               className="w-full inline-flex items-center justify-center gap-2 rounded-2xl border-2.5 border-[#2A211B] bg-linear-to-b from-[#14B8A6] to-[#0F766E] px-4 py-3 text-sm font-black uppercase tracking-wider text-white shadow-[0_4px_0px_#042F2E] hover:shadow-[0_2px_0px_#042F2E] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px] transition cursor-pointer"
             >
               <Play className="h-4 w-4 fill-current stroke-[2]" aria-hidden="true" />
-              Retomar limpeza
+              Retomar operação
             </button>
           ) : (
             <button
@@ -109,6 +113,27 @@ export function ControlPanel() {
               Pausar operação
             </button>
           )}
+        </div>
+
+        {/* Botão de Missão Especial: Guardar Brinquedos no Tapete */}
+        <div className="col-span-2">
+          <button
+            type="button"
+            onClick={() => dispatchCommand('START_ORGANIZING')}
+            className={`w-full inline-flex items-center justify-between rounded-xl border-2 border-[#2A211B] px-3.5 py-2.5 text-xs font-black uppercase tracking-wider transition cursor-pointer shadow-[0_3px_0px_#2A211B] hover:shadow-[0_1px_0px_#2A211B] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px] ${
+              state === 'ORGANIZING'
+                ? 'bg-[#FBBF24] text-[#2A211B]'
+                : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0]'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Boxes className="h-4 w-4 stroke-[2.4] text-[#E05A36]" />
+              <span>Guardar Brinquedos</span>
+            </div>
+            <span className="font-mono text-[10px] font-black rounded-lg border border-[#2A211B]/20 bg-[#F5ECE0] px-2 py-0.5 text-[#2A211B]">
+              {organizedToysCount}/{totalToysToOrganize} NO TAPETE
+            </span>
+          </button>
         </div>
 
         <button

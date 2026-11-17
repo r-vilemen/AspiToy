@@ -14,12 +14,14 @@ import {
 } from '@/store/robotStore';
 import {
   getDynamicAllCatsObstacles,
+  pushableToysBridge,
   stepPushableToysPhysics,
   useEnvironmentStore,
 } from '@/store/environmentStore';
 import { useCommandStore } from '@/store/commandStore';
 import { AgentController } from '@/agent/AgentController';
 import { PriorityManager } from '@/agent/decision/PriorityManager';
+import { ToyOrganizer } from '@/agent/decision/ToyOrganizer';
 import { distance2D, damp } from '@/utils/math';
 import type { Vector2D } from '@/types/robot';
 import { soundManager } from '@/services/soundManager';
@@ -150,6 +152,8 @@ export function Robot() {
   );
 
   const priorityManager = useMemo(() => new PriorityManager(), []);
+  const toyOrganizer = useMemo(() => new ToyOrganizer(), []);
+  const lastOrganizedCountRef = useRef(0);
 
   const locomotionRef = useRef<RobotLocomotionState>({
     x: robotMotionBridge.x,
@@ -214,7 +218,36 @@ export function Robot() {
     const isManualPointToPoint =
       robotState.state === 'PAUSED' && robotState.targetPosition !== null;
 
-    if (
+    if (robotState.state === 'ORGANIZING') {
+      const orgPlan = toyOrganizer.planStep({ x: loc.x, z: loc.z }, pushableToysBridge);
+      targetPoint = orgPlan.targetPoint;
+
+      if (orgPlan.organizedCount !== lastOrganizedCountRef.current) {
+        if (orgPlan.organizedCount > lastOrganizedCountRef.current) {
+          soundManager.playToyCelebrationChime();
+          cmdState.pushNotification(
+            'Brinquedo guardado!',
+            `${orgPlan.organizedCount} de ${orgPlan.totalToys} brinquedos agora estão organizados no tapete.`,
+            'info'
+          );
+        }
+        lastOrganizedCountRef.current = orgPlan.organizedCount;
+        robotState.setOrganizedToysCount(orgPlan.organizedCount);
+      }
+
+      if (orgPlan.allDone) {
+        robotState.setOperationalState(
+          'COMPLETED',
+          'Quarto 100% arrumado! Todos os 16 brinquedos foram guardados.'
+        );
+        soundManager.playToyCelebrationChime();
+        cmdState.pushNotification(
+          'Quarto Arrumado!',
+          'Sensacional! Todos os 16 brinquedos foram colocados em segurança no tapete.',
+          'success'
+        );
+      }
+    } else if (
       robotState.state === 'CLEANING' ||
       robotState.state === 'EXPLORING' ||
       robotState.state === 'AVOIDING' ||
@@ -570,6 +603,7 @@ export function Robot() {
 
     const isAutonomousMoving =
       (robotState.state === 'CLEANING' ||
+        robotState.state === 'ORGANIZING' ||
         robotState.state === 'EXPLORING' ||
         robotState.state === 'AVOIDING' ||
         robotState.state === 'RETURNING' ||
@@ -631,6 +665,21 @@ export function Robot() {
             'warning'
           );
         }
+      } else if (robotState.state === 'ORGANIZING') {
+        robotState.updateBattery(-0.06);
+
+        if (robotState.battery <= 18) {
+          robotState.setTargetPosition(envState.dockPosition);
+          robotState.setOperationalState(
+            'RETURNING',
+            'Bateria baixa (18%). Retornando à base de recarga.'
+          );
+          cmdState.pushNotification(
+            'Bateria baixa',
+            'Nível crítico. Retorno automático à base acionado pelo agente.',
+            'warning'
+          );
+        }
       } else if (
         manualControlBridge.active ||
         isManualPointToPoint ||
@@ -667,7 +716,7 @@ export function Robot() {
         expression={expression}
       />
       <RobotEffects
-        isCleaning={state === 'CLEANING'}
+        isCleaning={state === 'CLEANING' || state === 'ORGANIZING'}
         isRecharging={state === 'RECHARGING'}
       />
     </group>

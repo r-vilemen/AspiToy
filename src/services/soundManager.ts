@@ -184,6 +184,7 @@ export class SoundManager {
   private musicVolume = 0.7; // Volume da trilha sonora (0 to 1)
   private sfxVolume = 0.8; // Volume dos efeitos sonoros (0 to 1)
   private isMusicMuted = false; // Estado mutado da trilha sonora (preserva o volume configurado)
+  private timeOfDay: 'day' | 'sunset' | 'night' = 'sunset'; // Período do dia adaptativo
 
   // Gerador de Ruído de Aspiração (Motor AspiToy)
   private noiseNode: AudioBufferSourceNode | null = null;
@@ -243,7 +244,7 @@ export class SoundManager {
     }
 
     if (this.ctx.state === 'suspended') {
-      this.ctx.resume().catch(() => {});
+      this.ctx.resume().catch(() => { });
     }
 
     return this.ctx;
@@ -320,7 +321,7 @@ export class SoundManager {
       this.initContext();
     }
     if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume().catch(() => {});
+      this.ctx.resume().catch(() => { });
     }
     if (this.isEnabled && this.schedulerTimer === null) {
       this.startMusicScheduler();
@@ -446,8 +447,24 @@ export class SoundManager {
   }
 
   /**
+   * Ajusta a atmosfera sonora para o período do dia (Dia, Pôr do Sol ou Noite).
+   * À noite ativa a caixinha de música suave e modo motor silencioso.
+   */
+  public setTimeOfDay(time: 'day' | 'sunset' | 'night'): void {
+    this.timeOfDay = time;
+    if (this.isMotorRunning) {
+      this.setMotorOperating(true);
+    }
+  }
+
+  public getTimeOfDay(): 'day' | 'sunset' | 'night' {
+    return this.timeOfDay;
+  }
+
+  /**
    * Atualiza o estado físico do motor de aspiração.
    * Modula o volume e a frequência com a velocidade do robô.
+   * No modo noturno, opera em Modo Silencioso para não acordar os brinquedos e os gatos.
    */
   public setMotorOperating(isOperating: boolean, speed = 0.8): void {
     if (!this.isEnabled) {
@@ -471,11 +488,14 @@ export class SoundManager {
 
     const t = this.ctx.currentTime;
     if (isOperating) {
-      const targetGain = 0.14 + Math.min(speed, 1.2) * 0.05;
+      const isNight = this.timeOfDay === 'night';
+      // No modo noturno, volume cai pela metade e o ruído fica mais abafado
+      const nightDamping = isNight ? 0.45 : 1.0;
+      const targetGain = (0.14 + Math.min(speed, 1.2) * 0.05) * nightDamping;
       this.motorGain.gain.setTargetAtTime(targetGain, t, 0.25);
 
       if (this.motorFilter) {
-        const targetFreq = 320 + Math.min(speed, 1.5) * 80;
+        const targetFreq = (320 + Math.min(speed, 1.5) * 80) * (isNight ? 0.65 : 1.0);
         this.motorFilter.frequency.setTargetAtTime(targetFreq, t, 0.2);
       }
     } else {
@@ -604,33 +624,38 @@ export class SoundManager {
   }
 
   /**
-   * Nota de Marimba / Glockenspiel de Brinquedo Saltitante
+   * Nota de Marimba / Glockenspiel de Brinquedo Saltitante.
+   * No modo noturno, transmuta para timbre límpido de Caixinha de Música (Music Box / Celesta).
    */
   private playToyMarimbaNote(noteName: string, startTime: number, duration: number): void {
     const freq = NOTES[noteName];
     if (!freq || !this.ctx || !this.musicGain) return;
 
-    // Oscilador de onda triangular quente (fundamental)
+    const isNight = this.timeOfDay === 'night';
+
+    // Oscilador fundamental: senoidal doce à noite (Music Box) ou triangular animado de dia (Marimba)
     const osc1 = this.ctx.createOscillator();
-    osc1.type = 'triangle';
+    osc1.type = isNight ? 'sine' : 'triangle';
     osc1.frequency.setValueAtTime(freq, startTime);
 
-    // Oscilador de onda senoidal de brilho (harmônico duplo sutil)
+    // Oscilador harmônico: brilho de sino puro à noite (oitava dobrada)
     const osc2 = this.ctx.createOscillator();
     osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(freq * 2, startTime);
+    osc2.frequency.setValueAtTime(freq * (isNight ? 3 : 2), startTime);
 
-    // Envelope de ganho percussivo e saltitante
+    // Envelope de ganho
     const noteGain = this.ctx.createGain();
     noteGain.gain.setValueAtTime(0.0001, startTime);
-    noteGain.gain.linearRampToValueAtTime(0.36, startTime + 0.012);
-    const decay = Math.min(duration * 0.95, 0.45);
+    const attackTime = isNight ? 0.006 : 0.012;
+    const peakGain = isNight ? 0.22 : 0.36;
+    noteGain.gain.linearRampToValueAtTime(peakGain, startTime + attackTime);
+    const decay = isNight ? Math.min(duration * 1.2, 0.65) : Math.min(duration * 0.95, 0.45);
     noteGain.gain.exponentialRampToValueAtTime(0.0001, startTime + decay);
 
-    // Filtro para calor acústico de xilofone/madeira
+    // Filtro aveludado
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(3200, startTime);
+    filter.frequency.setValueAtTime(isNight ? 1900 : 3200, startTime);
 
     osc1.connect(noteGain);
     osc2.connect(noteGain);
@@ -650,19 +675,21 @@ export class SoundManager {
     const freq = NOTES[noteName];
     if (!freq || !this.ctx || !this.musicGain) return;
 
+    const isNight = this.timeOfDay === 'night';
+
     const osc = this.ctx.createOscillator();
-    osc.type = 'triangle';
+    osc.type = isNight ? 'sine' : 'triangle';
     osc.frequency.setValueAtTime(freq, startTime);
 
     const bassGain = this.ctx.createGain();
     bassGain.gain.setValueAtTime(0.0001, startTime);
-    bassGain.gain.linearRampToValueAtTime(0.32, startTime + 0.015);
+    bassGain.gain.linearRampToValueAtTime(isNight ? 0.16 : 0.32, startTime + 0.015);
     const decay = Math.min(duration * 0.9, 0.4);
     bassGain.gain.exponentialRampToValueAtTime(0.0001, startTime + decay);
 
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(380, startTime);
+    filter.frequency.setValueAtTime(isNight ? 240 : 380, startTime);
 
     osc.connect(bassGain);
     bassGain.connect(filter);
@@ -678,6 +705,8 @@ export class SoundManager {
   private playToyChord(chordNotes: string[], startTime: number, duration: number): void {
     if (!this.ctx || !this.musicGain) return;
 
+    const isNight = this.timeOfDay === 'night';
+
     chordNotes.forEach((noteName) => {
       const freq = NOTES[noteName];
       if (!freq || !this.ctx || !this.musicGain) return;
@@ -688,13 +717,13 @@ export class SoundManager {
 
       const gain = this.ctx.createGain();
       gain.gain.setValueAtTime(0.0001, startTime);
-      gain.gain.linearRampToValueAtTime(0.075, startTime + 0.012);
+      gain.gain.linearRampToValueAtTime(isNight ? 0.045 : 0.075, startTime + 0.012);
       const decay = Math.min(duration * 0.85, 0.35);
       gain.gain.exponentialRampToValueAtTime(0.0001, startTime + decay);
 
       const filter = this.ctx.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(1600, startTime);
+      filter.frequency.setValueAtTime(isNight ? 1100 : 1600, startTime);
 
       osc.connect(gain);
       gain.connect(filter);
@@ -711,6 +740,8 @@ export class SoundManager {
   private playWoodblock(startTime: number, isHigh = false): void {
     if (!this.ctx || !this.musicGain) return;
 
+    const isNight = this.timeOfDay === 'night';
+
     const osc = this.ctx.createOscillator();
     osc.type = 'sine';
     const startFreq = isHigh ? 920 : 620;
@@ -720,7 +751,8 @@ export class SoundManager {
 
     const gain = this.ctx.createGain();
     gain.gain.setValueAtTime(0.0001, startTime);
-    gain.gain.linearRampToValueAtTime(isHigh ? 0.08 : 0.06, startTime + 0.003);
+    const volume = isNight ? 0.025 : isHigh ? 0.08 : 0.06;
+    gain.gain.linearRampToValueAtTime(volume, startTime + 0.003);
     gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.045);
 
     osc.connect(gain);
@@ -728,6 +760,35 @@ export class SoundManager {
 
     osc.start(startTime);
     osc.stop(startTime + 0.05);
+  }
+
+  /**
+   * Fanfarra brilhante de celebração quando um brinquedo é guardado no tapete ou a oficina desbloqueia uma skin!
+   */
+  public playToyCelebrationChime(): void {
+    const ctx = this.initContext();
+    if (!ctx || !this.sfxGain || !this.isEnabled) return;
+
+    const t = ctx.currentTime;
+    const notes = [NOTES.C5, NOTES.E5, NOTES.G5, NOTES.C6, NOTES.E6 || 1318.5];
+
+    notes.forEach((freq, idx) => {
+      const noteTime = t + idx * 0.065;
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, noteTime);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, noteTime);
+      gain.gain.linearRampToValueAtTime(0.28, noteTime + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, noteTime + 0.42);
+
+      osc.connect(gain);
+      gain.connect(this.sfxGain!);
+
+      osc.start(noteTime);
+      osc.stop(noteTime + 0.45);
+    });
   }
 
   // ==========================================================================
