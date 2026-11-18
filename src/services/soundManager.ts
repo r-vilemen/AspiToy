@@ -192,11 +192,21 @@ export class SoundManager {
   private motorOsc: OscillatorNode | null = null;
   private isMotorRunning = false;
 
-  // Hélice do Modo Aspi-Helicóptero
-  private propellerOsc: OscillatorNode | null = null;
-  private propellerFlutterOsc: OscillatorNode | null = null;
+  // Hélice do Modo Aspi-Helicóptero (Sintetizador Procedural de Rotor Aéreo)
   private propellerGain: GainNode | null = null;
+  private propellerNoiseSource: AudioBufferSourceNode | null = null;
+  private propellerAirFilter: BiquadFilterNode | null = null;
+  private propellerChopGain: GainNode | null = null;
+  private propellerChopLfo: OscillatorNode | null = null;
+  private propellerChopDepth: GainNode | null = null;
+  private propellerThumpOsc: OscillatorNode | null = null;
+  private propellerThumpFilter: BiquadFilterNode | null = null;
+  private propellerThumpGain: GainNode | null = null;
+  private propellerWhineOsc: OscillatorNode | null = null;
+  private propellerWhineFilter: BiquadFilterNode | null = null;
+  private propellerWhineGain: GainNode | null = null;
   private isPropellerRunning = false;
+  private pinkNoiseBuffer: AudioBuffer | null = null;
 
   // Agendador de Trilha Sonora
   private schedulerTimer: number | null = null;
@@ -257,13 +267,13 @@ export class SoundManager {
   }
 
   /**
-   * Sintetizador procedural do motor de aspiração do AspiToy:
-   * Combina ruído de fluxo de ar passa-faixa com zumbido harmônico de motor elétrico miniatura.
+   * Gera ou retorna o buffer em loop de ruído rosa compartilhado.
+   * Usado para a sucção do aspirador e para a aerodinâmica das pás da hélice.
    */
-  private setupMotorSynth(): void {
-    if (!this.ctx || !this.motorGain) return;
+  private getPinkNoiseBuffer(): AudioBuffer | null {
+    if (!this.ctx) return null;
+    if (this.pinkNoiseBuffer) return this.pinkNoiseBuffer;
 
-    // 1. Buffer de Ruído Rosa de 2 segundos em loop contínuo
     const bufferSize = this.ctx.sampleRate * 2;
     const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
     const data = noiseBuffer.getChannelData(0);
@@ -286,6 +296,21 @@ export class SoundManager {
       data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.08;
       b6 = white * 0.115926;
     }
+
+    this.pinkNoiseBuffer = noiseBuffer;
+    return this.pinkNoiseBuffer;
+  }
+
+  /**
+   * Sintetizador procedural do motor de aspiração do AspiToy:
+   * Combina ruído de fluxo de ar passa-faixa com zumbido harmônico de motor elétrico miniatura.
+   */
+  private setupMotorSynth(): void {
+    if (!this.ctx || !this.motorGain) return;
+
+    // 1. Buffer de Ruído Rosa em loop contínuo
+    const noiseBuffer = this.getPinkNoiseBuffer();
+    if (!noiseBuffer) return;
 
     this.noiseNode = this.ctx.createBufferSource();
     this.noiseNode.buffer = noiseBuffer;
@@ -881,7 +906,10 @@ export class SoundManager {
   }
 
   /**
-   * Inicia o zumbido contínuo e rítmico da hélice do helicóptero
+   * Inicia o som aerodinâmico e lúdico da hélice do helicóptero:
+   * Combina turbulência de ar cortado pelas pás (chopped pink noise),
+   * pulso rítmico de baixa frequência (blade thump) e um suave zumbido
+   * tecnológico de micro-turbina de brinquedo.
    */
   public startPropellerSound(): void {
     if (!this.isEnabled) return;
@@ -892,49 +920,119 @@ export class SoundManager {
       this.isPropellerRunning = true;
       const t = ctx.currentTime;
 
-      // Ganho da hélice
+      // Ganho master da hélice (volume equilibrado com a música e SFX)
       this.propellerGain = ctx.createGain();
       this.propellerGain.gain.setValueAtTime(0.0001, t);
-      this.propellerGain.gain.exponentialRampToValueAtTime(0.18, t + 0.3);
+      this.propellerGain.gain.exponentialRampToValueAtTime(0.16, t + 0.35);
       this.propellerGain.connect(this.sfxGain);
 
-      // Oscilador de flutter (modulação de amplitude das pás a 16Hz)
-      const flutterGain = ctx.createGain();
-      flutterGain.gain.setValueAtTime(0.5, t);
+      // 1. Camada de Ar / Turbulência cortada pelas pás (Chopped Air Wash)
+      const noiseBuffer = this.getPinkNoiseBuffer();
+      if (noiseBuffer) {
+        this.propellerNoiseSource = ctx.createBufferSource();
+        this.propellerNoiseSource.buffer = noiseBuffer;
+        this.propellerNoiseSource.loop = true;
 
-      this.propellerFlutterOsc = ctx.createOscillator();
-      this.propellerFlutterOsc.type = 'sawtooth';
-      this.propellerFlutterOsc.frequency.setValueAtTime(16, t);
-      this.propellerFlutterOsc.connect(flutterGain.gain);
+        this.propellerAirFilter = ctx.createBiquadFilter();
+        this.propellerAirFilter.type = 'bandpass';
+        this.propellerAirFilter.frequency.setValueAtTime(450, t);
+        this.propellerAirFilter.Q.setValueAtTime(1.5, t);
 
-      // Oscilador principal do som do rotor (tom aveludado e aerodinâmico)
-      this.propellerOsc = ctx.createOscillator();
-      this.propellerOsc.type = 'triangle';
-      this.propellerOsc.frequency.setValueAtTime(110, t);
-      this.propellerOsc.connect(flutterGain);
-      flutterGain.connect(this.propellerGain);
+        this.propellerChopGain = ctx.createGain();
+        this.propellerChopGain.gain.setValueAtTime(0.38, t);
 
-      this.propellerFlutterOsc.start(t);
-      this.propellerOsc.start(t);
+        // LFO senoidal suave que simula a passagem periódica de cada pá (16 Hz inicial)
+        this.propellerChopLfo = ctx.createOscillator();
+        this.propellerChopLfo.type = 'sine';
+        this.propellerChopLfo.frequency.setValueAtTime(16, t);
+
+        this.propellerChopDepth = ctx.createGain();
+        this.propellerChopDepth.gain.setValueAtTime(0.28, t);
+
+        this.propellerChopLfo.connect(this.propellerChopDepth);
+        this.propellerChopDepth.connect(this.propellerChopGain.gain);
+
+        this.propellerNoiseSource.connect(this.propellerAirFilter);
+        this.propellerAirFilter.connect(this.propellerChopGain);
+        this.propellerChopGain.connect(this.propellerGain);
+
+        this.propellerNoiseSource.start(t);
+        this.propellerChopLfo.start(t);
+      }
+
+      // 2. Camada de Batimento Grave das Pás (Blade Thump encorpado)
+      this.propellerThumpOsc = ctx.createOscillator();
+      this.propellerThumpOsc.type = 'sine';
+      this.propellerThumpOsc.frequency.setValueAtTime(36, t);
+
+      this.propellerThumpFilter = ctx.createBiquadFilter();
+      this.propellerThumpFilter.type = 'lowpass';
+      this.propellerThumpFilter.frequency.setValueAtTime(90, t);
+
+      this.propellerThumpGain = ctx.createGain();
+      this.propellerThumpGain.gain.setValueAtTime(0.12, t);
+
+      this.propellerThumpOsc.connect(this.propellerThumpFilter);
+      this.propellerThumpFilter.connect(this.propellerThumpGain);
+      this.propellerThumpGain.connect(this.propellerGain);
+      this.propellerThumpOsc.start(t);
+
+      // 3. Camada de Micro-Turbina High-Tech (Zumbido sutil e amigável de drone)
+      this.propellerWhineOsc = ctx.createOscillator();
+      this.propellerWhineOsc.type = 'sine';
+      this.propellerWhineOsc.frequency.setValueAtTime(290, t);
+
+      this.propellerWhineFilter = ctx.createBiquadFilter();
+      this.propellerWhineFilter.type = 'lowpass';
+      this.propellerWhineFilter.frequency.setValueAtTime(700, t);
+
+      this.propellerWhineGain = ctx.createGain();
+      this.propellerWhineGain.gain.setValueAtTime(0.03, t);
+
+      this.propellerWhineOsc.connect(this.propellerWhineFilter);
+      this.propellerWhineFilter.connect(this.propellerWhineGain);
+      this.propellerWhineGain.connect(this.propellerGain);
+      this.propellerWhineOsc.start(t);
     } catch (e) {
       console.warn('Erro ao iniciar som de hélice:', e);
     }
   }
 
   /**
-   * Modula a frequência da hélice conforme a rotação aumenta
+   * Modula a frequência e dinâmica da hélice conforme a rotação varia (decolagem, voo e pouso)
    */
   public updatePropellerSpeed(speed: number): void {
-    if (!this.ctx || !this.isPropellerRunning || !this.propellerOsc || !this.propellerFlutterOsc) return;
+    if (!this.ctx || !this.isPropellerRunning) return;
     const t = this.ctx.currentTime;
-    const baseFreq = 80 + Math.min(speed, 60) * 1.5;
-    const flutterFreq = 12 + Math.min(speed, 60) * 0.3;
-    this.propellerOsc.frequency.setTargetAtTime(baseFreq, t, 0.05);
-    this.propellerFlutterOsc.frequency.setTargetAtTime(flutterFreq, t, 0.05);
+    const k = Math.min(Math.max(speed / 45, 0), 1.25);
+
+    // Modulação da cadência das pás de vento (14Hz a 28Hz)
+    if (this.propellerChopLfo) {
+      const chopRate = 14 + k * 14;
+      this.propellerChopLfo.frequency.setTargetAtTime(chopRate, t, 0.05);
+    }
+
+    // Abertura do filtro de ar (ar fica mais brilhante e cortante com velocidade)
+    if (this.propellerAirFilter) {
+      const airCutoff = 380 + k * 340;
+      this.propellerAirFilter.frequency.setTargetAtTime(airCutoff, t, 0.06);
+    }
+
+    // Frequência do pulso grave do rotor (32Hz a 54Hz)
+    if (this.propellerThumpOsc) {
+      const thumpFreq = 32 + k * 22;
+      this.propellerThumpOsc.frequency.setTargetAtTime(thumpFreq, t, 0.05);
+    }
+
+    // Zumbido doce da micro-turbina (260Hz a 440Hz / nota Lá musical)
+    if (this.propellerWhineOsc) {
+      const whineFreq = 260 + k * 180;
+      this.propellerWhineOsc.frequency.setTargetAtTime(whineFreq, t, 0.06);
+    }
   }
 
   /**
-   * Interrompe o som da hélice com rampa de desaceleração suave
+   * Interrompe o som da hélice com desaceleração e desvanecimento orgânico
    */
   public stopPropellerSound(): void {
     if (!this.isPropellerRunning || !this.ctx || !this.propellerGain) {
@@ -944,23 +1042,52 @@ export class SoundManager {
     const t = this.ctx.currentTime;
     this.propellerGain.gain.cancelScheduledValues(t);
     this.propellerGain.gain.setValueAtTime(this.propellerGain.gain.value, t);
-    this.propellerGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+    this.propellerGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
 
-    const osc = this.propellerOsc;
-    const flutter = this.propellerFlutterOsc;
+    // Efeito sonoro de rotação desacelerando até parar
+    if (this.propellerChopLfo) {
+      this.propellerChopLfo.frequency.setTargetAtTime(6, t, 0.25);
+    }
+    if (this.propellerThumpOsc) {
+      this.propellerThumpOsc.frequency.setTargetAtTime(18, t, 0.25);
+    }
+    if (this.propellerWhineOsc) {
+      this.propellerWhineOsc.frequency.setTargetAtTime(120, t, 0.25);
+    }
+
+    const noise = this.propellerNoiseSource;
+    const chopLfo = this.propellerChopLfo;
+    const thump = this.propellerThumpOsc;
+    const whine = this.propellerWhineOsc;
+    const pGain = this.propellerGain;
+
     setTimeout(() => {
       try {
-        osc?.stop();
-        flutter?.stop();
-        osc?.disconnect();
-        flutter?.disconnect();
+        noise?.stop();
+        chopLfo?.stop();
+        thump?.stop();
+        whine?.stop();
+        noise?.disconnect();
+        chopLfo?.disconnect();
+        thump?.disconnect();
+        whine?.disconnect();
+        pGain?.disconnect();
       } catch {
         // Ignora caso já esteja finalizado
       }
-    }, 450);
+    }, 500);
 
-    this.propellerOsc = null;
-    this.propellerFlutterOsc = null;
+    this.propellerNoiseSource = null;
+    this.propellerAirFilter = null;
+    this.propellerChopGain = null;
+    this.propellerChopLfo = null;
+    this.propellerChopDepth = null;
+    this.propellerThumpOsc = null;
+    this.propellerThumpFilter = null;
+    this.propellerThumpGain = null;
+    this.propellerWhineOsc = null;
+    this.propellerWhineFilter = null;
+    this.propellerWhineGain = null;
     this.propellerGain = null;
     this.isPropellerRunning = false;
   }
