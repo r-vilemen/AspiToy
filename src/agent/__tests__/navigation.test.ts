@@ -238,5 +238,56 @@ describe('Inteligência e Navegação com Grade e Algoritmo A* (Sprint 2)', () =
       result.position.z <= -1.55
     ).toBe(false);
   });
+
+  it('impede penetração em paredes e móveis altos mesmo quando em voo (actorY)', () => {
+    const obstacles = [
+      {
+        id: 'tv-rack',
+        label: 'Rack da TV',
+        category: 'furniture' as const,
+        bounds: { minX: 11.0, maxX: 14.5, minZ: -3.8, maxZ: -3.0 },
+        collidable: true,
+        height: 2.4,
+      },
+      {
+        id: 'wall-north',
+        label: 'Parede Norte',
+        category: 'wall' as const,
+        bounds: { minX: 7.0, maxX: 17.0, minZ: -4.1, maxZ: -3.9 },
+        collidable: true,
+        height: 3.0,
+      },
+      {
+        id: 'coffee-table-low',
+        label: 'Mesa Baixa',
+        category: 'furniture' as const,
+        bounds: { minX: 12.0, maxX: 13.5, minZ: -1.0, maxZ: -0.2 },
+        collidable: true,
+        height: 0.45,
+      },
+    ];
+
+    const detector = new ObstacleDetector(obstacles, 22.6, 17.5);
+
+    // 1. Em voo a 0.65m de altura, tentando entrar na parede norte (height: 3.0)
+    const resWall = detector.resolveSafeMovement({ x: 10.0, z: -3.5 }, { x: 10.0, z: -4.0 }, 0.29, 0.65);
+    expect(resWall.collided).toBe(true);
+    expect(resWall.position.z).toBeGreaterThan(-3.9 + 0.28);
+
+    // 2. Em voo a 0.65m de altura, tentando entrar no Rack de TV alto (height: 2.4)
+    const resRack = detector.resolveSafeMovement({ x: 10.5, z: -3.4 }, { x: 12.0, z: -3.4 }, 0.29, 0.65);
+    expect(resRack.collided).toBe(true);
+    expect(resRack.position.x).toBeLessThan(11.0 - 0.28);
+
+    // 3. Em voo a 0.65m de altura, sobre a mesa baixa (height: 0.45):
+    // Como 0.65m é mais alto que a mesa (0.45m), o robô pode sobrevoar o centro da mesa
+    const resTableFlying = detector.resolveSafeMovement({ x: 11.5, z: -0.6 }, { x: 12.5, z: -0.6 }, 0.29, 0.65);
+    expect(resTableFlying.position.x).toBeCloseTo(12.5, 1);
+
+    // 4. Mas se estiver voando baixo (0.25m) ou no chão, a mesa baixa DEVE colidir!
+    const resTableLow = detector.resolveSafeMovement({ x: 11.5, z: -0.6 }, { x: 12.5, z: -0.6 }, 0.29, 0.25);
+    expect(resTableLow.collided).toBe(true);
+    expect(resTableLow.position.x).toBeLessThan(12.0 - 0.28);
+  });
 });
 

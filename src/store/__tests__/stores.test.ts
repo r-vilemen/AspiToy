@@ -119,5 +119,45 @@ describe('Arquitetura de Estado Zustand (robotStore, environmentStore, commandSt
     fireBubbleCannon();
     expect(robotMotionBridge.bubbleBurstTrigger).toBe(initialTrigger + 1);
   });
+
+  it('deve gerenciar o modo do farol óptico (auto, on, off)', () => {
+    const robot = useRobotStore.getState();
+    expect(robot.headlightMode).toBe('auto');
+
+    robot.setHeadlightMode('on');
+    expect(useRobotStore.getState().headlightMode).toBe('on');
+
+    const nextMode = robot.toggleHeadlightMode();
+    expect(nextMode).toBe('off');
+    expect(useRobotStore.getState().headlightMode).toBe('off');
+
+    const autoMode = robot.toggleHeadlightMode();
+    expect(autoMode).toBe('auto');
+    expect(useRobotStore.getState().headlightMode).toBe('auto');
+  });
+
+  it('deve incluir sujeira em mesas e sofás e respeitar a discriminação vertical de altitude', () => {
+    const env = useEnvironmentStore.getState();
+    const tableSpot = env.dustSpots.find((s) => s.id === 'dust-table-bedroom');
+    expect(tableSpot).toBeDefined();
+    expect(tableSpot!.y).toBeGreaterThan(0.5);
+    expect(tableSpot!.surfaceLabel).toBe('Mesa de Vidro');
+
+    const initialIntensity = tableSpot!.intensity;
+
+    // Robô no chão (actorY = 0) NÃO deve conseguir limpar sujeira em cima da mesa
+    env.cleanDustNearPoint(tableSpot!.position, 0.6, 0.4, 0.0);
+    const unchangedSpot = useEnvironmentStore
+      .getState()
+      .dustSpots.find((s) => s.id === 'dust-table-bedroom');
+    expect(unchangedSpot!.intensity).toBe(initialIntensity);
+
+    // Robô voando próximo à mesa (actorY = 0.82) DEVE limpar a sujeira na mesa
+    env.cleanDustNearPoint(tableSpot!.position, 0.6, 0.4, 0.82);
+    const cleanedSpot = useEnvironmentStore
+      .getState()
+      .dustSpots.find((s) => s.id === 'dust-table-bedroom');
+    expect(cleanedSpot!.intensity).toBeLessThan(initialIntensity);
+  });
 });
 

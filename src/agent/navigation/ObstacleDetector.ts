@@ -42,22 +42,39 @@ export class ObstacleDetector {
     this.dynamicObstacles = dynamicObstacles;
   }
 
-  public getAllCollidableObstacles(): EnvironmentObstacle[] {
-    return [...this.obstacles, ...this.dynamicObstacles].filter(
-      (o) => o.collidable
-    );
+  public getAllCollidableObstacles(actorY = 0): EnvironmentObstacle[] {
+    return [...this.obstacles, ...this.dynamicObstacles].filter((o) => {
+      if (!o.collidable) return false;
+      const minY = o.minY ?? 0;
+      const maxY = o.height ?? 2.8;
+
+      // Se o obstáculo é suspenso (minY > 0) e o robô está no chão abaixo dele:
+      // O robô de chão (actorY ~ 0) passa livremente por baixo do sofá/aparador.
+      if (actorY + 0.10 < minY) {
+        return false;
+      }
+
+      // Se o robô está voando acima do topo do obstáculo físico:
+      // O helicóptero passa livremente por cima do obstáculo.
+      if (actorY - 0.06 > maxY) {
+        return false;
+      }
+
+      return true;
+    });
   }
 
   /**
    * Verifica se um ponto com raio de colisão intercepta paredes, móveis ou o gato.
    */
-  public isColliding(point: Vector2D, robotRadius = 0.30): boolean {
-    return this.findCollidingObstacle(point, robotRadius) !== null;
+  public isColliding(point: Vector2D, robotRadius = 0.30, actorY = 0): boolean {
+    return this.findCollidingObstacle(point, robotRadius, actorY) !== null;
   }
 
   public findCollidingObstacle(
     point: Vector2D,
-    robotRadius = 0.30
+    robotRadius = 0.30,
+    actorY = 0
   ): { id: string; label: string; bounds?: BoundingBox2D } | null {
     if (!this.isMultiRoom) {
       // Modo clássico quarto único
@@ -74,6 +91,7 @@ export class ObstacleDetector {
       }
     } else {
       // Modo residência completa:
+      // Paredes perimétricas e limites da casa são contínuos do piso ao teto (height >= 2.8m).
       // Verifica se está dentro de algum cômodo da casa ou no vão de porta
       const inAnyRoom = Object.values(HOUSE_FLOOR_PLAN.rooms).some((room) =>
         isPointInsideBounds(point, room.bounds, 0.12)
@@ -92,7 +110,7 @@ export class ObstacleDetector {
     // Paredes perimétricas e móveis sólidos: os vãos das portas já são recortados
     // fisicamente em HOUSE_WALL_OBSTACLES, garantindo que as ombreiras e paredes sólidas
     // nunca sejam atravessadas pelo robô ou gato mesmo nas passagens entre cômodos.
-    for (const obs of this.getAllCollidableObstacles()) {
+    for (const obs of this.getAllCollidableObstacles(actorY)) {
       const info = getDistanceToAABB(point, obs.bounds);
       if (info.distance < robotRadius) {
         return { id: obs.id, label: obs.label, bounds: obs.bounds };
@@ -109,7 +127,8 @@ export class ObstacleDetector {
   public resolveSafeMovement(
     currentPos: Vector2D,
     desiredPos: Vector2D,
-    actorRadius = 0.29
+    actorRadius = 0.29,
+    actorY = 0
   ): CollisionResolutionResult {
     let resolved: Vector2D;
 
@@ -127,7 +146,7 @@ export class ObstacleDetector {
       };
     }
 
-    const directHit = this.findCollidingObstacle(resolved, actorRadius);
+    const directHit = this.findCollidingObstacle(resolved, actorRadius, actorY);
     if (!directHit) {
       return {
         position: resolved,
@@ -144,7 +163,7 @@ export class ObstacleDetector {
     for (let iter = 0; iter < 4; iter++) {
       let anyCorrection = false;
 
-      for (const obs of this.getAllCollidableObstacles()) {
+      for (const obs of this.getAllCollidableObstacles(actorY)) {
         const info = getDistanceToAABB(resolved, obs.bounds);
         if (info.distance < actorRadius) {
           anyCorrection = true;
@@ -188,7 +207,7 @@ export class ObstacleDetector {
     }
 
     // Se após a rotação contínua a posição resolvida estiver livre:
-    if (!this.findCollidingObstacle(resolved, actorRadius * 0.95)) {
+    if (!this.findCollidingObstacle(resolved, actorRadius * 0.95, actorY)) {
       return {
         position: resolved,
         collided: true,
@@ -199,7 +218,7 @@ export class ObstacleDetector {
 
     // Fallback: deslizar no eixo X
     const slideX: Vector2D = { x: resolved.x, z: currentPos.z };
-    if (!this.findCollidingObstacle(slideX, actorRadius * 0.95)) {
+    if (!this.findCollidingObstacle(slideX, actorRadius * 0.95, actorY)) {
       return {
         position: slideX,
         collided: true,
@@ -210,7 +229,7 @@ export class ObstacleDetector {
 
     // Fallback: deslizar no eixo Z
     const slideZ: Vector2D = { x: currentPos.x, z: resolved.z };
-    if (!this.findCollidingObstacle(slideZ, actorRadius * 0.95)) {
+    if (!this.findCollidingObstacle(slideZ, actorRadius * 0.95, actorY)) {
       return {
         position: slideZ,
         collided: true,

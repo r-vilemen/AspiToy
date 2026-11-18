@@ -40,12 +40,15 @@ export interface Vector2D {
   z: number;
 }
 
+export type HeadlightMode = 'auto' | 'on' | 'off';
+
 export interface RobotTelemetry {
   name: string;
   state: RobotOperationalState;
   previousActiveState: RobotOperationalState | null;
   expression: RobotExpression;
   skin: RobotSkinId;
+  headlightMode: HeadlightMode;
   organizedToysCount: number;
   totalToysToOrganize: number;
   position: Vector2D;

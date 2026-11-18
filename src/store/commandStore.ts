@@ -8,6 +8,8 @@ import type {
 import type { Vector2D } from '@/types/robot';
 import { useRobotStore, manualControlBridge, robotMotionBridge } from './robotStore';
 import { useEnvironmentStore } from './environmentStore';
+import { soundManager } from '@/services/soundManager';
+import { getOverheadObstacleAt } from '@/world/House/HouseObstacles';
 
 export type CameraPreset = 'follow' | 'overview' | 'closeup';
 
@@ -302,14 +304,35 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
       }
 
       case 'TOGGLE_HELICOPTER': {
-        const isNowFlying = !robotMotionBridge.isFlying;
-        robot.toggleHelicopterMode();
+        const isTryingToFly = !robotMotionBridge.isFlying;
+
+        if (isTryingToFly) {
+          const overhead = getOverheadObstacleAt(
+            { x: robotMotionBridge.x, z: robotMotionBridge.z },
+            robotMotionBridge.y
+          );
+          if (overhead) {
+            soundManager.playChime(false);
+            get().pushNotification(
+              'Decolagem Bloqueada 🚫',
+              `Não é seguro decolar sob a mobília (${overhead.label})! Mova o robô para uma área aberta antes de acionar a hélice.`,
+              'warning'
+            );
+            return false;
+          }
+        }
+
+        const isNowFlying = robot.toggleHelicopterMode();
+        if (!isNowFlying && isTryingToFly) {
+          return false;
+        }
+
         label = isNowFlying ? 'Ativar Modo Helicóptero' : 'Pousar Helicóptero';
         get().pushNotification(
           isNowFlying ? 'Modo Aspi-Helicóptero Ativado! 🚁' : 'Pouso Concluído',
           isNowFlying
-            ? 'Hélice retrátil acionada! Patrulhando mesas e sofás para higienização aérea.'
-            : 'Trem de pouso suave acoplado ao solo.',
+            ? 'Hélice acionada! O robô está pairando no ar. Pilote manualmente ou clique em "Iniciar limpeza" para higienizar mesas e sofás.'
+            : 'Trem de pouso suave acoplado com segurança à superfície.',
           'info'
         );
         break;

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type {
+  HeadlightMode,
   RobotExpression,
   RobotMotionBridge,
   RobotOperationalState,
@@ -10,6 +11,7 @@ import type {
 } from '@/types/robot';
 import { INITIAL_DOCK_POSITION } from './environmentStore';
 import { clamp } from '@/utils/math';
+import { getOverheadObstacleAt, getSurfaceLandingY } from '@/world/House/HouseObstacles';
 
 export const ROBOT_SKINS: Record<RobotSkinId, RobotSkin> = {
   classic: {
@@ -136,7 +138,9 @@ export interface RobotStoreState extends RobotTelemetry {
   setOrganizedToysCount: (count: number) => void;
   tickOperationTimer: () => void;
   setTargetPosition: (target: Vector2D | null) => void;
-  toggleHelicopterMode: () => void;
+  setHeadlightMode: (mode: HeadlightMode) => void;
+  toggleHeadlightMode: () => HeadlightMode;
+  toggleHelicopterMode: () => boolean;
   fireBubbleCannon: () => void;
   resetRobot: () => void;
 }
@@ -147,6 +151,7 @@ const INITIAL_TELEMETRY: RobotTelemetry = {
   previousActiveState: null,
   expression: 'neutral',
   skin: 'classic',
+  headlightMode: 'auto',
   organizedToysCount: 0,
   totalToysToOrganize: 16,
   position: { ...INITIAL_DOCK_POSITION },
@@ -232,12 +237,36 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
 
   setTargetPosition: (target) => set({ targetPosition: target }),
 
+  setHeadlightMode: (mode) => set({ headlightMode: mode }),
+
+  toggleHeadlightMode: () => {
+    const current = get().headlightMode;
+    const next: HeadlightMode =
+      current === 'auto' ? 'on' : current === 'on' ? 'off' : 'auto';
+    set({ headlightMode: next });
+    return next;
+  },
+
   toggleHelicopterMode: () => {
     const isNowFlying = !robotMotionBridge.isFlying;
-    robotMotionBridge.isFlying = isNowFlying;
-    robotMotionBridge.targetY = isNowFlying ? 0.65 : 0;
-    const current = get();
+
+    // Se estiver tentando levantar voo, verifica se há obstáculo físico (teto de móvel) diretamente acima
     if (isNowFlying) {
+      const overhead = getOverheadObstacleAt(
+        { x: robotMotionBridge.x, z: robotMotionBridge.z },
+        robotMotionBridge.y
+      );
+      if (overhead) {
+        // Bloqueia decolagem embaixo de mesas ou móveis
+        return false;
+      }
+    }
+
+    robotMotionBridge.isFlying = isNowFlying;
+    const current = get();
+
+    if (isNowFlying) {
+      robotMotionBridge.targetY = 0.85;
       set({
         state: 'FLYING',
         previousActiveState: current.state !== 'PAUSED' ? current.state : current.previousActiveState,
@@ -245,13 +274,20 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
         lastAction: 'Decolando em Modo Aspi-Helicóptero',
       });
     } else {
+      // Pouso seguro: se estiver sobre uma mobília (mesa, sofá, baú), pousa sobre ela sem afundar
+      const surfaceLandingY = getSurfaceLandingY(
+        { x: robotMotionBridge.x, z: robotMotionBridge.z },
+        robotMotionBridge.y
+      );
+      robotMotionBridge.targetY = surfaceLandingY;
       const fallbackState = current.previousActiveState ?? 'EXPLORING';
       set({
         state: fallbackState,
         expression: mapStateToExpression(fallbackState),
-        lastAction: 'Pousando com trem de pouso suave',
+        lastAction: surfaceLandingY > 0 ? 'Pousou sobre a mobília' : 'Pousou no solo',
       });
     }
+    return isNowFlying;
   },
 
   fireBubbleCannon: () => {

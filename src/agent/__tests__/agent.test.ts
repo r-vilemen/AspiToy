@@ -190,6 +190,28 @@ describe('Agente Inteligente, Colisão Física e Desvio do Gato Dinâmico', () =
     }
   });
 
+  it('robô voando no modo helicóptero (robotY > 0.25) não empurra brinquedos no chão', () => {
+    resetPushableToys();
+    const train = pushableToysBridge.find((t) => t.id === 'push-train')!;
+    const initX = train.x;
+    const initZ = train.z;
+
+    // Robô pairando no mesmo XZ mas no ar (robotY = 0.85)
+    const result = stepPushableToysPhysics(
+      { x: initX, z: initZ },
+      0.32,
+      0.016,
+      0.85 // altitude de voo
+    );
+
+    // Não deve empurrar o brinquedo no chão
+    expect(result.pushedToyLabel).toBeNull();
+    expect(train.x).toBe(initX);
+    expect(train.z).toBe(initZ);
+    expect(train.vx).toBe(0);
+    expect(train.vz).toBe(0);
+  });
+
   it('notifyStuck limpa a rota emperrada e calcula desvio evasivo para área livre', () => {
     const controller = new AgentController(
       INITIAL_OBSTACLES,

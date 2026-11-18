@@ -1,4 +1,6 @@
-import type { EnvironmentObstacle } from '@/types/environment';
+import type { BoundingBox2D, EnvironmentObstacle } from '@/types/environment';
+import type { Vector2D } from '@/types/robot';
+import { isPointInsideBounds } from '@/utils/coordinates';
 
 /**
  * Obstáculos Originais do Quarto do AspiToy:
@@ -17,9 +19,9 @@ export const INITIAL_BEDROOM_OBSTACLES: EnvironmentObstacle[] = [
     id: 'armchair-olive',
     label: 'Poltrona Verde',
     category: 'furniture',
-    bounds: { minX: 0.4, maxX: 1.75, minZ: -1.75, maxZ: -0.35 },
+    bounds: { minX: 0.36, maxX: 1.85, minZ: -1.85, maxZ: -0.22 },
     collidable: true,
-    height: 1.8,
+    height: 2.1,
   },
   {
     id: 'coffee-table-leg-nw',
@@ -455,6 +457,54 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     height: 0.8,
   },
 
+  // Corpo elevado do Sofá da Sala (minY: 0.26 permite que o robô de chão passe por baixo,
+  // enquanto o helicóptero colide fisicamente contra encosto, braço e almofadas em qualquer altitude de voo)
+  {
+    id: 'living-sofa-backrest',
+    label: 'Encosto do Sofá da Sala',
+    category: 'furniture',
+    bounds: { minX: 10.90, maxX: 15.40, minZ: 1.26, maxZ: 1.88 },
+    collidable: true,
+    minY: 0.26,
+    height: 2.2,
+  },
+  {
+    id: 'living-sofa-armrest-left',
+    label: 'Braço do Sofá da Sala',
+    category: 'furniture',
+    bounds: { minX: 10.90, maxX: 11.45, minZ: 0.55, maxZ: 1.88 },
+    collidable: true,
+    minY: 0.26,
+    height: 1.8,
+  },
+  {
+    id: 'living-sofa-seat',
+    label: 'Assento do Sofá da Sala',
+    category: 'furniture',
+    bounds: { minX: 11.45, maxX: 15.35, minZ: 0.55, maxZ: 1.26 },
+    collidable: true,
+    minY: 0.26,
+    height: 0.58,
+  },
+  {
+    id: 'living-chaise-seat',
+    label: 'Assento da Chaise da Sala',
+    category: 'furniture',
+    bounds: { minX: 15.0, maxX: 16.2, minZ: -1.05, maxZ: 0.85 },
+    collidable: true,
+    minY: 0.26,
+    height: 0.58,
+  },
+  {
+    id: 'living-chaise-headrest',
+    label: 'Rolinho da Chaise da Sala',
+    category: 'furniture',
+    bounds: { minX: 15.0, maxX: 16.2, minZ: -1.05, maxZ: -0.55 },
+    collidable: true,
+    minY: 0.58,
+    height: 0.82,
+  },
+
   // Mesa de Centro da Sala com 20cm de vão livre abaixo (o robô passa por baixo)
   {
     id: 'living-coffee-table-leg-nw',
@@ -622,3 +672,137 @@ export const ALL_HOUSE_OBSTACLES: EnvironmentObstacle[] = [
   ...HOUSE_WALL_OBSTACLES,
   ...NEW_ROOMS_FURNITURE_OBSTACLES,
 ];
+
+/**
+ * Superfícies Elevadas e Mobílias com Vão Inferior da Casa:
+ * Usadas pelo Aspi-Helicóptero para:
+ * 1. Impedir decolagem embaixo de mesas, aparadores ou sofás (teto físico baixo).
+ * 2. Garantir pouso físico no tampo/assento da mobília (sem afundar ou atravessar para o chão).
+ */
+export interface ElevatedFurnitureSurface {
+  id: string;
+  label: string;
+  bounds: BoundingBox2D;
+  surfaceY: number;
+  clearanceBottomY: number | null; // null se sólido até o piso
+}
+
+export const HOUSE_ELEVATED_SURFACES: ElevatedFurnitureSurface[] = [
+  // 1. Quarto - Mesa de Centro de Vidro
+  {
+    id: 'surface-bedroom-coffee-table',
+    label: 'Mesa de Centro do Quarto',
+    bounds: { minX: -2.35, maxX: -0.55, minZ: -1.75, maxZ: -0.55 },
+    surfaceY: 0.69,
+    clearanceBottomY: 0.56,
+  },
+  // 2. Quarto - Sofá-Baú de Brinquedos
+  {
+    id: 'surface-bedroom-chest',
+    label: 'Sofá-Baú do Quarto',
+    bounds: { minX: -1.44, maxX: 1.44, minZ: 2.05, maxZ: 3.15 },
+    surfaceY: 0.89,
+    clearanceBottomY: null,
+  },
+  // 3. Quarto - Poltrona Verde Oliva (Assento)
+  {
+    id: 'surface-bedroom-armchair',
+    label: 'Poltrona Verde do Quarto',
+    bounds: { minX: 0.45, maxX: 1.45, minZ: -1.25, maxZ: -0.20 },
+    surfaceY: 0.88,
+    clearanceBottomY: null,
+  },
+  // 4. Corredor - Aparador / Console Vintage
+  {
+    id: 'surface-hallway-console',
+    label: 'Aparador do Corredor',
+    bounds: { minX: 5.10, maxX: 5.60, minZ: -2.50, maxZ: -1.10 },
+    surfaceY: 1.09,
+    clearanceBottomY: 0.74,
+  },
+  // 5. Sala de Estar - Mesa de Centro de Madeira
+  {
+    id: 'surface-living-coffee-table',
+    label: 'Mesa de Centro da Sala',
+    bounds: { minX: 11.70, maxX: 13.90, minZ: -1.30, maxZ: -0.10 },
+    surfaceY: 0.49,
+    clearanceBottomY: 0.38,
+  },
+  // 6. Sala de Estar - Sofá Principal (Assento)
+  {
+    id: 'surface-living-sofa',
+    label: 'Sofá da Sala',
+    bounds: { minX: 11.00, maxX: 15.35, minZ: 0.55, maxZ: 1.26 },
+    surfaceY: 0.585,
+    clearanceBottomY: 0.26,
+  },
+  // 7. Sala de Estar - Chaise do Sofá
+  {
+    id: 'surface-living-chaise',
+    label: 'Chaise do Sofá',
+    bounds: { minX: 15.00, maxX: 16.20, minZ: -1.05, maxZ: 0.85 },
+    surfaceY: 0.585,
+    clearanceBottomY: 0.26,
+  },
+  // 8. Cozinha - Ilha / Balcão Americano Central
+  {
+    id: 'surface-kitchen-island',
+    label: 'Ilha da Cozinha',
+    bounds: { minX: 11.35, maxX: 14.25, minZ: 3.75, maxZ: 5.05 },
+    surfaceY: 1.16,
+    clearanceBottomY: null,
+  },
+  // 9. Cozinha - Banqueta Oeste
+  {
+    id: 'surface-kitchen-stool-west',
+    label: 'Banqueta da Cozinha (Oeste)',
+    bounds: { minX: 11.80, maxX: 12.30, minZ: 3.25, maxZ: 3.75 },
+    surfaceY: 0.85,
+    clearanceBottomY: 0.70,
+  },
+  // 10. Cozinha - Banqueta Leste
+  {
+    id: 'surface-kitchen-stool-east',
+    label: 'Banqueta da Cozinha (Leste)',
+    bounds: { minX: 13.30, maxX: 13.80, minZ: 3.25, maxZ: 3.75 },
+    surfaceY: 0.85,
+    clearanceBottomY: 0.70,
+  },
+];
+
+/**
+ * Retorna o obstáculo de teto se o robô estiver fisicamente embaixo de uma mesa ou mobília.
+ * Impede que o robô levante voo quando estiver no chão embaixo de algum móvel.
+ */
+export function getOverheadObstacleAt(
+  pos: Vector2D,
+  currentY = 0
+): ElevatedFurnitureSurface | null {
+  for (const s of HOUSE_ELEVATED_SURFACES) {
+    if (isPointInsideBounds(pos, s.bounds, 0.04)) {
+      if (s.clearanceBottomY !== null && currentY < s.clearanceBottomY) {
+        return s;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Retorna a cota de pouso da superfície em que o robô está posicionado.
+ * Se estiver sobre uma mesa, sofá ou baú, pousa no topo do móvel (surfaceY) em vez de atravessar para o chão.
+ */
+export function getSurfaceLandingY(
+  pos: Vector2D,
+  currentY: number
+): number {
+  for (const s of HOUSE_ELEVATED_SURFACES) {
+    if (isPointInsideBounds(pos, s.bounds, 0.05)) {
+      const thresholdY = s.clearanceBottomY !== null ? s.clearanceBottomY - 0.08 : s.surfaceY - 0.28;
+      if (currentY >= thresholdY) {
+        return s.surfaceY;
+      }
+    }
+  }
+  return 0.0;
+}
