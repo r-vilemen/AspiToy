@@ -1,9 +1,10 @@
-import { forwardRef, useMemo } from 'react';
+import { forwardRef, useMemo, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
 import { RoundedBox } from '@react-three/drei';
 import * as THREE from 'three';
 import { sharedMaterials, WORLD_PALETTE } from '../Environment/Materials';
 import type { RobotExpression, RobotOperationalState } from '@/types/robot';
-import { ROBOT_SKINS, useRobotStore } from '@/store/robotStore';
+import { ROBOT_SKINS, robotMotionBridge, useRobotStore } from '@/store/robotStore';
 import { useEnvironmentStore } from '@/store/environmentStore';
 
 interface RobotModelProps {
@@ -39,6 +40,37 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
 ) {
   const currentSkinId = useRobotStore((s) => s.skin);
   const timeOfDay = useEnvironmentStore((s) => s.timeOfDay);
+
+  const propellerGroupRef = useRef<THREE.Group>(null);
+  const bladesGroupRef = useRef<THREE.Group>(null);
+  const blurDiskRef = useRef<THREE.Mesh>(null);
+
+  useFrame((_, delta) => {
+    if (!propellerGroupRef.current || !bladesGroupRef.current) return;
+    const ext = robotMotionBridge.propellerExtension;
+    const speed = robotMotionBridge.propellerSpeed;
+
+    // Extensão suave do mastro no eixo vertical
+    propellerGroupRef.current.position.y = 0.05 + ext * 0.06;
+    propellerGroupRef.current.scale.set(
+      0.2 + ext * 0.8,
+      0.1 + ext * 0.9,
+      0.2 + ext * 0.8
+    );
+
+    // Rotação contínua de alta rotação das pás
+    if (speed > 0.01) {
+      bladesGroupRef.current.rotation.y += delta * speed;
+    }
+
+    // Disco de desfoque óptico
+    if (blurDiskRef.current) {
+      const mat = blurDiskRef.current.material as THREE.MeshBasicMaterial;
+      if (mat) {
+        mat.opacity = Math.min(0.5, (speed / 45) * 0.5);
+      }
+    }
+  });
 
   const skin = ROBOT_SKINS[currentSkinId] ?? ROBOT_SKINS.classic;
   const isNight = timeOfDay === 'night';
@@ -342,6 +374,46 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
             <ringGeometry args={[0.038, 0.054, 24]} />
             <meshBasicMaterial color={statusColor} />
           </mesh>
+
+          {/* HÉLICE RETRÁTIL DO MODO ASPI-HELICÓPTERO */}
+          <group ref={propellerGroupRef} position={[0, 0.05, 0]}>
+            {/* Mastro telescópico em cromo que se eleva ao decolar */}
+            <mesh position={[0, 0.04, 0]} material={sharedMaterials.metalChrome}>
+              <cylinderGeometry args={[0.007, 0.009, 0.08, 16]} />
+            </mesh>
+            {/* Conjunto rotor e pás com alta rotação */}
+            <group ref={bladesGroupRef} position={[0, 0.08, 0]}>
+              {/* Hub central aerodinâmico */}
+              <mesh material={skinMaterials.coralTrim}>
+                <coneGeometry args={[0.02, 0.026, 16]} />
+              </mesh>
+              {/* Pás aerodinâmicas duplas */}
+              <mesh castShadow material={sharedMaterials.robotRubberBumper}>
+                <boxGeometry args={[0.42, 0.005, 0.032]} />
+              </mesh>
+              {/* Pontas amarelas estilizadas de segurança nas pás */}
+              {[-0.2, 0.2].map((bx, idx) => (
+                <mesh key={idx} position={[bx, 0, 0]} material={skinMaterials.yellowTrim}>
+                  <boxGeometry args={[0.026, 0.006, 0.034]} />
+                </mesh>
+              ))}
+              {/* Disco translúcido simulando o borrão de alta velocidade (Motion Blur) */}
+              <mesh
+                ref={blurDiskRef}
+                position={[0, 0.001, 0]}
+                rotation={[-Math.PI / 2, 0, 0]}
+              >
+                <circleGeometry args={[0.22, 32]} />
+                <meshBasicMaterial
+                  color="#F1F5F9"
+                  transparent
+                  opacity={0}
+                  depthWrite={false}
+                  side={THREE.DoubleSide}
+                />
+              </mesh>
+            </group>
+          </group>
         </group>
 
         {/* 5. VISOR CURVO OLED INTEGRADO E FACE EXPRESSIVA (7 ESTADOS) */}
