@@ -29,15 +29,26 @@ export class PathPlanner {
    * Retorna array de waypoints 2D navegáveis ou lista vazia se inalcançável.
    */
   public findPath(start: Vector2D, target: Vector2D): Vector2D[] {
-    const startCell = this.grid.getCellAtWorld(start);
+    let startPos = start;
+    let startCell = this.grid.getCellAtWorld(startPos);
+    if (startCell && !this.grid.isWalkable(startCell.col, startCell.row)) {
+      const startNeighbor = this.findNearestWalkableNeighbor(startCell.col, startCell.row);
+      if (startNeighbor) {
+        startPos = startNeighbor.worldPos;
+        startCell = this.grid.getCellAtWorld(startPos);
+      }
+    }
+
     const targetCell = this.grid.getCellAtWorld(target);
 
     if (!startCell || !targetCell) return [];
     if (!this.grid.isWalkable(targetCell.col, targetCell.row)) {
-      // Se a célula alvo exata for parede/móvel, busca o vizinho livre mais próximo
+      // Se a célula alvo exata for parede/móvel (ou superfície elevada), busca o vizinho livre mais próximo no piso
+      // e inclui o ponto alvo final para permitir que o robô suba no móvel
       const neighbor = this.findNearestWalkableNeighbor(targetCell.col, targetCell.row);
       if (!neighbor) return [];
-      return this.findPath(start, neighbor.worldPos);
+      const subPath = this.findPath(startPos, neighbor.worldPos);
+      return subPath.length > 0 ? [...subPath, target] : [target];
     }
 
     const openList: AStarNode[] = [];
