@@ -130,5 +130,30 @@ describe('Componentes de Interface e Controles (Dia 1)', () => {
     fireEvent.submit(input);
     expect(useRobotStore.getState().lastAction).toContain('Bolhas');
   });
+
+  it('exibe indicativo de bateria fraca e bloqueia decolagem no ControlPanel', () => {
+    act(() => {
+      useRobotStore.setState({ battery: 14 });
+    });
+
+    render(
+      <div>
+        <StatusCard />
+        <ControlPanel />
+      </div>
+    );
+
+    // Deve exibir indicativo de que a bateria está fraca
+    expect(screen.getByTestId('battery-low-badge')).toBeDefined();
+    expect(screen.getByText(/Bateria fraca — Voo bloqueado/i)).toBeDefined();
+
+    // Botão de helicóptero indica que a bateria está fraca e ao clicar bloqueia o voo
+    const heliBtn = screen.getByRole('button', { name: /helicóptero \(fraca\)/i });
+    expect(heliBtn).toBeDefined();
+
+    fireEvent.click(heliBtn);
+    // Robô não deve decolar
+    expect(useRobotStore.getState().state).not.toBe('FLYING');
+  });
 });
 

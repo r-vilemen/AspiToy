@@ -191,9 +191,18 @@ export function Dashboard() {
                       : 'bg-[#6B7280]'
                   }`}
                 />
-                <span className="font-mono text-[10px] font-black tabular-nums text-[#2A211B]">
+                <span
+                  className={`font-mono text-[10px] font-black tabular-nums ${
+                    battery <= 20 && robotState !== 'RECHARGING' ? 'text-[#DC2626]' : 'text-[#2A211B]'
+                  }`}
+                >
                   {Math.round(battery)}%
                 </span>
+                {battery <= 20 && robotState !== 'RECHARGING' && (
+                  <span className="text-[8px] font-black uppercase text-[#DC2626] bg-[#FEE2E2] px-1 py-0.2 rounded border border-[#DC2626]/30 animate-pulse">
+                    Fraca
+                  </span>
+                )}
                 <span className="text-[9px] text-[#6E5D4F] font-black uppercase truncate max-w-[55px] sm:max-w-[70px]">
                   {robotState}
                 </span>

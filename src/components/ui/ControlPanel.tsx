@@ -42,6 +42,7 @@ function getRegionIcon(id: string) {
 
 export function ControlPanel() {
   const state = useRobotStore((s) => s.state);
+  const battery = useRobotStore((s) => s.battery);
   const organizedToysCount = useRobotStore((s) => s.organizedToysCount);
   const totalToysToOrganize = useRobotStore((s) => s.totalToysToOrganize);
   const regions = useEnvironmentStore((s) => s.regions);
@@ -164,11 +165,20 @@ export function ControlPanel() {
             className={`inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-[#2A211B] px-3 py-2 text-xs font-black uppercase tracking-wider transition cursor-pointer shadow-[0_3px_0px_#2A211B] hover:shadow-[0_1px_0px_#2A211B] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px] ${
               state === 'FLYING'
                 ? 'bg-linear-to-b from-[#38BDF8] to-[#0284C7] text-white shadow-[0_3px_0px_#0369A1]'
+                : battery <= 20
+                ? 'bg-[#FFF5F5] text-[#991B1B] hover:bg-[#FEE2E2]'
                 : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F0F9FF]'
             }`}
+            title={
+              battery <= 20 && state !== 'FLYING'
+                ? 'Bateria fraca (requer mais de 20% para decolar)'
+                : undefined
+            }
           >
-            <span className="text-base">🚁</span>
-            <span className="text-xs truncate">{state === 'FLYING' ? 'Pousar' : 'Helicóptero'}</span>
+            <span className="text-base">{battery <= 20 && state !== 'FLYING' ? '🪫' : '🚁'}</span>
+            <span className="text-xs truncate">
+              {state === 'FLYING' ? 'Pousar' : battery <= 20 ? 'Helicóptero (Fraca)' : 'Helicóptero'}
+            </span>
           </button>
 
           <button
