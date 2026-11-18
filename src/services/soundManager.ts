@@ -1096,26 +1096,7 @@ export class SoundManager {
    * Disparo suave e aquoso do canhão de bolhas
    */
   public playBubbleShoot(): void {
-    if (!this.isEnabled) return;
-    const ctx = this.initContext();
-    if (!ctx || !this.sfxGain) return;
-
-    const t = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(320, t);
-    osc.frequency.exponentialRampToValueAtTime(740, t + 0.12);
-
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.linearRampToValueAtTime(0.2, t + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
-
-    osc.connect(gain);
-    gain.connect(this.sfxGain);
-
-    osc.start(t);
-    osc.stop(t + 0.14);
+    this.playFoamCannonShoot();
   }
 
   /**
@@ -1173,7 +1154,7 @@ export class SoundManager {
   }
 
   /**
-   * Disparo pneumático vigoroso de jato de espuma (Thwump + sopro de alta pressão).
+   * Som de tiro de bolha do canhão (plop-blooop aquoso, alegre e saltitante).
    */
   public playFoamCannonShoot(): void {
     if (!this.isEnabled) return;
@@ -1182,52 +1163,37 @@ export class SoundManager {
 
     const t = ctx.currentTime;
 
-    // 1. Pulso pneumático encorpado (Thwump)
-    const osc = ctx.createOscillator();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(220, t);
-    osc.frequency.exponentialRampToValueAtTime(48, t + 0.14);
+    // 1. Bolha primária: chirp ascendente elástico e aquoso (blup!)
+    const osc1 = ctx.createOscillator();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(260, t);
+    osc1.frequency.exponentialRampToValueAtTime(840, t + 0.085);
 
-    const oscGain = ctx.createGain();
-    oscGain.gain.setValueAtTime(0.0001, t);
-    oscGain.gain.linearRampToValueAtTime(0.35, t + 0.015);
-    oscGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+    const gain1 = ctx.createGain();
+    gain1.gain.setValueAtTime(0.0001, t);
+    gain1.gain.linearRampToValueAtTime(0.38, t + 0.01);
+    gain1.gain.exponentialRampToValueAtTime(0.0001, t + 0.11);
 
-    osc.connect(oscGain);
-    oscGain.connect(this.sfxGain);
-    osc.start(t);
-    osc.stop(t + 0.19);
+    osc1.connect(gain1);
+    gain1.connect(this.sfxGain);
+    osc1.start(t);
+    osc1.stop(t + 0.12);
 
-    // 2. Ruído de sopro de espuma pressurizada (fsshhh)
-    try {
-      const bufferSize = Math.floor(ctx.sampleRate * 0.22);
-      const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const output = noiseBuffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        output[i] = Math.random() * 2 - 1;
-      }
-      const whiteNoise = ctx.createBufferSource();
-      whiteNoise.buffer = noiseBuffer;
+    // 2. Bolha secundária em rápida sucessão criando o clássico "plop-blooop" borbulhante de desenho animado
+    const osc2 = ctx.createOscillator();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(440, t + 0.032);
+    osc2.frequency.exponentialRampToValueAtTime(1260, t + 0.11);
 
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(1400, t);
-      filter.Q.setValueAtTime(1.8, t);
+    const gain2 = ctx.createGain();
+    gain2.gain.setValueAtTime(0.0001, t + 0.032);
+    gain2.gain.linearRampToValueAtTime(0.32, t + 0.042);
+    gain2.gain.exponentialRampToValueAtTime(0.0001, t + 0.135);
 
-      const noiseGain = ctx.createGain();
-      noiseGain.gain.setValueAtTime(0.0001, t);
-      noiseGain.gain.linearRampToValueAtTime(0.28, t + 0.02);
-      noiseGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
-
-      whiteNoise.connect(filter);
-      filter.connect(noiseGain);
-      noiseGain.connect(this.sfxGain);
-
-      whiteNoise.start(t);
-      whiteNoise.stop(t + 0.23);
-    } catch {
-      // Fallback gracioso se AudioBuffer não for suportado no ambiente
-    }
+    osc2.connect(gain2);
+    gain2.connect(this.sfxGain);
+    osc2.start(t + 0.032);
+    osc2.stop(t + 0.14);
   }
 
   /**
