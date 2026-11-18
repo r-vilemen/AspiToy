@@ -181,4 +181,30 @@ describe('Construção da Casa 3D e Coerência Espacial (Dia 2)', () => {
     expect(backHit.obstacleId).toBe('living-sofa-backrest');
     expect(backHit.position.z).toBeGreaterThanOrEqual(2.15);
   });
+
+  it('impede penetração física nos braços e na almofada terracota da poltrona verde do quarto', () => {
+    const detector = new ObstacleDetector(ALL_HOUSE_OBSTACLES, 22.6, 17.5);
+
+    // 1. Pousado no assento da poltrona (Y = 0.88m), tentando avançar para dentro da almofada terracota
+    const pillowHit = detector.resolveSafeMovement(
+      { x: 0.75, z: -0.60 },
+      { x: 0.75, z: -1.25 },
+      0.315,
+      0.88
+    );
+    expect(pillowHit.collided).toBe(true);
+    expect(pillowHit.obstacleId).toBe('armchair-olive-pillow');
+    expect(pillowHit.position.z).toBeGreaterThanOrEqual(-0.65);
+
+    // 2. Em voo (Y = 1.05m), tentando penetrar no braço esquerdo da poltrona verde
+    const armrestHit = detector.resolveSafeMovement(
+      { x: 0.0, z: -0.80 },
+      { x: 0.50, z: -0.80 },
+      0.315,
+      1.05
+    );
+    expect(armrestHit.collided).toBe(true);
+    expect(armrestHit.obstacleId).toBe('armchair-olive-armrest-left');
+    expect(armrestHit.position.x).toBeLessThanOrEqual(0.06);
+  });
 });
