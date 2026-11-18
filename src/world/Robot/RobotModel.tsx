@@ -49,6 +49,8 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
   const rotorHeadRef = useRef<THREE.Group>(null);
   const bladesGroupRef = useRef<THREE.Group>(null);
   const blurRingRef = useRef<THREE.Group>(null);
+  const headlightPodRef = useRef<THREE.Group>(null);
+  const headlightExtensionRef = useRef(0);
   const headlightSpotRef = useRef<THREE.SpotLight>(null);
   const headlightFillRef = useRef<THREE.PointLight>(null);
   const headlightLensMatRefs = useRef<(THREE.MeshBasicMaterial | null)[]>([]);
@@ -62,17 +64,33 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
     const isRechargingNow = useRobotStore.getState().state === 'RECHARGING';
     const isHeadlightOn = isNightNow && !isRechargingNow;
 
-    const targetSpot = isHeadlightOn ? 3.4 : 0;
-    const targetFill = isHeadlightOn ? 0.9 : 0;
+    // Extensão suave do farol embutido no topo (pop-up ao acender, recolhe rente ao capô ao apagar)
+    const targetExtension = isHeadlightOn ? 1.0 : 0.0;
+    headlightExtensionRef.current = THREE.MathUtils.damp(
+      headlightExtensionRef.current,
+      targetExtension,
+      3.2,
+      delta
+    );
+    const headExt = headlightExtensionRef.current;
+
+    // Eleva o módulo do farol para fora do nicho do capô superior e inclina suavemente para a frente
+    if (headlightPodRef.current) {
+      headlightPodRef.current.position.y = -0.012 + headExt * 0.038;
+      headlightPodRef.current.rotation.x = -headExt * 0.12;
+    }
+
+    const targetSpot = isHeadlightOn ? 3.6 * Math.min(1.0, headExt * 1.5) : 0;
+    const targetFill = isHeadlightOn ? 0.95 * Math.min(1.0, headExt * 1.5) : 0;
     const targetLensOpacity = isHeadlightOn ? 0.95 : 0.25;
     const targetLensColorHex = isHeadlightOn ? '#FEF08A' : '#78716C';
-    const lensAlpha = 1 - Math.exp(-1.2 * delta);
+    const lensAlpha = 1 - Math.exp(-2.2 * delta);
 
     if (headlightSpotRef.current) {
       headlightSpotRef.current.intensity = THREE.MathUtils.damp(
         headlightSpotRef.current.intensity,
         targetSpot,
-        1.2,
+        2.5,
         delta
       );
     }
@@ -81,14 +99,14 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
       headlightFillRef.current.intensity = THREE.MathUtils.damp(
         headlightFillRef.current.intensity,
         targetFill,
-        1.2,
+        2.5,
         delta
       );
     }
 
     headlightLensMatRefs.current.forEach((mat) => {
       if (!mat) return;
-      mat.opacity = THREE.MathUtils.damp(mat.opacity, targetLensOpacity, 1.2, delta);
+      mat.opacity = THREE.MathUtils.damp(mat.opacity, targetLensOpacity, 2.5, delta);
       mat.color.lerp(scratchLensColor.set(targetLensColorHex), lensAlpha);
     });
 
@@ -290,17 +308,90 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
         </mesh>
 
         {/* Painel de controle superior com botão de acionamento iluminado */}
-        <group position={[0, 0.088, 0.095]}>
+        <group position={[0, 0.086, 0.045]}>
           <mesh castShadow material={skinMaterials.yellowTrim}>
-            <cylinderGeometry args={[0.038, 0.044, 0.016, 24]} />
+            <cylinderGeometry args={[0.034, 0.04, 0.014, 24]} />
           </mesh>
-          <mesh position={[0, 0.0095, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[0.022, 0.03, 20]} />
+          <mesh position={[0, 0.0085, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[0.018, 0.026, 20]} />
             <meshBasicMaterial color={statusColor} />
           </mesh>
         </group>
 
-        {/* 2. PARA-CHOQUE FRONTAL COM FARÓIS ÓPTICOS E AMORTECIMENTO */}
+        {/* MÓDULO DE FAROL POP-UP EMBUTIDO NO TOPO (EMERGE QUANDO ACESO) */}
+        <group position={[0, 0.068, 0.14]}>
+          {/* Nicho / Cavidade embutida no chassi com acabamento protetor */}
+          <mesh position={[0, -0.005, 0]} material={sharedMaterials.robotRubberBumper}>
+            <boxGeometry args={[0.134, 0.02, 0.066]} />
+          </mesh>
+          <mesh position={[0, 0.002, 0]} material={sharedMaterials.metalChrome}>
+            <boxGeometry args={[0.126, 0.008, 0.058]} />
+          </mesh>
+
+          {/* Módulo mecânico retrátil do farol (pop-up animado suavemente em useFrame) */}
+          <group ref={headlightPodRef} position={[0, -0.012, 0]}>
+            {/* Corpo / Cápsula do farol retrátil */}
+            <RoundedBox
+              castShadow
+              args={[0.12, 0.03, 0.052]}
+              radius={0.006}
+              smoothness={3}
+              position={[0, 0.015, 0]}
+              material={skinMaterials.shell}
+            />
+            {/* Tampa / Friso estético superior que fica rente ao capô quando recolhido */}
+            <mesh position={[0, 0.031, 0]} material={skinMaterials.coralTrim}>
+              <boxGeometry args={[0.116, 0.003, 0.048]} />
+            </mesh>
+
+            {/* Duplo canhão de lentes LED frontais */}
+            {[-0.036, 0.036].map((lx, idx) => (
+              <group key={idx} position={[lx, 0.015, 0.026]}>
+                {/* Aro cromado metálico do farol */}
+                <mesh rotation={[Math.PI / 2, 0, 0]} material={sharedMaterials.metalChrome}>
+                  <cylinderGeometry args={[0.016, 0.017, 0.006, 20]} />
+                </mesh>
+                {/* Lente convexa iluminada */}
+                <mesh position={[0, 0, 0.003]} rotation={[Math.PI / 2, 0, 0]}>
+                  <circleGeometry args={[0.014, 20]} />
+                  <meshBasicMaterial
+                    ref={(el) => {
+                      headlightLensMatRefs.current[idx] = el;
+                    }}
+                    color="#78716C"
+                    transparent
+                    opacity={0.25}
+                  />
+                </mesh>
+              </group>
+            ))}
+
+            {/* Alvo óptico e feixe direcional SpotLight projetado no solo à frente */}
+            <primitive object={lightTarget} />
+            <spotLight
+              ref={headlightSpotRef}
+              target={lightTarget}
+              position={[0, 0.015, 0.03]}
+              intensity={0}
+              distance={6.2}
+              angle={Math.PI / 4.0}
+              penumbra={0.65}
+              color="#FFFDF0"
+              castShadow={false}
+            />
+            {/* Luz suave de preenchimento do solo à frente */}
+            <pointLight
+              ref={headlightFillRef}
+              position={[0, 0.01, 0.14]}
+              intensity={0}
+              distance={1.9}
+              decay={1.8}
+              color="#FEF9C3"
+            />
+          </group>
+        </group>
+
+        {/* 2. PARA-CHOQUE FRONTAL COM AMORTECIMENTO */}
         <group position={[0, -0.004, 0.012 - bumperCompression]}>
           {/* Carenagem frontal do amortecedor */}
           <mesh castShadow material={skinMaterials.blueTrim}>
@@ -317,56 +408,6 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
               ]}
             />
           </mesh>
-
-          {/* FARÓIS ÓPTICOS FRONTAIS LED (ACESOS À NOITE, PÔR DO SOL OU EM OPERAÇÃO) */}
-          <group position={[0, 0.012, 0.286]}>
-            {/* Adiciona o alvo local à árvore de cena para que rotacione e se mova perfeitamente com o robô */}
-            <primitive object={lightTarget} />
-
-            {[-0.105, 0.105].map((lx, idx) => (
-              <group key={idx} position={[lx, 0, 0]}>
-                {/* Aro metálico cromado do farol */}
-                <mesh rotation={[Math.PI / 2, 0, 0]} material={sharedMaterials.metalChrome}>
-                  <torusGeometry args={[0.022, 0.0045, 8, 16]} />
-                </mesh>
-                {/* Lente convexa iluminada com brilho visual proporcional */}
-                <mesh position={[0, 0, 0.003]} rotation={[Math.PI / 2, 0, 0]}>
-                  <circleGeometry args={[0.019, 16]} />
-                  <meshBasicMaterial
-                    ref={(el) => {
-                      headlightLensMatRefs.current[idx] = el;
-                    }}
-                    color="#78716C"
-                    transparent
-                    opacity={0.25}
-                  />
-                </mesh>
-              </group>
-            ))}
-
-            {/* Feixe direcional cônico iluminando o piso à frente do robô */}
-            <group position={[0, 0.02, 0.01]}>
-              <spotLight
-                ref={headlightSpotRef}
-                target={lightTarget}
-                intensity={0}
-                distance={5.8}
-                angle={Math.PI / 4.2}
-                penumbra={0.7}
-                color="#FFFDF0"
-                castShadow={false}
-              />
-              {/* Luz suave de preenchimento do solo imediato à frente do para-choque */}
-              <pointLight
-                ref={headlightFillRef}
-                position={[0, -0.01, 0.15]}
-                intensity={0}
-                distance={1.6}
-                decay={1.8}
-                color="#FEF9C3"
-              />
-            </group>
-          </group>
 
           {/* Faixa emborrachada de impacto na parte inferior do para-choque */}
           <mesh
