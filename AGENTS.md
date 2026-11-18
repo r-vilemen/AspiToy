@@ -25,3 +25,9 @@ Antes de implementar ou refatorar qualquer módulo, consulte as respectivas skil
    - Implementar exclusivamente a etapa atual prevista em `docs/PROGRESS.md`.
    - Sempre validar com `npm test`, `npm run build` e inspeção visual no navegador antes de concluir.
 
+## 3. Diretriz de Design: Proibição Estrita de Ícones de Estrela/Brilho (Sparkles/Stars)
+
+- **Proibição Absoluta**: É terminantemente proibido utilizar ícones de estrela, brilho ou sparkles (ex: `Sparkles`, `Sparkle`, `Star`, `Stars` da biblioteca `lucide-react` ou SVGs semelhantes) em qualquer parte do sistema (botões, badges, modais, cards ou cabeçalhos).
+- **Substituição Semântica**: Em locais onde seja necessário um ícone representativo, utilize símbolos tangíveis e coerentes com a ação (ex: `Paintbrush` para equipar pinturas/skins, `Boxes` para regiões/itens, `Check` para confirmações).
+
+

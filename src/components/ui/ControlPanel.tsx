@@ -12,7 +12,6 @@ import {
   Play,
   RotateCcw,
   Sofa,
-  Sparkles,
   Utensils,
 } from 'lucide-react';
 import { manualControlBridge, useRobotStore } from '@/store/robotStore';
@@ -36,7 +35,7 @@ function getRegionIcon(id: string) {
     case 'bathroom':
       return Bath;
     default:
-      return Sparkles;
+      return Boxes;
   }
 }
 

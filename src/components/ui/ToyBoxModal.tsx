@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { Check, Eye, Palette, RotateCw, Sparkles, X } from 'lucide-react';
+import { Check, Eye, Paintbrush, Palette, RotateCw, X } from 'lucide-react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
@@ -249,7 +249,7 @@ export const ToyBoxModal = memo(function ToyBoxModal({
                   onClick={() => handleEquipSkin(previewSkinId)}
                   className="w-full rounded-xl border-2 border-[#2A211B] bg-linear-to-b from-[#F2724D] to-[#E05A36] py-2 text-xs font-black uppercase tracking-wider text-white shadow-[0_3px_0px_#9A3412] hover:translate-y-0.5 hover:shadow-[0_1.5px_0px_#9A3412] active:translate-y-1 active:shadow-none transition cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  <Sparkles className="h-4 w-4 stroke-[2.5]" />
+                  <Paintbrush className="h-4 w-4 stroke-[2.5]" />
                   Equipar Esta Pintura
                 </button>
               )}
