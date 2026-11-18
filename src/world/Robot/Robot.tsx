@@ -767,20 +767,28 @@ export function Robot() {
 
     // Gerenciamento de física vertical e rotor do helicóptero
     if (robotMotionBridge.isFlying) {
+      // 1. EXTENSÃO PROGRESSIVA DO MASTRO TELESCÓPICO (ergue suavemente em ~0.8s)
       robotMotionBridge.propellerExtension = damp(
         robotMotionBridge.propellerExtension,
         1.0,
-        4.0,
+        2.4,
         delta
       );
+
+      // 2. ACELERAÇÃO PROGRESSIVA DA HÉLICE (spool-up com inércia angular)
       robotMotionBridge.propellerSpeed = damp(
         robotMotionBridge.propellerSpeed,
         45.0,
-        4.5,
+        2.2,
         delta
       );
       soundManager.startPropellerSound();
       soundManager.updatePropellerSpeed(robotMotionBridge.propellerSpeed);
+
+      // Fator de sustentação aerodinâmica (Lift):
+      // Enquanto as pás aceleram abaixo de 18 rad/s, o helicóptero não tem sustentação suficiente
+      // e permanece no solo com vibração mecânica de decolagem. O lift cresce suavemente até 1.0.
+      const lift = Math.max(0, Math.min(1.0, (robotMotionBridge.propellerSpeed - 18.0) / 22.0));
 
       const currentWp =
         AERIAL_FURNITURE_WAYPOINTS[
@@ -790,7 +798,6 @@ export function Robot() {
       // Gerenciamento de altitude inteligente para o Aspi-Helicóptero:
       // Altitude de cruzeiro segura (1.35m) para sobrevoar confortavelmente todos os móveis,
       // mesas, sofás, balcões e brinquedos da casa sem colidir em suas laterais.
-      // Ao se aproximar de uma mobília para limpeza ou pouso, desce suavemente para a cota da superfície.
       let targetAltitude = 1.35;
 
       let activeTarget: Vector2D | null = null;
@@ -818,55 +825,102 @@ export function Robot() {
 
       if (activeTarget && targetDesiredHoverY !== null) {
         const distToTarget = distance2D({ x: loc.x, z: loc.z }, activeTarget);
-        // Desce para a altura de aspiração da superfície se já estiver sobre ela ou bem próximo (< 0.40m)
         if (surfaceUnderRobot || distToTarget < 0.40) {
           targetAltitude = targetDesiredHoverY;
         } else {
-          // Em trânsito até o móvel: voa a 1.35m para passar limpo por cima da borda
           targetAltitude = 1.35;
         }
       } else if (surfaceUnderRobot) {
-        // Sem alvo, pairando sobre uma mesa, sofá ou baú
         targetAltitude = surfaceUnderRobot.surfaceY + 0.18;
       } else {
-        // Sem alvo, pairando no ar sobre piso livre
         targetAltitude = 1.30;
       }
 
       robotMotionBridge.targetY = targetAltitude;
+
+      // Decolagem cadenciada e realista: a elevação vertical é governada pelo lift aerodinâmico
+      const baseSurfaceY = surfaceUnderRobot ? surfaceUnderRobot.surfaceY : 0.0;
+      const effectiveTargetY = baseSurfaceY + (targetAltitude - baseSurfaceY) * lift;
+
+      const climbSpeed = 1.6 * (0.2 + 0.8 * lift);
       robotMotionBridge.y = damp(
         robotMotionBridge.y,
-        robotMotionBridge.targetY,
-        3.2,
-        delta
-      );
-    } else {
-      robotMotionBridge.propellerExtension = damp(
-        robotMotionBridge.propellerExtension,
-        0.0,
-        5.0,
-        delta
-      );
-      robotMotionBridge.propellerSpeed = damp(
-        robotMotionBridge.propellerSpeed,
-        0.0,
-        6.0,
+        effectiveTargetY,
+        climbSpeed,
         delta
       );
 
-      // Pouso seguro sobre o móvel ou solo: se pousar sobre mesa/sofá/baú,
-      // permanece no topo da superfície (surfaceY) sem afundar ou atravessar o móvel!
+      // Micro-vibração mecânica de pré-decolagem enquanto o rotor atinge RPM no solo
+      if (lift < 0.8 && robotMotionBridge.y < baseSurfaceY + 0.04) {
+        loc.pitch = damp(
+          loc.pitch,
+          Math.sin(loc.bobPhase * 4.0) * (robotMotionBridge.propellerSpeed / 45.0) * 0.006,
+          8.0,
+          delta
+        );
+      }
+    } else {
+      // ========================================================
+      // POUSO REALISTA EM DUAS ETAPAS:
+      // ETAPA 1: DESCIDA CONTROLADA COM HÉLICE GIRANDO E SUSTENTAÇÃO ATIVA
+      // ETAPA 2: TOQUE SUAVE NA SUPERFÍCIE, CORTE DO MOTOR, INÉRCIA E RECOLHIMENTO
+      // ========================================================
       const landingSurfaceY = getSurfaceLandingY(
         { x: loc.x, z: loc.z },
         robotMotionBridge.y
       );
       robotMotionBridge.targetY = landingSurfaceY;
-      robotMotionBridge.y = damp(robotMotionBridge.y, landingSurfaceY, 4.0, delta);
 
-      if (robotMotionBridge.propellerSpeed > 1.0) {
+      const isStillInAir = robotMotionBridge.y > landingSurfaceY + 0.015;
+
+      if (isStillInAir) {
+        // Etapa 1: Em descida aérea. A hélice continua girando em alta rotação para sustentar a descida!
+        robotMotionBridge.propellerExtension = damp(
+          robotMotionBridge.propellerExtension,
+          1.0,
+          2.5,
+          delta
+        );
+        robotMotionBridge.propellerSpeed = damp(
+          robotMotionBridge.propellerSpeed,
+          36.0,
+          2.5,
+          delta
+        );
+
+        // Amortecimento de efeito solo: aproximação suave à medida que chega perto do piso/móvel
+        const heightAboveSurface = robotMotionBridge.y - landingSurfaceY;
+        const descentSpeed = heightAboveSurface > 0.35 ? 1.7 : 1.2;
+        robotMotionBridge.y = damp(robotMotionBridge.y, landingSurfaceY, descentSpeed, delta);
+
         soundManager.updatePropellerSpeed(robotMotionBridge.propellerSpeed);
       } else {
-        soundManager.stopPropellerSound();
+        // Etapa 2: Toque realizado na superfície!
+        robotMotionBridge.y = landingSurfaceY;
+
+        // Desaceleração suave por inércia rotacional
+        robotMotionBridge.propellerSpeed = damp(
+          robotMotionBridge.propellerSpeed,
+          0.0,
+          2.2,
+          delta
+        );
+
+        // O mastro telescópico só recolhe após a hélice desacelerar
+        if (robotMotionBridge.propellerSpeed < 18.0) {
+          robotMotionBridge.propellerExtension = damp(
+            robotMotionBridge.propellerExtension,
+            0.0,
+            2.4,
+            delta
+          );
+        }
+
+        if (robotMotionBridge.propellerSpeed > 1.0) {
+          soundManager.updatePropellerSpeed(robotMotionBridge.propellerSpeed);
+        } else {
+          soundManager.stopPropellerSound();
+        }
       }
     }
 

@@ -144,7 +144,7 @@ export const RobotEffects = memo(function RobotEffects({
 
     // 2. Anel de vento descendente do Modo Helicóptero (Downwash)
     if (downwashRingRef.current) {
-      if (robotMotionBridge.isFlying && robotMotionBridge.y > 0.06) {
+      if ((robotMotionBridge.isFlying || robotMotionBridge.propellerSpeed > 15.0) && robotMotionBridge.y > 0.06) {
         const expand = 1.0 + ((t * 4.0) % 1.0) * 0.8;
         const fade = Math.max(0, 0.35 - ((t * 4.0) % 1.0) * 0.35);
         downwashRingRef.current.scale.set(expand, expand, 1);
