@@ -30,6 +30,7 @@ import { soundManager } from '@/services/soundManager';
 import {
   HOUSE_ELEVATED_SURFACES,
   getSurfaceLandingY,
+  getOverheadObstacleAt,
 } from '@/world/House/HouseObstacles';
 
 const ROOM_PATROL_POINTS: Record<string, Vector2D[]> = {
@@ -96,14 +97,14 @@ const ROOM_PATROL_POINTS: Record<string, Vector2D[]> = {
  * Waypoints aéreos de superfícies elevadas (mesas e sofás) para o Modo Aspi-Helicóptero
  */
 export const AERIAL_FURNITURE_WAYPOINTS = [
-  { x: -1.45, z: -1.15, y: 0.87, label: 'Mesa de Centro do Quarto' },
-  { x: 0.0, z: 2.6, y: 1.07, label: 'Sofá-Baú do Quarto' },
-  { x: 0.95, z: -0.75, y: 1.06, label: 'Poltrona Verde do Quarto' },
-  { x: 12.8, z: -0.7, y: 0.67, label: 'Mesa de Centro da Sala' },
-  { x: 13.2, z: 0.88, y: 0.77, label: 'Sofá da Sala' },
-  { x: 12.0, z: 0.88, y: 0.77, label: 'Sofá da Sala (Esquerda)' },
-  { x: 15.6, z: -0.10, y: 0.77, label: 'Chaise do Sofá' },
-  { x: 12.8, z: 4.4, y: 1.34, label: 'Ilha da Cozinha' },
+  { x: -1.45, z: -1.15, y: 0.87, label: 'Mesa de Centro do Quarto', regionId: 'bedroom' },
+  { x: 0.0, z: 2.6, y: 1.07, label: 'Sofá-Baú do Quarto', regionId: 'bedroom' },
+  { x: 0.95, z: -0.75, y: 1.06, label: 'Poltrona Verde do Quarto', regionId: 'bedroom' },
+  { x: 12.8, z: -0.7, y: 0.67, label: 'Mesa de Centro da Sala', regionId: 'living-room' },
+  { x: 13.2, z: 0.88, y: 0.77, label: 'Sofá da Sala', regionId: 'living-room' },
+  { x: 12.0, z: 0.88, y: 0.77, label: 'Sofá da Sala (Esquerda)', regionId: 'living-room' },
+  { x: 15.6, z: -0.10, y: 0.77, label: 'Chaise do Sofá', regionId: 'living-room' },
+  { x: 12.8, z: 4.4, y: 1.34, label: 'Ilha da Cozinha', regionId: 'kitchen' },
 ];
 
 const GLOBAL_HOUSE_PATROL_POINTS: Vector2D[] = [
@@ -213,6 +214,12 @@ export function Robot() {
   const flightPathRef = useRef<Vector2D[]>([]);
   const flightTargetRef = useRef<Vector2D | null>(null);
 
+  // Orquestrador Autônomo Multimodal (Chão + Canhão + Móveis Voando)
+  const autoCannonCooldownRef = useRef(7.0); // Dispara canhão a cada ~9s a 14s
+  const autoAerialCooldownRef = useRef(18.0); // Alterna para voo após ~18s a 22s de chão
+  const autoFlightDurationRef = useRef(0); // Tempo no ar
+  const autoFurnitureVisitCountRef = useRef(0); // Quantos móveis higienizados na surtida aérea atual
+
   useFrame((_, rawDelta) => {
     const delta = Math.min(rawDelta, 0.05);
     const loc = locomotionRef.current;
@@ -278,21 +285,42 @@ export function Robot() {
         // Alvo manual específico selecionado pelo usuário no chão/móvel
         targetPoint = robotState.targetPosition;
       } else if (robotState.state === 'CLEANING') {
-        // SOMENTE voa autonomamente entre mobílias se o usuário solicitou que limpe!
-        const currentWp =
-          AERIAL_FURNITURE_WAYPOINTS[
-            aerialWaypointIdxRef.current % AERIAL_FURNITURE_WAYPOINTS.length
-          ];
-        targetPoint = { x: currentWp.x, z: currentWp.z };
-        const distToWp = distance2D({ x: loc.x, z: loc.z }, targetPoint);
-        if (distToWp < 0.55) {
-          aerialHoverTimerRef.current += delta;
-          // Limpeza aérea contínua sobre a mobília
-          envState.cleanDustNearPoint({ x: loc.x, z: loc.z }, 0.85, 0.16, robotMotionBridge.y);
-          if (aerialHoverTimerRef.current > 3.0) {
-            aerialHoverTimerRef.current = 0;
-            aerialWaypointIdxRef.current =
-              (aerialWaypointIdxRef.current + 1) % AERIAL_FURNITURE_WAYPOINTS.length;
+        const relevantAerialWps =
+          selectedId !== 'all'
+            ? AERIAL_FURNITURE_WAYPOINTS.filter((wp) => wp.regionId === selectedId)
+            : AERIAL_FURNITURE_WAYPOINTS;
+        const pool = relevantAerialWps.length > 0 ? relevantAerialWps : AERIAL_FURNITURE_WAYPOINTS;
+
+        const isReadyToLand =
+          autoFurnitureVisitCountRef.current >= 2 || autoFlightDurationRef.current > 20.0;
+        const surfaceUnder = HOUSE_ELEVATED_SURFACES.find((s) =>
+          isPointInsideBounds({ x: loc.x, z: loc.z }, s.bounds, 0.12)
+        );
+
+        if (isReadyToLand && surfaceUnder) {
+          // Desloca para área de piso livre para pousar com segurança
+          const safeLandingPoint = patrolPool[0];
+          targetPoint = { x: safeLandingPoint.x, z: safeLandingPoint.z };
+        } else {
+          const currentWp = pool[aerialWaypointIdxRef.current % pool.length];
+          targetPoint = { x: currentWp.x, z: currentWp.z };
+          const distToWp = distance2D({ x: loc.x, z: loc.z }, targetPoint);
+          if (distToWp < 0.55) {
+            aerialHoverTimerRef.current += delta;
+            // Limpeza aérea contínua sobre a mobília
+            envState.cleanDustNearPoint({ x: loc.x, z: loc.z }, 0.85, 0.18, robotMotionBridge.y);
+
+            // Disparo de espuma na mobília após 1.0s de pairada
+            if (aerialHoverTimerRef.current > 1.0 && aerialHoverTimerRef.current - delta <= 1.0) {
+              robotState.fireFoamCannon({ x: currentWp.x, y: currentWp.y, z: currentWp.z });
+            }
+
+            if (aerialHoverTimerRef.current > 3.5) {
+              aerialHoverTimerRef.current = 0;
+              aerialWaypointIdxRef.current =
+                (aerialWaypointIdxRef.current + 1) % pool.length;
+              autoFurnitureVisitCountRef.current += 1;
+            }
           }
         }
       } else {
@@ -355,6 +383,87 @@ export function Robot() {
       }
     } else if (robotState.state === 'RETURNING') {
       targetPoint = envState.dockPosition;
+    }
+
+    // =========================================================================
+    // ORQUESTRADOR DA LIMPEZA AUTÔNOMA MULTIMODAL:
+    // 1. Limpeza mecânica do piso com sucção contínua e escovas
+    // 2. Disparo autônomo do Canhão de Espuma Lateral (Estilo Crash Kart)
+    // 3. Decolagem em helicóptero para higienizar móveis elevados e pouso suave
+    // =========================================================================
+    if (robotState.state === 'CLEANING') {
+      autoCannonCooldownRef.current -= delta;
+
+      // --- PROCEDIMENTO 2: DISPARO DO CANHÃO DE ESPUMA LATERAL ---
+      if (autoCannonCooldownRef.current <= 0) {
+        autoCannonCooldownRef.current = 10.0 + Math.random() * 4.0;
+
+        // Procura poeira ativa em um cone frontal ou raio de até 3.8m
+        const candidateSpot = envState.dustSpots.find((s) => {
+          if (s.intensity <= 0.05) return false;
+          if (!robotMotionBridge.isFlying && (s.y ?? 0) > 0.35) return false;
+          const dx = s.position.x - loc.x;
+          const dz = s.position.z - loc.z;
+          const dist = Math.hypot(dx, dz);
+          return dist >= 0.8 && dist <= 3.8;
+        });
+
+        if (candidateSpot) {
+          robotState.fireFoamCannon({
+            x: candidateSpot.position.x,
+            y: candidateSpot.y ?? 0.05,
+            z: candidateSpot.position.z,
+          });
+        } else {
+          // Dispara para a frente no sentido de locomoção
+          const heading = robotMotionBridge.rotationY;
+          const targetX = loc.x + Math.sin(heading) * 2.2;
+          const targetY = robotMotionBridge.y > 0.1 ? robotMotionBridge.y : 0.05;
+          const targetZ = loc.z + Math.cos(heading) * 2.2;
+          robotState.fireFoamCannon({ x: targetX, y: targetY, z: targetZ });
+        }
+      }
+
+      // --- PROCEDIMENTO 3: TRANSIÇÃO ENTRE CHÃO E VOO SOBRE OS MÓVEIS ---
+      if (!robotMotionBridge.isFlying) {
+        autoAerialCooldownRef.current -= delta;
+
+        // Após ~18s a 22s de limpeza no solo, se tiver bateria > 20%:
+        if (autoAerialCooldownRef.current <= 0 && robotState.battery > 20) {
+          const overhead = getOverheadObstacleAt({ x: loc.x, z: loc.z }, robotMotionBridge.y);
+          if (!overhead) {
+            robotState.toggleHelicopterMode();
+            autoFlightDurationRef.current = 0;
+            autoFurnitureVisitCountRef.current = 0;
+            autoAerialCooldownRef.current = 24.0;
+            cmdState.pushNotification(
+              'Decolagem Automática 🚁',
+              'AspiToy levantou voo para higienizar mesas e sofás elevados.',
+              'info'
+            );
+          }
+        }
+      } else {
+        autoFlightDurationRef.current += delta;
+
+        // Após visitar os móveis da rota (ou ~20s de voo):
+        if (autoFurnitureVisitCountRef.current >= 2 || autoFlightDurationRef.current > 20.0) {
+          const surfaceUnder = HOUSE_ELEVATED_SURFACES.find((s) =>
+            isPointInsideBounds({ x: loc.x, z: loc.z }, s.bounds, 0.12)
+          );
+          const overhead = getOverheadObstacleAt({ x: loc.x, z: loc.z }, robotMotionBridge.y);
+
+          if (!surfaceUnder && !overhead) {
+            robotState.toggleHelicopterMode();
+            autoAerialCooldownRef.current = 22.0;
+            cmdState.pushNotification(
+              'Pouso Automático Suave',
+              'Móveis higienizados. AspiToy pousou no solo para continuar a varredura do piso.',
+              'info'
+            );
+          }
+        }
+      }
     }
 
     // Obstáculos dinâmicos em tempo real dos gatos (Laranja e Branco) andando/dormindo pela casa
@@ -791,10 +900,13 @@ export function Robot() {
       // e permanece no solo com vibração mecânica de decolagem. O lift cresce suavemente até 1.0.
       const lift = Math.max(0, Math.min(1.0, (robotMotionBridge.propellerSpeed - 18.0) / 22.0));
 
-      const currentWp =
-        AERIAL_FURNITURE_WAYPOINTS[
-          aerialWaypointIdxRef.current % AERIAL_FURNITURE_WAYPOINTS.length
-        ];
+      const relevantAerialWps =
+        selectedId !== 'all'
+          ? AERIAL_FURNITURE_WAYPOINTS.filter((wp) => wp.regionId === selectedId)
+          : AERIAL_FURNITURE_WAYPOINTS;
+      const pool = relevantAerialWps.length > 0 ? relevantAerialWps : AERIAL_FURNITURE_WAYPOINTS;
+
+      const currentWp = pool[aerialWaypointIdxRef.current % pool.length];
 
       // Gerenciamento de altitude inteligente para o Aspi-Helicóptero:
       // Altitude de cruzeiro segura (1.35m) para sobrevoar confortavelmente todos os móveis,
