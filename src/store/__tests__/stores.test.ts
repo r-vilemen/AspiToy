@@ -101,5 +101,23 @@ describe('Arquitetura de Estado Zustand (robotStore, environmentStore, commandSt
     expect(reset.roomCleaningProgress).toBe(0);
     expect(reset.cleanedAreaM2).toBe(0);
   });
+
+  it('deve alternar o modo helicóptero e atualizar isFlying na bridge', () => {
+    const { toggleHelicopterMode } = useRobotStore.getState();
+    expect(robotMotionBridge.isFlying).toBe(false);
+    toggleHelicopterMode();
+    expect(robotMotionBridge.isFlying).toBe(true);
+    expect(robotMotionBridge.targetY).toBeGreaterThan(0.5);
+    toggleHelicopterMode();
+    expect(robotMotionBridge.isFlying).toBe(false);
+    expect(robotMotionBridge.targetY).toBe(0);
+  });
+
+  it('deve incrementar bubbleBurstTrigger ao disparar o canhão de bolhas', () => {
+    const initialTrigger = robotMotionBridge.bubbleBurstTrigger;
+    const { fireBubbleCannon } = useRobotStore.getState();
+    fireBubbleCannon();
+    expect(robotMotionBridge.bubbleBurstTrigger).toBe(initialTrigger + 1);
+  });
 });
 

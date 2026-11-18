@@ -70,12 +70,20 @@ export const ROBOT_SKINS: Record<RobotSkinId, RobotSkin> = {
 export const robotMotionBridge: RobotMotionBridge = {
   x: INITIAL_DOCK_POSITION.x,
   z: INITIAL_DOCK_POSITION.z,
+  y: 0,
+  targetY: 0,
   rotationY: Math.PI / 2,
   targetRotationY: Math.PI / 2,
+  pitch: 0,
+  roll: 0,
+  propellerSpeed: 0,
+  propellerExtension: 0,
   currentSpeed: 0,
   wheelSpin: 0,
   bobPhase: 0,
   bumperCompression: 0,
+  isFlying: false,
+  bubbleBurstTrigger: 0,
 };
 
 /**
@@ -108,6 +116,8 @@ function mapStateToExpression(state: RobotOperationalState): RobotExpression {
       return 'neutral';
     case 'COMPLETED':
       return 'happy';
+    case 'FLYING':
+      return 'curious';
   }
 }
 
@@ -126,6 +136,8 @@ export interface RobotStoreState extends RobotTelemetry {
   setOrganizedToysCount: (count: number) => void;
   tickOperationTimer: () => void;
   setTargetPosition: (target: Vector2D | null) => void;
+  toggleHelicopterMode: () => void;
+  fireBubbleCannon: () => void;
   resetRobot: () => void;
 }
 
@@ -211,6 +223,7 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
       state === 'CLEANING' ||
       state === 'ORGANIZING' ||
       state === 'AVOIDING' ||
+      state === 'FLYING' ||
       state === 'RETURNING'
     ) {
       set({ operationSeconds: operationSeconds + 1 });
@@ -219,16 +232,54 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
 
   setTargetPosition: (target) => set({ targetPosition: target }),
 
+  toggleHelicopterMode: () => {
+    const isNowFlying = !robotMotionBridge.isFlying;
+    robotMotionBridge.isFlying = isNowFlying;
+    robotMotionBridge.targetY = isNowFlying ? 0.65 : 0;
+    const current = get();
+    if (isNowFlying) {
+      set({
+        state: 'FLYING',
+        previousActiveState: current.state !== 'PAUSED' ? current.state : current.previousActiveState,
+        expression: 'curious',
+        lastAction: 'Decolando em Modo Aspi-Helicóptero',
+      });
+    } else {
+      const fallbackState = current.previousActiveState ?? 'EXPLORING';
+      set({
+        state: fallbackState,
+        expression: mapStateToExpression(fallbackState),
+        lastAction: 'Pousando com trem de pouso suave',
+      });
+    }
+  },
+
+  fireBubbleCannon: () => {
+    robotMotionBridge.bubbleBurstTrigger += 1;
+    set({
+      lastAction: 'Disparando Canhão de Bolhas Anti-Gravidade!',
+      expression: 'happy',
+    });
+  },
+
   resetRobot: () => {
     const currentSkin = get().skin;
     robotMotionBridge.x = INITIAL_DOCK_POSITION.x;
     robotMotionBridge.z = INITIAL_DOCK_POSITION.z;
+    robotMotionBridge.y = 0;
+    robotMotionBridge.targetY = 0;
     robotMotionBridge.rotationY = Math.PI / 2;
     robotMotionBridge.targetRotationY = Math.PI / 2;
+    robotMotionBridge.pitch = 0;
+    robotMotionBridge.roll = 0;
+    robotMotionBridge.propellerSpeed = 0;
+    robotMotionBridge.propellerExtension = 0;
     robotMotionBridge.currentSpeed = 0;
     robotMotionBridge.wheelSpin = 0;
     robotMotionBridge.bobPhase = 0;
     robotMotionBridge.bumperCompression = 0;
+    robotMotionBridge.isFlying = false;
+    robotMotionBridge.bubbleBurstTrigger = 0;
 
     set({
       ...INITIAL_TELEMETRY,

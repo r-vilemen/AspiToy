@@ -6,7 +6,9 @@ export type UserCommandType =
   | 'RETURN_TO_BASE'
   | 'CLEAN_REGION'
   | 'MOVE_TO_POINT'
-  | 'RESET_SIMULATION';
+  | 'RESET_SIMULATION'
+  | 'TOGGLE_HELICOPTER'
+  | 'FIRE_BUBBLES';
 
 export type NotificationTone = 'info' | 'success' | 'warning';
 

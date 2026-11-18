@@ -7,7 +7,8 @@ export type RobotOperationalState =
   | 'RECHARGING'
   | 'PAUSED'
   | 'COMPLETED'
-  | 'ORGANIZING';
+  | 'ORGANIZING'
+  | 'FLYING';
 
 export type RobotSkinId = 'classic' | 'space-ranger' | 'sheriff' | 'cyber-translucent';
 
@@ -65,11 +66,19 @@ export interface RobotTelemetry {
 export interface RobotMotionBridge {
   x: number;
   z: number;
+  y: number;
+  targetY: number;
   rotationY: number;
   targetRotationY: number;
+  pitch: number;
+  roll: number;
+  propellerSpeed: number;
+  propellerExtension: number;
   currentSpeed: number;
   wheelSpin: number;
   bobPhase: number;
   bumperCompression: number;
+  isFlying: boolean;
+  bubbleBurstTrigger: number;
 }
 
