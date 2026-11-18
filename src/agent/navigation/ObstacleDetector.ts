@@ -54,9 +54,9 @@ export class ObstacleDetector {
         return false;
       }
 
-      // Se o robô está voando acima do topo do obstáculo físico:
-      // O helicóptero passa livremente por cima do obstáculo.
-      if (actorY - 0.06 > maxY) {
+      // Se o robô está voando ou pousado sobre a superfície do móvel/obstáculo:
+      // O robô passa livremente por cima do topo físico (com tolerância de 4cm para contato de superfície)
+      if (actorY >= maxY - 0.04) {
         return false;
       }
 

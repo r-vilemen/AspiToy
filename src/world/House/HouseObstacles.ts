@@ -13,15 +13,23 @@ export const INITIAL_BEDROOM_OBSTACLES: EnvironmentObstacle[] = [
     category: 'furniture',
     bounds: { minX: -1.44, maxX: 1.44, minZ: 2.05, maxZ: 3.15 },
     collidable: true,
-    height: 0.95,
+    height: 0.89,
+  },
+  {
+    id: 'armchair-olive-backrest',
+    label: 'Encosto da Poltrona Verde',
+    category: 'furniture',
+    bounds: { minX: 0.36, maxX: 1.85, minZ: -1.85, maxZ: -1.25 },
+    collidable: true,
+    height: 2.1,
   },
   {
     id: 'armchair-olive',
-    label: 'Poltrona Verde',
+    label: 'Assento da Poltrona Verde',
     category: 'furniture',
-    bounds: { minX: 0.36, maxX: 1.85, minZ: -1.85, maxZ: -0.22 },
+    bounds: { minX: 0.36, maxX: 1.85, minZ: -1.25, maxZ: -0.22 },
     collidable: true,
-    height: 2.1,
+    height: 0.88,
   },
   {
     id: 'coffee-table-leg-nw',
@@ -319,7 +327,7 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     category: 'furniture',
     bounds: { minX: 5.15, maxX: 5.23, minZ: -2.39, maxZ: -2.31 },
     collidable: true,
-    height: 1.1,
+    height: 1.09,
   },
   {
     id: 'hallway-console-leg-ne',
@@ -327,7 +335,7 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     category: 'furniture',
     bounds: { minX: 5.47, maxX: 5.55, minZ: -2.39, maxZ: -2.31 },
     collidable: true,
-    height: 1.1,
+    height: 1.09,
   },
   {
     id: 'hallway-console-leg-sw',
@@ -335,7 +343,7 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     category: 'furniture',
     bounds: { minX: 5.15, maxX: 5.23, minZ: -1.29, maxZ: -1.21 },
     collidable: true,
-    height: 1.1,
+    height: 1.09,
   },
   {
     id: 'hallway-console-leg-se',
@@ -343,7 +351,7 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     category: 'furniture',
     bounds: { minX: 5.47, maxX: 5.55, minZ: -1.29, maxZ: -1.21 },
     collidable: true,
-    height: 1.1,
+    height: 1.09,
   },
 
   // --- SALA DE ESTAR ---
@@ -602,7 +610,7 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     category: 'furniture',
     bounds: { minX: 11.5, maxX: 14.1, minZ: 3.85, maxZ: 4.95 },
     collidable: true,
-    height: 1.25,
+    height: 1.16,
   },
   {
     id: 'kitchen-stool-west',

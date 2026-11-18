@@ -289,5 +289,61 @@ describe('Inteligência e Navegação com Grade e Algoritmo A* (Sprint 2)', () =
     expect(resTableLow.collided).toBe(true);
     expect(resTableLow.position.x).toBeLessThan(12.0 - 0.28);
   });
+
+  it('permite que o helicóptero sobrevoe e pouse em superfícies elevadas (baú, poltrona e ilha) sem travar no ar', () => {
+    const furnitureObstacles = [
+      {
+        id: 'sofa-main',
+        label: 'Baú de Brinquedos',
+        category: 'furniture' as const,
+        bounds: { minX: -1.44, maxX: 1.44, minZ: 2.05, maxZ: 3.15 },
+        collidable: true,
+        height: 0.89,
+      },
+      {
+        id: 'armchair-olive-seat',
+        label: 'Assento da Poltrona Verde',
+        category: 'furniture' as const,
+        bounds: { minX: 0.36, maxX: 1.85, minZ: -1.25, maxZ: -0.22 },
+        collidable: true,
+        height: 0.88,
+      },
+      {
+        id: 'kitchen-island',
+        label: 'Ilha da Cozinha',
+        category: 'furniture' as const,
+        bounds: { minX: 11.5, maxX: 14.1, minZ: 3.85, maxZ: 4.95 },
+        collidable: true,
+        height: 1.16,
+      },
+    ];
+
+    const detector = new ObstacleDetector(furnitureObstacles, 22.6, 17.5);
+
+    // 1. No chão (actorY = 0), o robô colide e não consegue atravessar o baú
+    const groundMove = detector.resolveSafeMovement({ x: 0, z: 1.5 }, { x: 0, z: 2.5 }, 0.29, 0.0);
+    expect(groundMove.collided).toBe(true);
+    expect(groundMove.position.z).toBeLessThan(2.05);
+
+    // 2. Em altitude de cruzeiro (1.35m), o robô sobrevoa livremente o baú de brinquedos
+    const cruiseMove = detector.resolveSafeMovement({ x: 0, z: 1.5 }, { x: 0, z: 2.5 }, 0.29, 1.35);
+    expect(cruiseMove.collided).toBe(false);
+    expect(cruiseMove.position.z).toBeCloseTo(2.5, 2);
+
+    // 3. Ao pairar sobre a superfície do baú (hover a 1.07m), o robô se desloca sobre o tampo sem ser expelido
+    const hoverMove = detector.resolveSafeMovement({ x: 0, z: 2.3 }, { x: 0, z: 2.6 }, 0.29, 1.07);
+    expect(hoverMove.collided).toBe(false);
+    expect(hoverMove.position.z).toBeCloseTo(2.6, 2);
+
+    // 4. Ao pousar exatamente sobre o topo do baú (actorY = 0.89), não é expelido
+    const landedMove = detector.resolveSafeMovement({ x: 0, z: 2.3 }, { x: 0.2, z: 2.3 }, 0.29, 0.89);
+    expect(landedMove.collided).toBe(false);
+    expect(landedMove.position.x).toBeCloseTo(0.2, 2);
+
+    // 5. Em altitude de cruzeiro (1.35m), o robô também sobrevoa a ilha da cozinha (height: 1.16m)
+    const islandMove = detector.resolveSafeMovement({ x: 12.8, z: 3.2 }, { x: 12.8, z: 4.4 }, 0.29, 1.35);
+    expect(islandMove.collided).toBe(false);
+    expect(islandMove.position.z).toBeCloseTo(4.4, 2);
+  });
 });
 
