@@ -26,6 +26,8 @@ interface RobotModelProps {
  * - Torre óptica de sensores ToF/LiDAR com anel luminoso de estado
  * - Visor OLED curvo comunicando 7 estados emocionais distintos
  */
+const scratchLensColor = new THREE.Color();
+
 export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function RobotModel(
   {
     wheelSpin = 0,
@@ -39,7 +41,6 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
   ref
 ) {
   const currentSkinId = useRobotStore((s) => s.skin);
-  const timeOfDay = useEnvironmentStore((s) => s.timeOfDay);
 
   const mastMeshRef = useRef<THREE.Mesh>(null);
   const rotorHeadRef = useRef<THREE.Group>(null);
@@ -53,34 +54,39 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
     const ext = robotMotionBridge.propellerExtension;
     const speed = robotMotionBridge.propellerSpeed;
 
-    // Transição suave dos faróis do robô (acende de noite e apaga de dia)
-    const targetSpot = isHeadlightActive ? 3.4 : 0;
-    const targetFill = isHeadlightActive ? 0.9 : 0;
-    const targetLensOpacity = isHeadlightActive ? 0.95 : 0.25;
+    // Transição suave dos faróis do robô (acende de noite e apaga de dia sem recompilar shaders)
+    const isNightNow = useEnvironmentStore.getState().timeOfDay === 'night';
+    const isRechargingNow = useRobotStore.getState().state === 'RECHARGING';
+    const isHeadlightOn = isNightNow && !isRechargingNow;
+
+    const targetSpot = isHeadlightOn ? 3.4 : 0;
+    const targetFill = isHeadlightOn ? 0.9 : 0;
+    const targetLensOpacity = isHeadlightOn ? 0.95 : 0.25;
+    const targetLensColorHex = isHeadlightOn ? '#FEF08A' : '#78716C';
+    const lensAlpha = 1 - Math.exp(-1.2 * delta);
 
     if (headlightSpotRef.current) {
       headlightSpotRef.current.intensity = THREE.MathUtils.damp(
         headlightSpotRef.current.intensity,
         targetSpot,
-        2.5,
+        1.2,
         delta
       );
-      headlightSpotRef.current.visible = headlightSpotRef.current.intensity > 0.05;
     }
 
     if (headlightFillRef.current) {
       headlightFillRef.current.intensity = THREE.MathUtils.damp(
         headlightFillRef.current.intensity,
         targetFill,
-        2.5,
+        1.2,
         delta
       );
-      headlightFillRef.current.visible = headlightFillRef.current.intensity > 0.02;
     }
 
     headlightLensMatRefs.current.forEach((mat) => {
       if (!mat) return;
-      mat.opacity = THREE.MathUtils.damp(mat.opacity, targetLensOpacity, 2.5, delta);
+      mat.opacity = THREE.MathUtils.damp(mat.opacity, targetLensOpacity, 1.2, delta);
+      mat.color.lerp(scratchLensColor.set(targetLensColorHex), lensAlpha);
     });
 
     // Altura total da extensão telescópica (de 0.012m recolhido a 0.138m totalmente estendido)
@@ -133,10 +139,6 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
   });
 
   const skin = ROBOT_SKINS[currentSkinId] ?? ROBOT_SKINS.classic;
-  const isNight = timeOfDay === 'night';
-
-  // Farol 100% automático: acende de noite e apaga de dia (permanece apagado enquanto recarrega na base)
-  const isHeadlightActive = isNight && state !== 'RECHARGING';
 
   // Alvo óptico posicionado na frente (+Z) e rente ao piso (-Y) para o feixe do SpotLight
   const lightTarget = useMemo(() => {
@@ -331,9 +333,9 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
                     ref={(el) => {
                       headlightLensMatRefs.current[idx] = el;
                     }}
-                    color={isHeadlightActive ? '#FEF08A' : '#78716C'}
+                    color="#78716C"
                     transparent
-                    opacity={isHeadlightActive ? 0.95 : 0.25}
+                    opacity={0.25}
                   />
                 </mesh>
               </group>
@@ -344,7 +346,7 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
               <spotLight
                 ref={headlightSpotRef}
                 target={lightTarget}
-                intensity={isHeadlightActive ? 3.4 : 0}
+                intensity={0}
                 distance={5.8}
                 angle={Math.PI / 4.2}
                 penumbra={0.7}
@@ -355,7 +357,7 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
               <pointLight
                 ref={headlightFillRef}
                 position={[0, -0.01, 0.15]}
-                intensity={isHeadlightActive ? 0.9 : 0}
+                intensity={0}
                 distance={1.6}
                 decay={1.8}
                 color="#FEF9C3"

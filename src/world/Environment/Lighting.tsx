@@ -26,57 +26,57 @@ interface LightingPreset {
 
 const LIGHTING_PRESETS: Record<TimeOfDay, LightingPreset> = {
   day: {
-    ambientColor: '#FFF6E0',
+    ambientColor: '#FFF6E6',
     ambientIntensity: 0.62,
     hemiSky: '#BAE6FD',
-    hemiGround: '#996B42',
-    hemiIntensity: 1.05,
-    sunColor: '#FFFDF0',
-    sunIntensity: 2.6,
-    sunPosition: [-6.2, 7.6, -2.4],
+    hemiGround: '#8B6338',
+    hemiIntensity: 1.0,
+    sunColor: '#FFFDF2',
+    sunIntensity: 2.5,
+    sunPosition: [-6.4, 7.5, -2.2],
     readingLampColor: '#FFD9A0',
     readingLampIntensity: 0.75,
     beamColor: '#FFFEE5',
-    beamOpacity1: 0.11,
-    beamOpacity2: 0.08,
+    beamOpacity1: 0.10,
+    beamOpacity2: 0.075,
     interiorLightsFactor: 0.0,
-    fogColor: '#F3DEBE',
+    fogColor: '#F3DFBE',
     bgColor: '#E6D3B8',
   },
   sunset: {
-    ambientColor: '#FBE6C8',
-    ambientIntensity: 0.52,
-    hemiSky: '#FFF0CC',
-    hemiGround: '#7D4920',
-    hemiIntensity: 0.92,
-    sunColor: '#FFB870',
-    sunIntensity: 2.25,
-    sunPosition: [-7.8, 5.0, -1.8], // Sol mais baixo na linha do horizonte, sombras longas e douradas
+    ambientColor: '#FDE8CE',
+    ambientIntensity: 0.54,
+    hemiSky: '#FED7AA',
+    hemiGround: '#7C441A',
+    hemiIntensity: 0.88,
+    sunColor: '#FFBA75',
+    sunIntensity: 2.15,
+    sunPosition: [-7.0, 6.2, -2.0], // Sol ligeiramente mais baixo projetando luz dourada aconchegante
     readingLampColor: '#FFB86C',
     readingLampIntensity: 0.85,
     beamColor: '#FFD085',
-    beamOpacity1: 0.09,
-    beamOpacity2: 0.065,
-    interiorLightsFactor: 0.25, // Ao entardecer, abajures e arandelas acendem suavemente
-    fogColor: '#E8C8A0',
+    beamOpacity1: 0.085,
+    beamOpacity2: 0.06,
+    interiorLightsFactor: 0.35, // Ao entardecer, abajures e arandelas acendem suavemente num brilho dourado
+    fogColor: '#E9C8A0',
     bgColor: '#D8B888',
   },
   night: {
-    ambientColor: '#243048',
-    ambientIntensity: 0.32,
-    hemiSky: '#384860',
+    ambientColor: '#28344C',
+    ambientIntensity: 0.35,
+    hemiSky: '#3E4D68',
     hemiGround: '#1E1B18',
-    hemiIntensity: 0.42,
-    sunColor: '#60A5FA', // Luar azulado pelas janelas
-    sunIntensity: 0.48,
-    sunPosition: [-5.0, 8.5, -3.0], // Posição alta da lua no céu noturno
+    hemiIntensity: 0.45,
+    sunColor: '#93C5FD', // Luar azul suave e fresco pelas janelas
+    sunIntensity: 0.52,
+    sunPosition: [-6.0, 7.8, -2.4], // Luar alto suave através das janelas
     readingLampColor: '#FBBF24',
-    readingLampIntensity: 1.1,
+    readingLampIntensity: 1.15,
     beamColor: '#93C5FD',
     beamOpacity1: 0.04,
     beamOpacity2: 0.03,
     interiorLightsFactor: 1.0, // Luzes residenciais plenas
-    fogColor: '#1C2333',
+    fogColor: '#1D2435',
     bgColor: '#141824',
   },
 };
@@ -105,7 +105,6 @@ const scratchFog = new THREE.Color();
  * eliminando transições bruscas e preservando alta performance sem disparar re-renderizações React.
  */
 export const Lighting = memo(function Lighting() {
-  const timeOfDay = useEnvironmentStore((s) => s.timeOfDay);
   const { scene } = useThree();
 
   const ambientRef = useRef<THREE.AmbientLight>(null);
@@ -116,13 +115,14 @@ export const Lighting = memo(function Lighting() {
   const beamMat2Ref = useRef<THREE.MeshBasicMaterial>(null);
   const interiorLightsRef = useRef<(THREE.PointLight | null)[]>([]);
 
-  // Interpolação suave em useFrame (60 FPS, sem setState)
+  // Interpolação suave em useFrame (60 FPS, sem re-renderizações React e sem recompilação de shaders)
   useFrame((_, rawDelta) => {
     const delta = Math.min(rawDelta, 0.05);
-    const preset = LIGHTING_PRESETS[timeOfDay] ?? LIGHTING_PRESETS.sunset;
+    const currentTime = useEnvironmentStore.getState().timeOfDay;
+    const preset = LIGHTING_PRESETS[currentTime] ?? LIGHTING_PRESETS.sunset;
 
-    // Fator de suavização orgânico (duração de transição perceptível de ~3 segundos)
-    const smoothRate = 1.35;
+    // Fator de suavização cinematográfico (transição orgânica e imperceptível de 5 a 6 segundos)
+    const smoothRate = 0.65;
     const colorAlpha = 1 - Math.exp(-smoothRate * delta);
 
     // 1. Luz ambiente
@@ -148,7 +148,7 @@ export const Lighting = memo(function Lighting() {
       );
     }
 
-    // 3. Sol / Lua direcional com sombras dinâmicas
+    // 3. Sol / Lua direcional com sombras suaves estáveis
     if (sunRef.current) {
       sunRef.current.color.lerp(scratchSun.set(preset.sunColor), colorAlpha);
       sunRef.current.intensity = THREE.MathUtils.damp(
@@ -207,7 +207,7 @@ export const Lighting = memo(function Lighting() {
       );
     }
 
-    // 6. Luzes residenciais internas (transição gradual de acendimento/apagamento)
+    // 6. Luzes residenciais internas (fade contínuo de intensidade - sem ligar/desligar visible)
     const interiorFactor = preset.interiorLightsFactor;
     INTERIOR_LIGHT_CONFIGS.forEach((cfg, idx) => {
       const light = interiorLightsRef.current[idx];
@@ -220,13 +220,6 @@ export const Lighting = memo(function Lighting() {
         smoothRate,
         delta
       );
-
-      // Otimização: desliga visibilidade se a intensidade for nula para economizar fragment shaders
-      if (light.intensity < 0.015 && interiorFactor === 0) {
-        light.visible = false;
-      } else {
-        light.visible = true;
-      }
     });
 
     // 7. Background da cena 3D e Neblina (Fog)
@@ -238,7 +231,10 @@ export const Lighting = memo(function Lighting() {
     }
   });
 
-  const initialPreset = LIGHTING_PRESETS[timeOfDay] ?? LIGHTING_PRESETS.sunset;
+  const initialPresetRef = useRef(
+    LIGHTING_PRESETS[useEnvironmentStore.getState().timeOfDay] ?? LIGHTING_PRESETS.sunset
+  );
+  const initialPreset = initialPresetRef.current;
 
   return (
     <group name="cinematic-animation-lighting">
@@ -256,15 +252,15 @@ export const Lighting = memo(function Lighting() {
         position={[0, 6.5, 0]}
       />
 
-      {/* Luz direcional vindo da janela alta oeste (sombras suaves de alta resolução) */}
+      {/* Luz direcional vindo da janela alta oeste (sombras suaves e eficientes) */}
       <directionalLight
         ref={sunRef}
         castShadow
         position={initialPreset.sunPosition}
         intensity={initialPreset.sunIntensity}
         color={initialPreset.sunColor}
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
         shadow-camera-near={1}
         shadow-camera-far={24}
         shadow-camera-left={-6.5}
@@ -272,7 +268,7 @@ export const Lighting = memo(function Lighting() {
         shadow-camera-top={6.5}
         shadow-camera-bottom={-6.5}
         shadow-bias={-0.0003}
-        shadow-radius={2.5}
+        shadow-radius={2.0}
       />
 
       {/* Luz complementar constante da área de leitura do quarto */}
@@ -300,7 +296,7 @@ export const Lighting = memo(function Lighting() {
             distance={cfg.distance}
             decay={cfg.decay}
             color={cfg.color}
-            visible={initialPreset.interiorLightsFactor > 0}
+            visible={true}
           />
         ))}
       </group>

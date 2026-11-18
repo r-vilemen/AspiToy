@@ -10,7 +10,7 @@ import { TuxedoCat } from './Cat/TuxedoCat';
 import { FollowCamera } from './Camera/FollowCamera';
 import { useEnvironmentStore } from '@/store/environmentStore';
 
-export function Scene() {
+function SceneContainer({ children }: { children: React.ReactNode }) {
   const timeOfDay = useEnvironmentStore((s) => s.timeOfDay);
 
   const isNight = timeOfDay === 'night';
@@ -18,10 +18,18 @@ export function Scene() {
 
   return (
     <div
-      className={`relative h-full w-full overflow-hidden transition-colors duration-3000 ease-in-out ${
+      className={`relative h-full w-full overflow-hidden transition-colors duration-5000 ease-in-out ${
         isNight ? 'bg-[#141824]' : isDay ? 'bg-[#E6D3B8]' : 'bg-[#D8B888]'
       }`}
     >
+      {children}
+    </div>
+  );
+}
+
+export function Scene() {
+  return (
+    <SceneContainer>
       <Canvas
         shadows
         dpr={[1, 1.5]}
@@ -40,6 +48,6 @@ export function Scene() {
           <FollowCamera />
         </Suspense>
       </Canvas>
-    </div>
+    </SceneContainer>
   );
 }
