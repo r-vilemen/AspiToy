@@ -249,9 +249,20 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
 
   toggleHelicopterMode: () => {
     const isNowFlying = !robotMotionBridge.isFlying;
+    const current = get();
 
-    // Se estiver tentando levantar voo, verifica se há obstáculo físico (teto de móvel) diretamente acima
+    // Se estiver tentando levantar voo, valida condições de segurança
     if (isNowFlying) {
+      // Bloqueia decolagem com bateria fraca (<= 20%)
+      if (current.battery <= 20) {
+        set({
+          lastAction: 'Decolagem bloqueada: Bateria fraca (requer mais de 20%)',
+          expression: 'worried',
+        });
+        return false;
+      }
+
+      // Verifica se há obstáculo físico (teto de móvel) diretamente acima
       const overhead = getOverheadObstacleAt(
         { x: robotMotionBridge.x, z: robotMotionBridge.z },
         robotMotionBridge.y
@@ -263,7 +274,6 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
     }
 
     robotMotionBridge.isFlying = isNowFlying;
-    const current = get();
 
     if (isNowFlying) {
       robotMotionBridge.targetY = 0.85;

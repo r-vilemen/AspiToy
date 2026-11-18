@@ -307,6 +307,16 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
         const isTryingToFly = !robotMotionBridge.isFlying;
 
         if (isTryingToFly) {
+          if (robot.battery <= 20) {
+            soundManager.playChime(false);
+            get().pushNotification(
+              'Bateria Fraca 🪫',
+              `O voo não pode ser realizado com a bateria fraca (${Math.round(robot.battery)}%). O modo helicóptero requer mais de 20% de carga. Recarregue na base para decolar!`,
+              'warning'
+            );
+            return false;
+          }
+
           const overhead = getOverheadObstacleAt(
             { x: robotMotionBridge.x, z: robotMotionBridge.z },
             robotMotionBridge.y

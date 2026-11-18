@@ -141,6 +141,31 @@ describe('Arquitetura de Estado Zustand (robotStore, environmentStore, commandSt
     expect(robotMotionBridge.targetY).toBe(0);
   });
 
+  it('deve impedir decolagem do helicóptero quando a bateria estiver fraca (<= 20%)', () => {
+    const robot = useRobotStore.getState();
+    const cmd = useCommandStore.getState();
+
+    // 1. Reduz a bateria para nível fraco (15%)
+    useRobotStore.setState({ battery: 15 });
+    expect(useRobotStore.getState().battery).toBe(15);
+    expect(robotMotionBridge.isFlying).toBe(false);
+
+    // 2. Tenta acionar o modo helicóptero diretamente pelo store
+    const takeoffSuccess = robot.toggleHelicopterMode();
+    expect(takeoffSuccess).toBe(false);
+    expect(robotMotionBridge.isFlying).toBe(false);
+    expect(useRobotStore.getState().state).not.toBe('FLYING');
+    expect(useRobotStore.getState().lastAction).toContain('Bateria fraca');
+
+    // 3. Tenta acionar o modo helicóptero via comando TOGGLE_HELICOPTER
+    const cmdResult = cmd.dispatchCommand('TOGGLE_HELICOPTER');
+    expect(cmdResult).toBe(false);
+    expect(robotMotionBridge.isFlying).toBe(false);
+
+    const notifications = useCommandStore.getState().notifications;
+    expect(notifications.some((n) => n.title.includes('Bateria Fraca'))).toBe(true);
+  });
+
   it('deve incrementar bubbleBurstTrigger ao disparar o canhão de bolhas', () => {
     const initialTrigger = robotMotionBridge.bubbleBurstTrigger;
     const { fireBubbleCannon } = useRobotStore.getState();
