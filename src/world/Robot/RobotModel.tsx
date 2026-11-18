@@ -41,41 +41,109 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
   const currentSkinId = useRobotStore((s) => s.skin);
   const timeOfDay = useEnvironmentStore((s) => s.timeOfDay);
 
-  const propellerGroupRef = useRef<THREE.Group>(null);
+  const mastMeshRef = useRef<THREE.Mesh>(null);
+  const rotorHeadRef = useRef<THREE.Group>(null);
   const bladesGroupRef = useRef<THREE.Group>(null);
-  const blurDiskRef = useRef<THREE.Mesh>(null);
+  const blurRingRef = useRef<THREE.Group>(null);
+  const headlightSpotRef = useRef<THREE.SpotLight>(null);
+  const headlightFillRef = useRef<THREE.PointLight>(null);
+  const headlightLensMatRefs = useRef<(THREE.MeshBasicMaterial | null)[]>([]);
 
   useFrame((_, delta) => {
-    if (!propellerGroupRef.current || !bladesGroupRef.current) return;
     const ext = robotMotionBridge.propellerExtension;
     const speed = robotMotionBridge.propellerSpeed;
 
-    // Extensão suave do mastro no eixo vertical
-    propellerGroupRef.current.position.y = 0.05 + ext * 0.06;
-    propellerGroupRef.current.scale.set(
-      0.2 + ext * 0.8,
-      0.1 + ext * 0.9,
-      0.2 + ext * 0.8
-    );
+    // Transição suave dos faróis do robô (acende de noite e apaga de dia)
+    const targetSpot = isHeadlightActive ? 3.4 : 0;
+    const targetFill = isHeadlightActive ? 0.9 : 0;
+    const targetLensOpacity = isHeadlightActive ? 0.95 : 0.25;
+
+    if (headlightSpotRef.current) {
+      headlightSpotRef.current.intensity = THREE.MathUtils.damp(
+        headlightSpotRef.current.intensity,
+        targetSpot,
+        2.5,
+        delta
+      );
+      headlightSpotRef.current.visible = headlightSpotRef.current.intensity > 0.05;
+    }
+
+    if (headlightFillRef.current) {
+      headlightFillRef.current.intensity = THREE.MathUtils.damp(
+        headlightFillRef.current.intensity,
+        targetFill,
+        2.5,
+        delta
+      );
+      headlightFillRef.current.visible = headlightFillRef.current.intensity > 0.02;
+    }
+
+    headlightLensMatRefs.current.forEach((mat) => {
+      if (!mat) return;
+      mat.opacity = THREE.MathUtils.damp(mat.opacity, targetLensOpacity, 2.5, delta);
+    });
+
+    // Altura total da extensão telescópica (de 0.012m recolhido a 0.138m totalmente estendido)
+    const currentMastHeight = 0.012 + ext * 0.126;
+
+    // Atualiza o mastro: a base fica permanentemente ancorada no colar (y=0.005) e o topo atinge o rotor
+    if (mastMeshRef.current) {
+      if (ext < 0.01) {
+        mastMeshRef.current.visible = false;
+      } else {
+        mastMeshRef.current.visible = true;
+        mastMeshRef.current.scale.set(1, currentMastHeight, 1);
+        // O cilindro unitário de altura 1 tem centro em currentMastHeight / 2
+        mastMeshRef.current.position.y = 0.005 + currentMastHeight / 2;
+      }
+    }
+
+    // Atualiza a cabeça do rotor no topo exato do mastro telescópico (ZERO gap flutuante!)
+    if (rotorHeadRef.current) {
+      if (ext < 0.01) {
+        rotorHeadRef.current.visible = false;
+      } else {
+        rotorHeadRef.current.visible = true;
+        rotorHeadRef.current.position.y = 0.005 + currentMastHeight;
+        // As pás se desdobram suavemente ao erguer o mastro
+        const bladeScale = Math.min(1.0, ext * 1.3);
+        rotorHeadRef.current.scale.set(bladeScale, bladeScale, bladeScale);
+      }
+    }
 
     // Rotação contínua de alta rotação das pás
-    if (speed > 0.01) {
+    if (bladesGroupRef.current && speed > 0.01) {
       bladesGroupRef.current.rotation.y += delta * speed;
     }
 
-    // Disco de desfoque óptico
-    if (blurDiskRef.current) {
-      const mat = blurDiskRef.current.material as THREE.MeshBasicMaterial;
-      if (mat) {
-        mat.opacity = Math.min(0.5, (speed / 45) * 0.5);
+    // Vórtice dinâmico de desfoque óptico (motion blur suave, sem parecer um prato branco)
+    if (blurRingRef.current) {
+      const tipMesh = blurRingRef.current.children[0] as THREE.Mesh | undefined;
+      const innerMesh = blurRingRef.current.children[1] as THREE.Mesh | undefined;
+      if (tipMesh && innerMesh) {
+        const tipMat = tipMesh.material as THREE.MeshBasicMaterial;
+        const innerMat = innerMesh.material as THREE.MeshBasicMaterial;
+        if (tipMat && innerMat) {
+          const blurFactor = Math.min(1.0, speed / 40);
+          tipMat.opacity = blurFactor * 0.28;
+          innerMat.opacity = blurFactor * 0.12;
+        }
       }
     }
   });
 
   const skin = ROBOT_SKINS[currentSkinId] ?? ROBOT_SKINS.classic;
   const isNight = timeOfDay === 'night';
-  const isOperating =
-    state === 'CLEANING' || state === 'ORGANIZING' || state === 'EXPLORING';
+
+  // Farol 100% automático: acende de noite e apaga de dia (permanece apagado enquanto recarrega na base)
+  const isHeadlightActive = isNight && state !== 'RECHARGING';
+
+  // Alvo óptico posicionado na frente (+Z) e rente ao piso (-Y) para o feixe do SpotLight
+  const lightTarget = useMemo(() => {
+    const obj = new THREE.Object3D();
+    obj.position.set(0, -0.06, 1.8);
+    return obj;
+  }, []);
 
   // Materiais dinâmicos derivados da Skin equipada na Oficina Toy Box
   const skinMaterials = useMemo(() => {
@@ -245,39 +313,54 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
             />
           </mesh>
 
-          {/* FARÓIS ÓPTICOS FRONTAIS LED (ACESOS À NOITE OU EM OPERAÇÃO) */}
+          {/* FARÓIS ÓPTICOS FRONTAIS LED (ACESOS À NOITE, PÔR DO SOL OU EM OPERAÇÃO) */}
           <group position={[0, 0.012, 0.286]}>
+            {/* Adiciona o alvo local à árvore de cena para que rotacione e se mova perfeitamente com o robô */}
+            <primitive object={lightTarget} />
+
             {[-0.105, 0.105].map((lx, idx) => (
               <group key={idx} position={[lx, 0, 0]}>
-                {/* Aro metálico do farol */}
+                {/* Aro metálico cromado do farol */}
                 <mesh rotation={[Math.PI / 2, 0, 0]} material={sharedMaterials.metalChrome}>
                   <torusGeometry args={[0.022, 0.0045, 8, 16]} />
                 </mesh>
-                {/* Lente convexa iluminada */}
+                {/* Lente convexa iluminada com brilho visual proporcional */}
                 <mesh position={[0, 0, 0.003]} rotation={[Math.PI / 2, 0, 0]}>
                   <circleGeometry args={[0.019, 16]} />
                   <meshBasicMaterial
-                    color={isNight ? '#FEF08A' : isOperating ? '#FFFBEB' : '#FDE68A'}
+                    ref={(el) => {
+                      headlightLensMatRefs.current[idx] = el;
+                    }}
+                    color={isHeadlightActive ? '#FEF08A' : '#78716C'}
                     transparent
-                    opacity={isNight ? 0.95 : isOperating ? 0.75 : 0.4}
+                    opacity={isHeadlightActive ? 0.95 : 0.25}
                   />
                 </mesh>
               </group>
             ))}
 
             {/* Feixe direcional cônico iluminando o piso à frente do robô */}
-            {(isNight || isOperating) && (
-              <group position={[0, 0.04, 0.02]}>
-                <spotLight
-                  intensity={isNight ? 2.6 : 1.1}
-                  distance={4.8}
-                  angle={Math.PI / 5}
-                  penumbra={0.7}
-                  color="#FEF9C3"
-                  castShadow={false}
-                />
-              </group>
-            )}
+            <group position={[0, 0.02, 0.01]}>
+              <spotLight
+                ref={headlightSpotRef}
+                target={lightTarget}
+                intensity={isHeadlightActive ? 3.4 : 0}
+                distance={5.8}
+                angle={Math.PI / 4.2}
+                penumbra={0.7}
+                color="#FFFDF0"
+                castShadow={false}
+              />
+              {/* Luz suave de preenchimento do solo imediato à frente do para-choque */}
+              <pointLight
+                ref={headlightFillRef}
+                position={[0, -0.01, 0.15]}
+                intensity={isHeadlightActive ? 0.9 : 0}
+                distance={1.6}
+                decay={1.8}
+                color="#FEF9C3"
+              />
+            </group>
           </group>
 
           {/* Faixa emborrachada de impacto na parte inferior do para-choque */}
@@ -375,43 +458,101 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
             <meshBasicMaterial color={statusColor} />
           </mesh>
 
-          {/* HÉLICE RETRÁTIL DO MODO ASPI-HELICÓPTERO */}
-          <group ref={propellerGroupRef} position={[0, 0.05, 0]}>
-            {/* Mastro telescópico em cromo que se eleva ao decolar */}
-            <mesh position={[0, 0.04, 0]} material={sharedMaterials.metalChrome}>
-              <cylinderGeometry args={[0.007, 0.009, 0.08, 16]} />
+          {/* HÉLICE RETRÁTIL DO MODO ASPI-HELICÓPTERO (SISTEMA TELESCÓPICO DE ALTA PRECISÃO) */}
+          <group position={[0, 0.048, 0]}>
+            {/* Colar mecânico fixo no topo da torre LIDAR (porta de saída telescópica) */}
+            <mesh position={[0, 0.003, 0]} material={sharedMaterials.robotRubberBumper}>
+              <cylinderGeometry args={[0.02, 0.024, 0.008, 24]} />
             </mesh>
-            {/* Conjunto rotor e pás com alta rotação */}
-            <group ref={bladesGroupRef} position={[0, 0.08, 0]}>
-              {/* Hub central aerodinâmico */}
-              <mesh material={skinMaterials.coralTrim}>
-                <coneGeometry args={[0.02, 0.026, 16]} />
+            <mesh position={[0, 0.007, 0]} material={sharedMaterials.metalChrome}>
+              <cylinderGeometry args={[0.014, 0.015, 0.004, 24]} />
+            </mesh>
+
+            {/* Mastro telescópico contínuo ancorado no colar */}
+            <mesh
+              ref={mastMeshRef}
+              position={[0, 0.01, 0]}
+              material={sharedMaterials.metalChrome}
+            >
+              <cylinderGeometry args={[0.008, 0.01, 1, 16]} />
+            </mesh>
+
+            {/* Conjunto do Rotor e Pás (posicionado dinamicamente no topo do mastro) */}
+            <group ref={rotorHeadRef} position={[0, 0.012, 0]}>
+              {/* Hub central do rotor */}
+              <mesh position={[0, 0.008, 0]} material={skinMaterials.coralTrim}>
+                <cylinderGeometry args={[0.024, 0.02, 0.016, 20]} />
               </mesh>
-              {/* Pás aerodinâmicas duplas */}
-              <mesh castShadow material={sharedMaterials.robotRubberBumper}>
-                <boxGeometry args={[0.42, 0.005, 0.032]} />
+              {/* Spinner cônico superior aerodinâmico */}
+              <mesh position={[0, 0.02, 0]} material={skinMaterials.yellowTrim}>
+                <coneGeometry args={[0.014, 0.018, 18]} />
               </mesh>
-              {/* Pontas amarelas estilizadas de segurança nas pás */}
-              {[-0.2, 0.2].map((bx, idx) => (
-                <mesh key={idx} position={[bx, 0, 0]} material={skinMaterials.yellowTrim}>
-                  <boxGeometry args={[0.026, 0.006, 0.034]} />
-                </mesh>
-              ))}
-              {/* Disco translúcido simulando o borrão de alta velocidade (Motion Blur) */}
-              <mesh
-                ref={blurDiskRef}
-                position={[0, 0.001, 0]}
-                rotation={[-Math.PI / 2, 0, 0]}
-              >
-                <circleGeometry args={[0.22, 32]} />
-                <meshBasicMaterial
-                  color="#F1F5F9"
-                  transparent
-                  opacity={0}
-                  depthWrite={false}
-                  side={THREE.DoubleSide}
-                />
-              </mesh>
+
+              {/* Conjunto rotativo de alta velocidade (gira com speed da hélice) */}
+              <group ref={bladesGroupRef} position={[0, 0.012, 0]}>
+                {/* Barra estabilizadora transversal (Flybar estilo helicóptero de brinquedo Pixar) */}
+                <group rotation={[0, Math.PI / 4, 0]}>
+                  <mesh material={sharedMaterials.metalChrome} rotation={[0, 0, Math.PI / 2]}>
+                    <cylinderGeometry args={[0.003, 0.003, 0.22, 12]} />
+                  </mesh>
+                  {/* Pesos esferoidais cromados nas extremidades da flybar */}
+                  {[-0.11, 0.11].map((fx, i) => (
+                    <mesh key={i} position={[fx, 0, 0]} material={sharedMaterials.metalChrome}>
+                      <sphereGeometry args={[0.007, 12, 12]} />
+                    </mesh>
+                  ))}
+                </group>
+
+                {/* Duas pás aerodinâmicas principais de alta sustentação (52cm de envergadura) */}
+                {[-1, 1].map((dir, i) => (
+                  <group key={i} position={[dir * 0.018, 0, 0]} rotation={[0, dir === 1 ? 0 : Math.PI, 0]}>
+                    {/* Haste/raiz de fixação da pá no cubo */}
+                    <mesh position={[0.02, 0, 0]} material={sharedMaterials.metalChrome}>
+                      <boxGeometry args={[0.024, 0.006, 0.012]} />
+                    </mesh>
+                    {/* Corpo aerodinâmico da pá com passo positivo */}
+                    <group position={[0.13, 0, 0]} rotation={[0.12, 0, 0]}>
+                      <RoundedBox
+                        args={[0.22, 0.004, 0.038]}
+                        radius={0.002}
+                        smoothness={2}
+                        material={sharedMaterials.robotRubberBumper}
+                      />
+                      {/* Faixa de segurança amarela vibrante na ponta da pá */}
+                      <mesh position={[0.095, 0.0005, 0]} material={skinMaterials.yellowTrim}>
+                        <boxGeometry args={[0.032, 0.005, 0.038]} />
+                      </mesh>
+                    </group>
+                  </group>
+                ))}
+
+                {/* Vórtice dinâmico translúcido de rotação (Motion Blur Arc) */}
+                <group ref={blurRingRef} rotation={[-Math.PI / 2, 0, 0]}>
+                  {/* Anel de ponta de pá de alta rotação */}
+                  <mesh>
+                    <ringGeometry args={[0.22, 0.265, 48]} />
+                    <meshBasicMaterial
+                      color="#E2E8F0"
+                      transparent
+                      opacity={0}
+                      depthWrite={false}
+                      side={THREE.DoubleSide}
+                      blending={THREE.AdditiveBlending}
+                    />
+                  </mesh>
+                  {/* Disco interno aveludado de fluxo de ar */}
+                  <mesh>
+                    <ringGeometry args={[0.06, 0.22, 36]} />
+                    <meshBasicMaterial
+                      color="#CBD5E1"
+                      transparent
+                      opacity={0}
+                      depthWrite={false}
+                      side={THREE.DoubleSide}
+                    />
+                  </mesh>
+                </group>
+              </group>
             </group>
           </group>
         </group>
