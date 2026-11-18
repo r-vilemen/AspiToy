@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { RoundedBox } from '@react-three/drei';
 import * as THREE from 'three';
 import { sharedMaterials, WORLD_PALETTE } from '../Environment/Materials';
-import type { RobotExpression, RobotOperationalState } from '@/types/robot';
+import type { RobotExpression, RobotOperationalState, RobotSkinId } from '@/types/robot';
 import { ROBOT_SKINS, robotMotionBridge, useRobotStore } from '@/store/robotStore';
 import { useEnvironmentStore } from '@/store/environmentStore';
 
@@ -15,6 +15,7 @@ interface RobotModelProps {
   bumperCompression?: number;
   state?: RobotOperationalState;
   expression?: RobotExpression;
+  skinId?: RobotSkinId;
 }
 
 /**
@@ -37,10 +38,12 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
     bumperCompression = 0,
     state = 'IDLE',
     expression = 'neutral',
+    skinId,
   },
   ref
 ) {
   const currentSkinId = useRobotStore((s) => s.skin);
+  const activeSkinId = skinId ?? currentSkinId;
 
   const mastMeshRef = useRef<THREE.Mesh>(null);
   const rotorHeadRef = useRef<THREE.Group>(null);
@@ -138,7 +141,7 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
     }
   });
 
-  const skin = ROBOT_SKINS[currentSkinId] ?? ROBOT_SKINS.classic;
+  const skin = ROBOT_SKINS[activeSkinId] ?? ROBOT_SKINS.classic;
 
   // Alvo óptico posicionado na frente (+Z) e rente ao piso (-Y) para o feixe do SpotLight
   const lightTarget = useMemo(() => {
