@@ -51,5 +51,42 @@ describe('Sprint 3 — Limpeza Inteligente e Priorização', () => {
 
     expect(target).toEqual(coverageTarget);
   });
+
+  it('no modo chão ignora sujeiras elevadas em mesas e sofás, mas no modo voo as considera', () => {
+    const elevatedSpot: DustSpot = {
+      id: 'elevated-table',
+      position: { x: 1, z: 1 },
+      intensity: 1.0,
+      radius: 0.4,
+      regionId: 'bedroom',
+      y: 0.85,
+    };
+
+    // Modo chão (isFlying = false): não deve escolher o ponto em cima da mesa
+    const groundTarget = manager.selectBestTarget(
+      { x: 0, z: 0 },
+      [elevatedSpot],
+      'bedroom',
+      INITIAL_REGIONS,
+      80,
+      INITIAL_DOCK_POSITION,
+      null,
+      false
+    );
+    expect(groundTarget).toBeNull();
+
+    // Modo voo (isFlying = true): deve escolher o ponto na mesa para o helicóptero
+    const flyingTarget = manager.selectBestTarget(
+      { x: 0, z: 0 },
+      [elevatedSpot],
+      'bedroom',
+      INITIAL_REGIONS,
+      80,
+      INITIAL_DOCK_POSITION,
+      null,
+      true
+    );
+    expect(flyingTarget).toEqual({ x: 1, z: 1 });
+  });
 });
 

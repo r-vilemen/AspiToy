@@ -224,24 +224,39 @@ export const INITIAL_REGIONS: RoomRegion[] = [
 export const INITIAL_OBSTACLES: EnvironmentObstacle[] = INITIAL_BEDROOM_OBSTACLES;
 
 const INITIAL_DUST_SPOTS: DustSpot[] = [
-  // Quarto
+  // Quarto - Piso
   { id: 'dust-1', position: { x: -0.4, z: 0.2 }, radius: 0.48, intensity: 0.95, regionId: 'bedroom' },
   { id: 'dust-2', position: { x: -0.15, z: -1.25 }, radius: 0.44, intensity: 0.9, regionId: 'bedroom' },
   { id: 'dust-3', position: { x: 2.3, z: -0.6 }, radius: 0.5, intensity: 1.0, regionId: 'bedroom' },
   { id: 'dust-4', position: { x: 2.4, z: 1.2 }, radius: 0.45, intensity: 0.85, regionId: 'bedroom' },
   { id: 'dust-5', position: { x: -2.15, z: -2.25 }, radius: 0.46, intensity: 0.85, regionId: 'bedroom' },
-  // Corredor
+  // Quarto - Móveis Elevados (Mesas e Sofás para Aspi-Helicóptero)
+  { id: 'dust-table-bedroom', position: { x: -1.45, z: -1.15 }, y: 0.69, radius: 0.42, intensity: 0.95, regionId: 'bedroom', surfaceLabel: 'Mesa de Vidro' },
+  { id: 'dust-chest-bedroom', position: { x: 0.0, z: 2.5 }, y: 0.89, radius: 0.45, intensity: 0.9, regionId: 'bedroom', surfaceLabel: 'Sofá-Baú' },
+  { id: 'dust-armchair-bedroom', position: { x: 0.95, z: -0.55 }, y: 0.88, radius: 0.38, intensity: 0.9, regionId: 'bedroom', surfaceLabel: 'Poltrona Verde' },
+
+  // Corredor - Piso
   { id: 'dust-hall-1', position: { x: 6.3, z: 0.0 }, radius: 0.42, intensity: 0.9, regionId: 'hallway' },
   { id: 'dust-hall-2', position: { x: 6.3, z: 4.5 }, radius: 0.45, intensity: 0.85, regionId: 'hallway' },
-  // Sala de Estar
+
+  // Sala de Estar - Piso
   { id: 'dust-living-1', position: { x: 11.5, z: -0.8 }, radius: 0.46, intensity: 0.95, regionId: 'living-room' },
   { id: 'dust-living-2', position: { x: 14.5, z: -1.2 }, radius: 0.44, intensity: 0.9, regionId: 'living-room' },
   { id: 'dust-living-3', position: { x: 10.2, z: 1.5 }, radius: 0.45, intensity: 0.85, regionId: 'living-room' },
-  // Cozinha
+  // Sala de Estar - Móveis Elevados (Mesas e Sofás para Aspi-Helicóptero)
+  { id: 'dust-coffee-living', position: { x: 12.8, z: -0.7 }, y: 0.465, radius: 0.45, intensity: 0.95, regionId: 'living-room', surfaceLabel: 'Mesa de Centro' },
+  { id: 'dust-sofa-living-center', position: { x: 13.2, z: 0.90 }, y: 0.58, radius: 0.42, intensity: 0.9, regionId: 'living-room', surfaceLabel: 'Sofá da Sala' },
+  { id: 'dust-sofa-living-left', position: { x: 12.0, z: 0.90 }, y: 0.58, radius: 0.40, intensity: 0.85, regionId: 'living-room', surfaceLabel: 'Sofá da Sala (Esquerda)' },
+  { id: 'dust-chaise-living', position: { x: 15.6, z: -0.1 }, y: 0.58, radius: 0.45, intensity: 0.9, regionId: 'living-room', surfaceLabel: 'Chaise do Sofá' },
+
+  // Cozinha - Piso
   { id: 'dust-kitchen-1', position: { x: 10.0, z: 5.5 }, radius: 0.48, intensity: 1.0, regionId: 'kitchen' },
   { id: 'dust-kitchen-2', position: { x: 15.0, z: 5.8 }, radius: 0.44, intensity: 0.9, regionId: 'kitchen' },
   { id: 'dust-kitchen-3', position: { x: 12.8, z: 6.8 }, radius: 0.46, intensity: 0.85, regionId: 'kitchen' },
-  // Banheiro
+  // Cozinha - Mesa / Balcão da Ilha
+  { id: 'dust-table-kitchen', position: { x: 12.8, z: 4.4 }, y: 1.225, radius: 0.48, intensity: 0.95, regionId: 'kitchen', surfaceLabel: 'Balcão da Ilha' },
+
+  // Banheiro - Piso
   { id: 'dust-bath-1', position: { x: 7.8, z: 9.8 }, radius: 0.42, intensity: 0.9, regionId: 'bathroom' },
   { id: 'dust-bath-2', position: { x: 8.5, z: 11.5 }, radius: 0.44, intensity: 0.85, regionId: 'bathroom' },
 ];
@@ -438,19 +453,29 @@ export function resetPushableToys(): void {
 export function stepPushableToysPhysics(
   robotPos: Vector2D,
   robotRadius: number,
-  delta: number
+  delta: number,
+  robotY?: number
 ): { pushedToyLabel: string | null } {
   let pushedToyLabel: string | null = null;
   const halfW = INITIAL_ROOM_DIMENSIONS.width / 2 - 0.28;
   const halfD = INITIAL_ROOM_DIMENSIONS.depth / 2 - 0.28;
   const solidFurniture = INITIAL_OBSTACLES.filter((o) => o.collidable);
 
+  // Se o robô estiver voando alto (modo Aspi-Helicóptero acima do chão), ele não toca os brinquedos no chão
+  const isRobotAirborne = (robotY ?? 0) > 0.25;
+
   // 1. Empurrão causado pelo Robô e pelos Gatos
   const pushers = [
-    { x: robotPos.x, z: robotPos.z, r: robotRadius, isRobot: true },
-    { x: catMotionBridge.x, z: catMotionBridge.z, r: 0.26, isRobot: false },
-    { x: whiteCatMotionBridge.x, z: whiteCatMotionBridge.z, r: 0.26, isRobot: false },
-    { x: tuxedoCatMotionBridge.x, z: tuxedoCatMotionBridge.z, r: 0.26, isRobot: false },
+    ...(isRobotAirborne ? [] : [{ x: robotPos.x, z: robotPos.z, r: robotRadius, isRobot: true }]),
+    ...((catMotionBridge.y ?? 0) > 0.35 || catMotionBridge.isPerched
+      ? []
+      : [{ x: catMotionBridge.x, z: catMotionBridge.z, r: 0.26, isRobot: false }]),
+    ...((whiteCatMotionBridge.y ?? 0) > 0.35 || whiteCatMotionBridge.isPerched
+      ? []
+      : [{ x: whiteCatMotionBridge.x, z: whiteCatMotionBridge.z, r: 0.26, isRobot: false }]),
+    ...((tuxedoCatMotionBridge.y ?? 0) > 0.35 || tuxedoCatMotionBridge.isPerched
+      ? []
+      : [{ x: tuxedoCatMotionBridge.x, z: tuxedoCatMotionBridge.z, r: 0.26, isRobot: false }]),
   ];
 
   for (const toy of pushableToysBridge) {
@@ -535,6 +560,23 @@ export function stepPushableToysPhysics(
     toy.angVel *= friction;
     toy.wobble *= Math.exp(-6.5 * delta);
 
+    // Limite de velocidade de segurança para impedir ejeção de brinquedos
+    const MAX_SPEED = 2.4;
+    const curSpeed = Math.hypot(toy.vx, toy.vz);
+    if (curSpeed > MAX_SPEED) {
+      const s = MAX_SPEED / curSpeed;
+      toy.vx *= s;
+      toy.vz *= s;
+    }
+
+    // Sanitização contra NaN
+    if (isNaN(toy.x) || isNaN(toy.z) || isNaN(toy.vx) || isNaN(toy.vz)) {
+      toy.x = toy.initialX;
+      toy.z = toy.initialZ;
+      toy.vx = 0;
+      toy.vz = 0;
+    }
+
     // Impede que o brinquedo empurrado atravesse paredes
     toy.x = clamp(toy.x, -halfW, halfW);
     toy.z = clamp(toy.z, -halfD, halfD);
@@ -594,15 +636,26 @@ export interface EnvironmentStoreState {
   dustSpots: DustSpot[];
   selectedRegionId: string;
   timeOfDay: TimeOfDay;
+  isTimeOfDayAuto: boolean;
+  timeOfDayElapsedSeconds: number;
+  timeOfDayIntervalSeconds: number;
   catState: CatBehaviorState;
   catPosition: Vector2D;
   setSelectedRegion: (regionId: string) => void;
-  setTimeOfDay: (time: TimeOfDay) => void;
-  cycleTimeOfDay: () => TimeOfDay;
+  setTimeOfDay: (time: TimeOfDay, isManual?: boolean) => void;
+  setTimeOfDayAuto: (auto: boolean) => void;
+  toggleTimeOfDayAuto: () => boolean;
+  cycleTimeOfDay: (isManual?: boolean) => TimeOfDay;
+  tickCircadianTimer: (deltaSeconds?: number) => TimeOfDay | null;
   setCatTelemetry: (state: CatBehaviorState, position: Vector2D) => void;
   cycleCatBehavior: () => CatBehaviorState;
   resolveRegionAtPoint: (point: Vector2D) => RoomRegion;
-  cleanDustNearPoint: (point: Vector2D, reachRadius?: number, power?: number) => number;
+  cleanDustNearPoint: (
+    point: Vector2D,
+    reachRadius?: number,
+    power?: number,
+    actorY?: number
+  ) => number;
   respawnDustSpots: () => void;
   resetEnvironment: () => void;
 }
@@ -615,21 +668,68 @@ export const useEnvironmentStore = create<EnvironmentStoreState>((set, get) => (
   dustSpots: INITIAL_DUST_SPOTS,
   selectedRegionId: 'all',
   timeOfDay: 'sunset',
+  isTimeOfDayAuto: true,
+  timeOfDayElapsedSeconds: 0,
+  timeOfDayIntervalSeconds: 60,
   catState: 'WALKING',
   catPosition: { ...INITIAL_CAT_POSITION },
 
-  setTimeOfDay: (time) => {
+  setTimeOfDay: (time, isManual = true) => {
     soundManager.setTimeOfDay(time);
-    set({ timeOfDay: time });
+    set({
+      timeOfDay: time,
+      timeOfDayElapsedSeconds: 0,
+      ...(isManual ? { isTimeOfDayAuto: false } : {}),
+    });
   },
 
-  cycleTimeOfDay: () => {
+  setTimeOfDayAuto: (auto) => {
+    set({
+      isTimeOfDayAuto: auto,
+      timeOfDayElapsedSeconds: 0,
+    });
+  },
+
+  toggleTimeOfDayAuto: () => {
+    const nextAuto = !get().isTimeOfDayAuto;
+    set({
+      isTimeOfDayAuto: nextAuto,
+      timeOfDayElapsedSeconds: 0,
+    });
+    return nextAuto;
+  },
+
+  cycleTimeOfDay: (isManual = true) => {
     const current = get().timeOfDay;
     const next: TimeOfDay =
       current === 'day' ? 'sunset' : current === 'sunset' ? 'night' : 'day';
     soundManager.setTimeOfDay(next);
-    set({ timeOfDay: next });
+    set({
+      timeOfDay: next,
+      timeOfDayElapsedSeconds: 0,
+      ...(isManual ? { isTimeOfDayAuto: false } : {}),
+    });
     return next;
+  },
+
+  tickCircadianTimer: (deltaSeconds = 1) => {
+    const { isTimeOfDayAuto, timeOfDay, timeOfDayElapsedSeconds, timeOfDayIntervalSeconds } = get();
+    if (!isTimeOfDayAuto) return null;
+
+    const nextElapsed = timeOfDayElapsedSeconds + deltaSeconds;
+    if (nextElapsed >= timeOfDayIntervalSeconds) {
+      const nextTime: TimeOfDay =
+        timeOfDay === 'day' ? 'sunset' : timeOfDay === 'sunset' ? 'night' : 'day';
+      soundManager.setTimeOfDay(nextTime);
+      set({
+        timeOfDay: nextTime,
+        timeOfDayElapsedSeconds: 0,
+      });
+      return nextTime;
+    } else {
+      set({ timeOfDayElapsedSeconds: nextElapsed });
+      return null;
+    }
   },
 
   setSelectedRegion: (regionId) => {
@@ -669,12 +769,24 @@ export const useEnvironmentStore = create<EnvironmentStoreState>((set, get) => (
     return specific ?? regions[0];
   },
 
-  cleanDustNearPoint: (point, reachRadius = 0.55, power = 0.35) => {
+  cleanDustNearPoint: (point, reachRadius = 0.55, power = 0.35, actorY?: number) => {
     const { dustSpots, selectedRegionId } = get();
     let changed = false;
 
     const updated = dustSpots.map((spot) => {
       if (spot.intensity <= 0) return spot;
+
+      // Discriminação vertical: robô no chão não limpa mesas/sofás altos; robô voando exige proximidade de altitude
+      const spotY = spot.y ?? 0;
+      if (actorY !== undefined) {
+        if (actorY <= 0.35 && spotY > 0.35) {
+          return spot; // No chão: não alcança mobília elevada
+        }
+        if (actorY > 0.35 && Math.abs(spotY - actorY) > 0.45) {
+          return spot; // No ar: precisa estar pairando próximo à altura da superfície
+        }
+      }
+
       const dist = Math.hypot(spot.position.x - point.x, spot.position.z - point.z);
       if (dist <= reachRadius + spot.radius * 0.5) {
         changed = true;
@@ -759,6 +871,9 @@ export const useEnvironmentStore = create<EnvironmentStoreState>((set, get) => (
       dustSpots: INITIAL_DUST_SPOTS.map((spot) => ({ ...spot })),
       obstacles: ALL_HOUSE_OBSTACLES,
       selectedRegionId: 'all',
+      timeOfDay: 'sunset',
+      isTimeOfDayAuto: true,
+      timeOfDayElapsedSeconds: 0,
       catState: 'WALKING',
       catPosition: { ...INITIAL_CAT_POSITION },
     });

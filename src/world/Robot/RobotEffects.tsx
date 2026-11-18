@@ -198,11 +198,13 @@ export const RobotEffects = memo(function RobotEffects({
 
           // Limpa poeira local onde a bolha estourou
           const worldBubbleX = robotMotionBridge.x + b.x;
+          const worldBubbleY = robotMotionBridge.y + b.y;
           const worldBubbleZ = robotMotionBridge.z + b.z;
           useEnvironmentStore.getState().cleanDustNearPoint(
             { x: worldBubbleX, z: worldBubbleZ },
             0.85,
-            0.24
+            0.24,
+            worldBubbleY
           );
 
           // Efeito de confetes no local do estouro
