@@ -32,6 +32,7 @@ export const Architecture = memo(function Architecture({
         meshPosition={[0, wallHeight / 2, 0]}
         args={[12.6 + wallThick, wallHeight, wallThick]}
         roomCenter={[11.3, 0]}
+        facing="north"
         materialType="plaster"
       >
         {/* Rodapé Norte da Sala e Corredor */}
@@ -54,6 +55,7 @@ export const Architecture = memo(function Architecture({
         meshPosition={[0, wallHeight / 2, 0]}
         args={[wallThick, wallHeight, 12.5 + wallThick * 2]}
         roomCenter={[12.6, 2.25]}
+        facing="east"
         materialType="plaster"
       >
         {/* Rodapé leste */}
@@ -104,6 +106,7 @@ export const Architecture = memo(function Architecture({
           meshPosition={[0, wallHeight / 2, 0]}
           args={[wallThick, wallHeight, 5.65]}
           roomCenter={[6.3, -1.175]}
+          facing="west"
           materialType="plaster"
         >
           {/* Rodapé no lado do corredor (Norte) */}
@@ -123,6 +126,7 @@ export const Architecture = memo(function Architecture({
           meshPosition={[0, (wallHeight - 3.32) / 2, 0]}
           args={[wallThick, wallHeight - 3.32, 1.4]}
           roomCenter={[6.3, 2.35]}
+          facing="west"
           materialType="plaster"
         />
 
@@ -132,6 +136,7 @@ export const Architecture = memo(function Architecture({
           position={[0, wallHeight / 2, 5.775]}
           args={[wallThick, wallHeight, 5.45]}
           roomCenter={[6.3, 5.0]}
+          facing="west"
           materialType="plaster"
         >
           {/* Rodapé no lado do corredor (Sul completo até o banheiro) */}
@@ -157,6 +162,7 @@ export const Architecture = memo(function Architecture({
           meshPosition={[0, wallHeight / 2, 0]}
           args={[wallThick, wallHeight, 3.6]}
           roomCenter={[12.6, -2.2]}
+          facing="west"
           materialType="plaster"
         >
           <mesh
@@ -175,6 +181,7 @@ export const Architecture = memo(function Architecture({
           meshPosition={[0, (wallHeight - 3.32) / 2, 0]}
           args={[wallThick, wallHeight - 3.32, 1.8]}
           roomCenter={[12.6, 0.5]}
+          facing="west"
           materialType="plaster"
         />
 
@@ -185,6 +192,7 @@ export const Architecture = memo(function Architecture({
           meshPosition={[0, wallHeight / 2, 0]}
           args={[wallThick, wallHeight, 3.95]}
           roomCenter={[12.6, 3.375]}
+          facing="west"
           materialType="plaster"
         >
           <mesh
@@ -203,6 +211,7 @@ export const Architecture = memo(function Architecture({
           meshPosition={[0, (wallHeight - 3.1) / 2, 0]}
           args={[wallThick, wallHeight - 3.1, 1.3]}
           roomCenter={[12.6, 6.0]}
+          facing="west"
           materialType="plaster"
         />
 
@@ -213,6 +222,7 @@ export const Architecture = memo(function Architecture({
           meshPosition={[0, wallHeight / 2, 0]}
           args={[wallThick, wallHeight, 1.85]}
           roomCenter={[12.6, 7.575]}
+          facing="west"
           materialType="plaster"
         >
           <mesh
@@ -263,6 +273,7 @@ export const Architecture = memo(function Architecture({
             meshPosition={[0, wallHeight / 2, 0]}
             args={[0.65, wallHeight, wallThick]}
             roomCenter={[7.8, 11.0]}
+            facing="north"
             materialType="plaster"
           />
           {/* Verga sobre a porta do Banheiro (X de 5.65 a 6.95) */}
@@ -272,6 +283,7 @@ export const Architecture = memo(function Architecture({
             meshPosition={[0, (wallHeight - 3.0) / 2, 0]}
             args={[1.3, wallHeight - 3.0, wallThick]}
             roomCenter={[7.8, 11.0]}
+            facing="north"
             materialType="plaster"
           />
           {/* Lado Leste (X de 6.95 a 10.6) */}
@@ -281,6 +293,7 @@ export const Architecture = memo(function Architecture({
             meshPosition={[0, wallHeight / 2, 0]}
             args={[3.65, wallHeight, wallThick]}
             roomCenter={[7.8, 11.0]}
+            facing="north"
             materialType="plaster"
           />
         </group>
@@ -291,6 +304,7 @@ export const Architecture = memo(function Architecture({
           position={[5.0 - wallThick / 2, wallHeight / 2, 11.0]}
           args={[wallThick, wallHeight, 5.0 + wallThick]}
           roomCenter={[7.8, 11.0]}
+          facing="west"
           materialType="bathroomTile"
         />
 
@@ -300,6 +314,7 @@ export const Architecture = memo(function Architecture({
           position={[7.8, wallHeight / 2, 13.5 + wallThick / 2]}
           args={[5.6 + wallThick * 2, wallHeight, wallThick]}
           roomCenter={[7.8, 11.0]}
+          facing="south"
           materialType="bathroomTile"
         />
 
@@ -309,6 +324,7 @@ export const Architecture = memo(function Architecture({
           position={[10.6 + wallThick / 2, wallHeight / 2, 11.0]}
           args={[wallThick, wallHeight, 5.0]}
           roomCenter={[7.8, 11.0]}
+          facing="east"
           materialType="bathroomTile"
         />
       </group>
@@ -322,6 +338,7 @@ export const Architecture = memo(function Architecture({
         position={[14.1, wallHeight / 2, 8.5 + wallThick / 2]}
         args={[7.0, wallHeight, wallThick]}
         roomCenter={[12.6, 5.85]}
+        facing="south"
         materialType="plaster"
       >
         <mesh
