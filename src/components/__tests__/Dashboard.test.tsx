@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { StatusCard } from '../ui/StatusCard';
 import { ControlPanel } from '../ui/ControlPanel';
+import { CommandInput } from '../ui/CommandInput';
 import { Header } from '../layout/Header';
 import { useRobotStore } from '@/store/robotStore';
 import { useEnvironmentStore } from '@/store/environmentStore';
@@ -99,6 +100,35 @@ describe('Componentes de Interface e Controles (Dia 1)', () => {
     fireEvent.click(soundBtn);
     expect(screen.getByRole('button', { name: /Ligar som do projeto/i })).toBeDefined();
     expect(useSoundStore.getState().isEnabled).toBe(false);
+  });
+
+  it('deve renderizar os botões de Helicóptero e Bolhas e responder aos cliques', () => {
+    render(<ControlPanel />);
+
+    const heliBtn = screen.getByRole('button', { name: /helicóptero/i });
+    const bubbleBtn = screen.getByRole('button', { name: /bolhas/i });
+
+    expect(heliBtn).toBeDefined();
+    expect(bubbleBtn).toBeDefined();
+
+    fireEvent.click(heliBtn);
+    expect(useRobotStore.getState().state).toBe('FLYING');
+
+    fireEvent.click(bubbleBtn);
+    expect(useRobotStore.getState().lastAction).toContain('Bolhas');
+  });
+
+  it('reconhece comandos de linguagem natural para helicóptero e bolhas no CommandInput', () => {
+    render(<CommandInput />);
+    const input = screen.getByPlaceholderText(/Instruir o AspiToy/i);
+
+    fireEvent.change(input, { target: { value: 'voar para a mesa' } });
+    fireEvent.submit(input);
+    expect(useRobotStore.getState().state).toBe('FLYING');
+
+    fireEvent.change(input, { target: { value: 'soltar bolhas' } });
+    fireEvent.submit(input);
+    expect(useRobotStore.getState().lastAction).toContain('Bolhas');
   });
 });
 

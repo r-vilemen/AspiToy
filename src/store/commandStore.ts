@@ -300,6 +300,31 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
         );
         break;
       }
+
+      case 'TOGGLE_HELICOPTER': {
+        const isNowFlying = !robotMotionBridge.isFlying;
+        robot.toggleHelicopterMode();
+        label = isNowFlying ? 'Ativar Modo Helicóptero' : 'Pousar Helicóptero';
+        get().pushNotification(
+          isNowFlying ? 'Modo Aspi-Helicóptero Ativado! 🚁' : 'Pouso Concluído',
+          isNowFlying
+            ? 'Hélice retrátil acionada! Patrulhando mesas e sofás para higienização aérea.'
+            : 'Trem de pouso suave acoplado ao solo.',
+          'info'
+        );
+        break;
+      }
+
+      case 'FIRE_BUBBLES': {
+        robot.fireBubbleCannon();
+        label = 'Disparar Canhão de Bolhas';
+        get().pushNotification(
+          'Canhão de Bolhas Disparado! 🫧',
+          'Bolhas anti-gravidade lançadas pelo ar para purificar a poeira.',
+          'info'
+        );
+        break;
+      }
     }
 
     const record: CommandRecord = {

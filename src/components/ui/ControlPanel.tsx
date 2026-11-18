@@ -155,6 +155,31 @@ export function ControlPanel() {
           <RotateCcw className="h-3.5 w-3.5 stroke-[2.2]" aria-hidden="true" />
           Reiniciar cena
         </button>
+
+        {/* Gadgets Mirabolantes: Modo Helicóptero e Canhão de Bolhas */}
+        <div className="col-span-2 grid grid-cols-2 gap-2 pt-1 border-t border-[#2A211B]/15">
+          <button
+            type="button"
+            onClick={() => dispatchCommand('TOGGLE_HELICOPTER')}
+            className={`inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-[#2A211B] px-3 py-2 text-xs font-black uppercase tracking-wider transition cursor-pointer shadow-[0_3px_0px_#2A211B] hover:shadow-[0_1px_0px_#2A211B] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px] ${
+              state === 'FLYING'
+                ? 'bg-linear-to-b from-[#38BDF8] to-[#0284C7] text-white shadow-[0_3px_0px_#0369A1]'
+                : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F0F9FF]'
+            }`}
+          >
+            <span className="text-sm">🚁</span>
+            <span>{state === 'FLYING' ? 'Pousar' : 'Helicóptero'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => dispatchCommand('FIRE_BUBBLES')}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-[#2A211B] bg-[#FFFDF8] hover:bg-[#FDF4FF] px-3 py-2 text-xs font-black uppercase tracking-wider text-[#2A211B] shadow-[0_3px_0px_#2A211B] hover:shadow-[0_1px_0px_#2A211B] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px] transition cursor-pointer"
+          >
+            <span className="text-sm">🫧</span>
+            <span>Bolhas</span>
+          </button>
+        </div>
       </div>
 
       {/* Controle direcional manual: Exclusivo para Desktop (Teclado WASD / Setas D-Pad) */}

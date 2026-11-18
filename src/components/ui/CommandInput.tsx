@@ -15,7 +15,20 @@ export function CommandInput() {
     const query = inputVal.trim().toLowerCase();
     if (!query) return;
 
-    if (query.includes('limp') || query.includes('inici') || query.includes('começ')) {
+    if (query.includes('bolha') || query.includes('sabao') || query.includes('sabão')) {
+      dispatchCommand('FIRE_BUBBLES');
+    } else if (
+      query.includes('voa') ||
+      query.includes('decol') ||
+      query.includes('helicopter') ||
+      query.includes('hélice') ||
+      query.includes('pous')
+    ) {
+      dispatchCommand('TOGGLE_HELICOPTER');
+    } else if (query.includes('mesa') || (query.includes('limp') && (query.includes('sofa') || query.includes('sofá')))) {
+      // Limpeza de mobílias elevadas ativa o modo helicóptero se ainda não estiver voando
+      dispatchCommand('TOGGLE_HELICOPTER');
+    } else if (query.includes('limp') || query.includes('inici') || query.includes('começ')) {
       dispatchCommand('START_CLEANING');
     } else if (query.includes('paus') || query.includes('par')) {
       dispatchCommand('PAUSE_CLEANING');
