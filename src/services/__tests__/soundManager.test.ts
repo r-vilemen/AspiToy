@@ -128,4 +128,20 @@ describe('AspiToy Sound System — Gerenciador de Áudio e Sons do Projeto', () 
     expect(parsed.sfxVolume).toBe(0.7);
     expect(parsed.isMusicMuted).toBe(true);
   });
+
+  it('deve expor métodos para som de hélice e bolhas sem quebrar quando áudio mutado', () => {
+    expect(typeof soundManager.startPropellerSound).toBe('function');
+    expect(typeof soundManager.updatePropellerSpeed).toBe('function');
+    expect(typeof soundManager.stopPropellerSound).toBe('function');
+    expect(typeof soundManager.playBubbleShoot).toBe('function');
+    expect(typeof soundManager.playBubblePop).toBe('function');
+
+    expect(() => {
+      soundManager.startPropellerSound();
+      soundManager.updatePropellerSpeed(30);
+      soundManager.stopPropellerSound();
+      soundManager.playBubbleShoot();
+      soundManager.playBubblePop();
+    }).not.toThrow();
+  });
 });

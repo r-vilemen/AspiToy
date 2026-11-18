@@ -192,6 +192,12 @@ export class SoundManager {
   private motorOsc: OscillatorNode | null = null;
   private isMotorRunning = false;
 
+  // Hélice do Modo Aspi-Helicóptero
+  private propellerOsc: OscillatorNode | null = null;
+  private propellerFlutterOsc: OscillatorNode | null = null;
+  private propellerGain: GainNode | null = null;
+  private isPropellerRunning = false;
+
   // Agendador de Trilha Sonora
   private schedulerTimer: number | null = null;
   private loopStartTime = 0;
@@ -872,6 +878,144 @@ export class SoundManager {
 
     osc.start(t);
     osc.stop(t + 0.06);
+  }
+
+  /**
+   * Inicia o zumbido contínuo e rítmico da hélice do helicóptero
+   */
+  public startPropellerSound(): void {
+    if (!this.isEnabled) return;
+    const ctx = this.initContext();
+    if (!ctx || !this.sfxGain || this.isPropellerRunning) return;
+
+    try {
+      this.isPropellerRunning = true;
+      const t = ctx.currentTime;
+
+      // Ganho da hélice
+      this.propellerGain = ctx.createGain();
+      this.propellerGain.gain.setValueAtTime(0.0001, t);
+      this.propellerGain.gain.exponentialRampToValueAtTime(0.18, t + 0.3);
+      this.propellerGain.connect(this.sfxGain);
+
+      // Oscilador de flutter (modulação de amplitude das pás a 16Hz)
+      const flutterGain = ctx.createGain();
+      flutterGain.gain.setValueAtTime(0.5, t);
+
+      this.propellerFlutterOsc = ctx.createOscillator();
+      this.propellerFlutterOsc.type = 'sawtooth';
+      this.propellerFlutterOsc.frequency.setValueAtTime(16, t);
+      this.propellerFlutterOsc.connect(flutterGain.gain);
+
+      // Oscilador principal do som do rotor (tom aveludado e aerodinâmico)
+      this.propellerOsc = ctx.createOscillator();
+      this.propellerOsc.type = 'triangle';
+      this.propellerOsc.frequency.setValueAtTime(110, t);
+      this.propellerOsc.connect(flutterGain);
+      flutterGain.connect(this.propellerGain);
+
+      this.propellerFlutterOsc.start(t);
+      this.propellerOsc.start(t);
+    } catch (e) {
+      console.warn('Erro ao iniciar som de hélice:', e);
+    }
+  }
+
+  /**
+   * Modula a frequência da hélice conforme a rotação aumenta
+   */
+  public updatePropellerSpeed(speed: number): void {
+    if (!this.ctx || !this.isPropellerRunning || !this.propellerOsc || !this.propellerFlutterOsc) return;
+    const t = this.ctx.currentTime;
+    const baseFreq = 80 + Math.min(speed, 60) * 1.5;
+    const flutterFreq = 12 + Math.min(speed, 60) * 0.3;
+    this.propellerOsc.frequency.setTargetAtTime(baseFreq, t, 0.05);
+    this.propellerFlutterOsc.frequency.setTargetAtTime(flutterFreq, t, 0.05);
+  }
+
+  /**
+   * Interrompe o som da hélice com rampa de desaceleração suave
+   */
+  public stopPropellerSound(): void {
+    if (!this.isPropellerRunning || !this.ctx || !this.propellerGain) {
+      this.isPropellerRunning = false;
+      return;
+    }
+    const t = this.ctx.currentTime;
+    this.propellerGain.gain.cancelScheduledValues(t);
+    this.propellerGain.gain.setValueAtTime(this.propellerGain.gain.value, t);
+    this.propellerGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+
+    const osc = this.propellerOsc;
+    const flutter = this.propellerFlutterOsc;
+    setTimeout(() => {
+      try {
+        osc?.stop();
+        flutter?.stop();
+        osc?.disconnect();
+        flutter?.disconnect();
+      } catch {
+        // Ignora caso já esteja finalizado
+      }
+    }, 450);
+
+    this.propellerOsc = null;
+    this.propellerFlutterOsc = null;
+    this.propellerGain = null;
+    this.isPropellerRunning = false;
+  }
+
+  /**
+   * Disparo suave e aquoso do canhão de bolhas
+   */
+  public playBubbleShoot(): void {
+    if (!this.isEnabled) return;
+    const ctx = this.initContext();
+    if (!ctx || !this.sfxGain) return;
+
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(320, t);
+    osc.frequency.exponentialRampToValueAtTime(740, t + 0.12);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(0.2, t + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
+
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+
+    osc.start(t);
+    osc.stop(t + 0.14);
+  }
+
+  /**
+   * Estouro cristalino de sabão encantado (pop + cintilância)
+   */
+  public playBubblePop(): void {
+    if (!this.isEnabled) return;
+    const ctx = this.initContext();
+    if (!ctx || !this.sfxGain) return;
+
+    const t = ctx.currentTime;
+    // Tom agudo e saltitante
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(980, t);
+    osc.frequency.exponentialRampToValueAtTime(1850, t + 0.06);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(0.22, t + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+
+    osc.start(t);
+    osc.stop(t + 0.08);
   }
 }
 
