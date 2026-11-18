@@ -8,7 +8,9 @@ export type UserCommandType =
   | 'MOVE_TO_POINT'
   | 'RESET_SIMULATION'
   | 'TOGGLE_HELICOPTER'
-  | 'FIRE_BUBBLES';
+  | 'FIRE_BUBBLES'
+  | 'FIRE_FOAM_CANNON'
+  | 'TOGGLE_FOAM_CANNON_AIM';
 
 export type NotificationTone = 'info' | 'success' | 'warning';
 

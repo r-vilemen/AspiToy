@@ -55,6 +55,11 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
   const headlightFillRef = useRef<THREE.PointLight>(null);
   const headlightLensMatRefs = useRef<(THREE.MeshBasicMaterial | null)[]>([]);
 
+  // Canhão de Espuma Lateral (Estilo Crash Kart)
+  const cannonArmGroupRef = useRef<THREE.Group>(null);
+  const cannonHatchRef = useRef<THREE.Group>(null);
+  const cannonBarrelRef = useRef<THREE.Group>(null);
+
   useFrame((_, delta) => {
     const ext = robotMotionBridge.propellerExtension;
     const speed = robotMotionBridge.propellerSpeed;
@@ -155,6 +160,100 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
           tipMat.opacity = blurFactor * 0.28;
           innerMat.opacity = blurFactor * 0.12;
         }
+      }
+    }
+
+    // Extensão e articulação do Canhão de Espuma Lateral (Estilo Crash Kart)
+    const targetCannonExt = robotMotionBridge.isCannonAiming ? 1.0 : 0.0;
+    robotMotionBridge.cannonExtension = THREE.MathUtils.damp(
+      robotMotionBridge.cannonExtension,
+      targetCannonExt,
+      3.8,
+      delta
+    );
+    robotMotionBridge.cannonRecoil = THREE.MathUtils.damp(
+      robotMotionBridge.cannonRecoil,
+      0,
+      8.0,
+      delta
+    );
+
+    const cExt = robotMotionBridge.cannonExtension;
+    const cRecoil = robotMotionBridge.cannonRecoil;
+
+    if (cannonHatchRef.current) {
+      // Escotilha lateral articulada no chassi abrindo para cima
+      cannonHatchRef.current.rotation.z = -cExt * 1.35;
+    }
+
+    if (cannonArmGroupRef.current) {
+      if (cExt < 0.008) {
+        cannonArmGroupRef.current.visible = false;
+      } else {
+        cannonArmGroupRef.current.visible = true;
+        // Desliza mecanicamente para fora da lateral da lataria
+        cannonArmGroupRef.current.position.x = 0.235 + cExt * 0.11;
+      }
+    }
+
+    if (cannonBarrelRef.current) {
+      // Recuo axial mecânico de tiro (kickback)
+      cannonBarrelRef.current.position.z = -cRecoil * 0.035;
+
+      // Mira angular direcionada ao ponto 3D clicado pelo usuário
+      if (
+        robotMotionBridge.isCannonAiming &&
+        (robotMotionBridge.foamTargetX !== 0 || robotMotionBridge.foamTargetZ !== 0)
+      ) {
+        const heading = robotMotionBridge.rotationY;
+        const dx = robotMotionBridge.foamTargetX - (robotMotionBridge.x + Math.sin(heading) * 0.15);
+        const dz = robotMotionBridge.foamTargetZ - (robotMotionBridge.z + Math.cos(heading) * 0.15);
+        const dy = robotMotionBridge.foamTargetY - (robotMotionBridge.y + 0.02);
+
+        // Conversão para coordenadas locais do robô
+        const cosH = Math.cos(-heading);
+        const sinH = Math.sin(-heading);
+        const localX = dx * cosH - dz * sinH;
+        const localZ = dx * sinH + dz * cosH;
+
+        const targetYaw = Math.atan2(localX, localZ);
+        const horizDist = Math.hypot(localX, localZ);
+        const targetPitch = -Math.atan2(dy, Math.max(0.1, horizDist));
+
+        // Limita a rotação para um cone frontal-lateral seguro (-50° a +50°)
+        const clampedYaw = THREE.MathUtils.clamp(targetYaw, -0.85, 0.85);
+        const clampedPitch = THREE.MathUtils.clamp(targetPitch, -0.65, 0.65);
+
+        robotMotionBridge.cannonAimYaw = THREE.MathUtils.damp(
+          robotMotionBridge.cannonAimYaw,
+          clampedYaw,
+          5.0,
+          delta
+        );
+        robotMotionBridge.cannonAimPitch = THREE.MathUtils.damp(
+          robotMotionBridge.cannonAimPitch,
+          clampedPitch,
+          5.0,
+          delta
+        );
+
+        cannonBarrelRef.current.rotation.y = robotMotionBridge.cannonAimYaw;
+        cannonBarrelRef.current.rotation.x = robotMotionBridge.cannonAimPitch;
+      } else {
+        robotMotionBridge.cannonAimYaw = THREE.MathUtils.damp(
+          robotMotionBridge.cannonAimYaw,
+          0,
+          4.0,
+          delta
+        );
+        robotMotionBridge.cannonAimPitch = THREE.MathUtils.damp(
+          robotMotionBridge.cannonAimPitch,
+          0,
+          4.0,
+          delta
+        );
+        cannonBarrelRef.current.rotation.y = robotMotionBridge.cannonAimYaw;
+        cannonBarrelRef.current.rotation.x = robotMotionBridge.cannonAimPitch;
       }
     }
   });
@@ -745,6 +844,112 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
             ))}
           </group>
         ))}
+
+        {/* 8. CANHÃO DE ESPUMA LATERAL RETRÁTIL (ESTILO CRASH KART) */}
+        <group position={[0, 0, 0]}>
+          {/* Nicho / Escotilha lateral articulada no chassi direito */}
+          <group position={[0.262, 0.005, 0.09]}>
+            {/* Porta da escotilha com dobradiça superior */}
+            <group ref={cannonHatchRef} position={[0, 0.038, 0]}>
+              <mesh position={[0, -0.038, 0]} material={skinMaterials.shell}>
+                <boxGeometry args={[0.012, 0.076, 0.088]} />
+              </mesh>
+              {/* Friso estético da borda da escotilha */}
+              <mesh position={[0.006, -0.038, 0]} material={skinMaterials.coralTrim}>
+                <boxGeometry args={[0.003, 0.072, 0.084]} />
+              </mesh>
+            </group>
+          </group>
+
+          {/* Conjunto Mecânico Deslizante do Canhão */}
+          <group ref={cannonArmGroupRef} position={[0.235, 0.005, 0.09]}>
+            {/* Trilho corrediço telescópico metálico cromado */}
+            <mesh position={[-0.045, 0, 0]} material={sharedMaterials.metalChrome}>
+              <boxGeometry args={[0.09, 0.018, 0.03]} />
+            </mesh>
+            {/* Cilindro hidráulico de extensão */}
+            <mesh
+              position={[-0.03, -0.015, 0]}
+              rotation={[0, 0, Math.PI / 2]}
+              material={sharedMaterials.metalChrome}
+            >
+              <cylinderGeometry args={[0.008, 0.008, 0.07, 12]} />
+            </mesh>
+
+            {/* Cabeça do Canhão e Cano Articulado */}
+            <group ref={cannonBarrelRef} position={[0.03, 0, 0]}>
+              {/* Receptor central / carcaça do canhão */}
+              <RoundedBox
+                args={[0.046, 0.052, 0.072]}
+                radius={0.01}
+                smoothness={3}
+                material={skinMaterials.coralTrim}
+              >
+                <mesh position={[0, 0.027, 0]} material={sharedMaterials.robotRubberBumper}>
+                  <boxGeometry args={[0.038, 0.006, 0.06]} />
+                </mesh>
+              </RoundedBox>
+
+              {/* Tanque cilíndrico de fluido de sabão translúcido (Vivid Cyan) */}
+              <group position={[0.025, 0.016, -0.01]}>
+                <mesh material={sharedMaterials.robotDustBin} rotation={[Math.PI / 2, 0, 0]}>
+                  <cylinderGeometry args={[0.016, 0.016, 0.052, 16]} />
+                </mesh>
+                {/* Sabão líquido no interior */}
+                <mesh rotation={[Math.PI / 2, 0, 0]}>
+                  <cylinderGeometry args={[0.013, 0.013, 0.046, 14]} />
+                  <meshBasicMaterial color="#06B6D4" transparent opacity={0.85} />
+                </mesh>
+              </group>
+
+              {/* Manômetro analógico com ponteiro de pressão */}
+              <group position={[0, 0.034, -0.014]} rotation={[-0.3, 0, 0]}>
+                <mesh material={sharedMaterials.metalChrome}>
+                  <cylinderGeometry args={[0.012, 0.012, 0.006, 16]} />
+                </mesh>
+                <mesh position={[0, 0.004, 0]}>
+                  <circleGeometry args={[0.01, 16]} />
+                  <meshBasicMaterial color="#FFFFFF" />
+                </mesh>
+                <mesh position={[0.003, 0.005, 0]} rotation={[0, 0, -0.8]}>
+                  <boxGeometry args={[0.008, 0.002, 0.001]} />
+                  <meshBasicMaterial color="#EF4444" />
+                </mesh>
+              </group>
+
+              {/* Cano principal metálico de lançamento da espuma */}
+              <mesh
+                position={[0, 0, 0.055]}
+                rotation={[Math.PI / 2, 0, 0]}
+                material={sharedMaterials.metalChrome}
+              >
+                <cylinderGeometry args={[0.018, 0.02, 0.06, 20]} />
+              </mesh>
+
+              {/* Bocal alargado em corneta / trombeta (Nozzle estilo desenho animado) */}
+              <mesh
+                position={[0, 0, 0.092]}
+                rotation={[-Math.PI / 2, 0, 0]}
+                material={skinMaterials.yellowTrim}
+              >
+                <coneGeometry args={[0.028, 0.022, 20, 1, true]} />
+              </mesh>
+              {/* Anel de borracha protetor da boca */}
+              <mesh
+                position={[0, 0, 0.102]}
+                rotation={[Math.PI / 2, 0, 0]}
+                material={sharedMaterials.robotRubberBumper}
+              >
+                <torusGeometry args={[0.028, 0.004, 8, 20]} />
+              </mesh>
+
+              {/* Alça de mira superior */}
+              <mesh position={[0, 0.026, 0.075]} material={sharedMaterials.metalChrome}>
+                <boxGeometry args={[0.004, 0.012, 0.008]} />
+              </mesh>
+            </group>
+          </group>
+        </group>
       </group>
     </group>
   );

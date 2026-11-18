@@ -135,6 +135,9 @@ describe('AspiToy Sound System — Gerenciador de Áudio e Sons do Projeto', () 
     expect(typeof soundManager.stopPropellerSound).toBe('function');
     expect(typeof soundManager.playBubbleShoot).toBe('function');
     expect(typeof soundManager.playBubblePop).toBe('function');
+    expect(typeof soundManager.playFoamCannonDeploy).toBe('function');
+    expect(typeof soundManager.playFoamCannonShoot).toBe('function');
+    expect(typeof soundManager.playFoamSplat).toBe('function');
 
     expect(() => {
       soundManager.startPropellerSound();
@@ -142,6 +145,9 @@ describe('AspiToy Sound System — Gerenciador de Áudio e Sons do Projeto', () 
       soundManager.stopPropellerSound();
       soundManager.playBubbleShoot();
       soundManager.playBubblePop();
+      soundManager.playFoamCannonDeploy();
+      soundManager.playFoamCannonShoot();
+      soundManager.playFoamSplat();
     }).not.toThrow();
   });
 });

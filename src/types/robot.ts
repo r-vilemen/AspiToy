@@ -83,5 +83,15 @@ export interface RobotMotionBridge {
   bumperCompression: number;
   isFlying: boolean;
   bubbleBurstTrigger: number;
+  // Canhão de Espuma Lateral estilo Crash Kart
+  cannonExtension: number; // 0.0 (recolhido na lateral) a 1.0 (totalmente estendido)
+  cannonRecoil: number; // 0.0 a 1.0 (recuo mecânico de disparo)
+  cannonAimPitch: number; // inclinação vertical do canhão em radianos
+  cannonAimYaw: number; // rotação horizontal do canhão em radianos
+  foamCannonTrigger: number; // disparador numérico de jatos de espuma
+  isCannonAiming: boolean; // modo de mira ativo
+  foamTargetX: number; // coordenada X do ponto de mira 3D
+  foamTargetY: number; // coordenada Y do ponto de mira 3D
+  foamTargetZ: number; // coordenada Z do ponto de mira 3D
 }
 

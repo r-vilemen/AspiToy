@@ -1144,6 +1144,117 @@ export class SoundManager {
     osc.start(t);
     osc.stop(t + 0.08);
   }
+
+  /**
+   * Som mecânico estilizado de extensão lateral da arma (Crash Kart Style).
+   */
+  public playFoamCannonDeploy(): void {
+    if (!this.isEnabled) return;
+    const ctx = this.initContext();
+    if (!ctx || !this.sfxGain) return;
+
+    const t = ctx.currentTime;
+    // Clique mecânico de trava
+    const osc = ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(260, t);
+    osc.frequency.exponentialRampToValueAtTime(680, t + 0.08);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(0.24, t + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+
+    osc.start(t);
+    osc.stop(t + 0.13);
+  }
+
+  /**
+   * Disparo pneumático vigoroso de jato de espuma (Thwump + sopro de alta pressão).
+   */
+  public playFoamCannonShoot(): void {
+    if (!this.isEnabled) return;
+    const ctx = this.initContext();
+    if (!ctx || !this.sfxGain) return;
+
+    const t = ctx.currentTime;
+
+    // 1. Pulso pneumático encorpado (Thwump)
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(220, t);
+    osc.frequency.exponentialRampToValueAtTime(48, t + 0.14);
+
+    const oscGain = ctx.createGain();
+    oscGain.gain.setValueAtTime(0.0001, t);
+    oscGain.gain.linearRampToValueAtTime(0.35, t + 0.015);
+    oscGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+
+    osc.connect(oscGain);
+    oscGain.connect(this.sfxGain);
+    osc.start(t);
+    osc.stop(t + 0.19);
+
+    // 2. Ruído de sopro de espuma pressurizada (fsshhh)
+    try {
+      const bufferSize = Math.floor(ctx.sampleRate * 0.22);
+      const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = Math.random() * 2 - 1;
+      }
+      const whiteNoise = ctx.createBufferSource();
+      whiteNoise.buffer = noiseBuffer;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(1400, t);
+      filter.Q.setValueAtTime(1.8, t);
+
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.0001, t);
+      noiseGain.gain.linearRampToValueAtTime(0.28, t + 0.02);
+      noiseGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+
+      whiteNoise.connect(filter);
+      filter.connect(noiseGain);
+      noiseGain.connect(this.sfxGain);
+
+      whiteNoise.start(t);
+      whiteNoise.stop(t + 0.23);
+    } catch {
+      // Fallback gracioso se AudioBuffer não for suportado no ambiente
+    }
+  }
+
+  /**
+   * Impacto encorpado e espumoso ao atingir parede, móvel ou piso (Splat / Squish).
+   */
+  public playFoamSplat(): void {
+    if (!this.isEnabled) return;
+    const ctx = this.initContext();
+    if (!ctx || !this.sfxGain) return;
+
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(420, t);
+    osc.frequency.exponentialRampToValueAtTime(120, t + 0.11);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(0.28, t + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+
+    osc.start(t);
+    osc.stop(t + 0.15);
+  }
 }
 
 export const soundManager = new SoundManager();

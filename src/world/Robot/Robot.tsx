@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { RobotModel } from './RobotModel';
 import { RobotEffects } from './RobotEffects';
+import { FoamCannonSystem } from './FoamCannonSystem';
 import {
   updateRobotLocomotion,
   type RobotLocomotionState,
@@ -1049,30 +1050,35 @@ export function Robot() {
   });
 
   return (
-    <group
-      ref={rootRef}
-      position={[robotMotionBridge.x, 0.04, robotMotionBridge.z]}
-      rotation={[0, robotMotionBridge.rotationY, 0]}
-      name="aspitoy-actor"
-    >
-      <RobotModel
-        wheelSpin={robotMotionBridge.wheelSpin}
-        pitch={locomotionRef.current.pitch}
-        roll={locomotionRef.current.roll}
-        bobY={
-          robotMotionBridge.isFlying
-            ? Math.sin(locomotionRef.current.bobPhase * 1.5) * 0.012
-            : Math.sin(locomotionRef.current.bobPhase) *
-              (locomotionRef.current.speed > 0.1 ? 0.006 : 0.002)
-        }
-        bumperCompression={locomotionRef.current.bumperCompression}
-        state={state}
-        expression={expression}
-      />
-      <RobotEffects
-        isCleaning={state === 'CLEANING' || state === 'ORGANIZING'}
-        isRecharging={state === 'RECHARGING'}
-      />
-    </group>
+    <>
+      <group
+        ref={rootRef}
+        position={[robotMotionBridge.x, 0.04, robotMotionBridge.z]}
+        rotation={[0, robotMotionBridge.rotationY, 0]}
+        name="aspitoy-actor"
+      >
+        <RobotModel
+          wheelSpin={robotMotionBridge.wheelSpin}
+          pitch={locomotionRef.current.pitch}
+          roll={locomotionRef.current.roll}
+          bobY={
+            robotMotionBridge.isFlying
+              ? Math.sin(locomotionRef.current.bobPhase * 1.5) * 0.012
+              : Math.sin(locomotionRef.current.bobPhase) *
+                (locomotionRef.current.speed > 0.1 ? 0.006 : 0.002)
+          }
+          bumperCompression={locomotionRef.current.bumperCompression}
+          state={state}
+          expression={expression}
+        />
+        <RobotEffects
+          isCleaning={state === 'CLEANING' || state === 'ORGANIZING'}
+          isRecharging={state === 'RECHARGING'}
+        />
+      </group>
+
+      {/* Sistema de Espuma Tridimensional em Coordenadas Mundiais (Paredes, Móveis e Chão) */}
+      <FoamCannonSystem />
+    </>
   );
 }

@@ -1,5 +1,6 @@
 import type { ThreeEvent } from '@react-three/fiber';
 import { useCommandStore } from '@/store/commandStore';
+import { useRobotStore, robotMotionBridge } from '@/store/robotStore';
 import { HOUSE_FLOOR_PLAN, getRoomAtPosition } from './FloorPlan';
 import { ALL_HOUSE_OBSTACLES, HOUSE_ELEVATED_SURFACES } from './HouseObstacles';
 import { getDistanceToAABB, isPointInsideBounds } from '@/utils/coordinates';
@@ -19,10 +20,22 @@ export function useHouseFloorClick() {
   return (e: ThreeEvent<MouseEvent>) => {
     // Ignora arrasto da câmera pelo OrbitControls
     if (e.delta > 6) return;
-    e.stopPropagation();
 
     const rawX = e.point.x;
     const rawZ = e.point.z;
+
+    // Se o modo de mira do Canhão de Espuma estiver ativo, dispara contra o ponto mirado no piso
+    if (robotMotionBridge.isCannonAiming || useRobotStore.getState().isCannonAiming) {
+      e.stopPropagation();
+      useRobotStore.getState().fireFoamCannon({
+        x: rawX,
+        y: e.point.y,
+        z: rawZ,
+      });
+      return;
+    }
+
+    e.stopPropagation();
 
     const elevatedSurface = HOUSE_ELEVATED_SURFACES.find((s) =>
       isPointInsideBounds({ x: rawX, z: rawZ }, s.bounds, 0.04)

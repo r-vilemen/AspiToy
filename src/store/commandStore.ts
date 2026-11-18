@@ -348,12 +348,26 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
         break;
       }
 
-      case 'FIRE_BUBBLES': {
-        robot.fireBubbleCannon();
-        label = 'Disparar Canhão de Bolhas';
+      case 'FIRE_BUBBLES':
+      case 'FIRE_FOAM_CANNON': {
+        robot.fireFoamCannon();
+        label = 'Disparar Canhão de Espuma';
         get().pushNotification(
-          'Canhão de Bolhas Disparado! 🫧',
-          'Bolhas anti-gravidade lançadas pelo ar para purificar a poeira.',
+          'Canhão de Espuma Disparado! 🫧',
+          'Jato de espuma pressurizado lançado pelo canhão lateral.',
+          'info'
+        );
+        break;
+      }
+
+      case 'TOGGLE_FOAM_CANNON_AIM': {
+        const isAiming = robot.toggleFoamCannonAim();
+        label = isAiming ? 'Mirar Canhão de Espuma' : 'Recolher Canhão';
+        get().pushNotification(
+          isAiming ? 'Canhão Lateral Engatilhado! 🎯' : 'Canhão Recolhido',
+          isAiming
+            ? 'Clique em qualquer parede, móvel ou chão para disparar a espuma.'
+            : 'Arma guardada no chassi.',
           'info'
         );
         break;

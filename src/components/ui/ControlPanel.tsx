@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import {
   ArrowDown,
   ArrowLeft,
@@ -7,6 +8,7 @@ import {
   Bed,
   Boxes,
   Compass,
+  Crosshair,
   Home,
   Pause,
   Play,
@@ -42,12 +44,24 @@ function getRegionIcon(id: string) {
 export function ControlPanel() {
   const state = useRobotStore((s) => s.state);
   const battery = useRobotStore((s) => s.battery);
+  const isCannonAiming = useRobotStore((s) => s.isCannonAiming);
   const organizedToysCount = useRobotStore((s) => s.organizedToysCount);
   const totalToysToOrganize = useRobotStore((s) => s.totalToysToOrganize);
   const regions = useEnvironmentStore((s) => s.regions);
   const selectedRegionId = useEnvironmentStore((s) => s.selectedRegionId);
   const dispatchCommand = useCommandStore((s) => s.dispatchCommand);
   const keys = useKeyboardControls();
+
+  useEffect(() => {
+    if (isCannonAiming) {
+      document.body.style.cursor = 'crosshair';
+    } else {
+      document.body.style.cursor = 'auto';
+    }
+    return () => {
+      document.body.style.cursor = 'auto';
+    };
+  }, [isCannonAiming]);
 
   const isRunning =
     state === 'CLEANING' ||
@@ -182,13 +196,44 @@ export function ControlPanel() {
 
           <button
             type="button"
-            onClick={() => dispatchCommand('FIRE_BUBBLES')}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-[#2A211B] bg-[#FFFDF8] hover:bg-[#FDF4FF] px-3 py-2 text-xs font-black uppercase tracking-wider text-[#2A211B] shadow-[0_3px_0px_#2A211B] hover:shadow-[0_1px_0px_#2A211B] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px] transition cursor-pointer"
+            onClick={() => {
+              if (!isCannonAiming) {
+                dispatchCommand('TOGGLE_FOAM_CANNON_AIM');
+              } else {
+                dispatchCommand('FIRE_FOAM_CANNON');
+              }
+            }}
+            className={`inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-[#2A211B] px-3 py-2 text-xs font-black uppercase tracking-wider transition cursor-pointer shadow-[0_3px_0px_#2A211B] hover:shadow-[0_1px_0px_#2A211B] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px] ${
+              isCannonAiming
+                ? 'bg-linear-to-b from-[#FB923C] to-[#EA580C] text-white shadow-[0_3px_0px_#9A3412]'
+                : 'bg-[#FFFDF8] hover:bg-[#FFF7ED] text-[#2A211B]'
+            }`}
+            title="Canhão de Espuma Lateral: Mire e clique em paredes, móveis ou no chão para disparar!"
+            aria-label={isCannonAiming ? 'Atirar Espuma (Canhão Ativo)' : 'Canhão de Espuma'}
           >
-            <span className="text-base">🫧</span>
-            <span className="text-xs truncate">Bolhas</span>
+            <Crosshair className="h-4 w-4 stroke-[2.4]" aria-hidden="true" />
+            <span className="text-xs truncate">
+              {isCannonAiming ? 'Atirar' : 'Canhão'}
+            </span>
           </button>
         </div>
+
+        {/* Banner de feedback quando o modo de mira do canhão está ativo */}
+        {isCannonAiming && (
+          <div className="col-span-2 flex items-center justify-between rounded-xl border-2 border-[#EA580C] bg-[#FFF7ED] p-2 text-xs font-black text-[#9A3412] shadow-[0_2px_0px_#EA580C]">
+            <span className="flex items-center gap-1.5 truncate">
+              <Crosshair className="h-3.5 w-3.5 stroke-[2.4] animate-pulse shrink-0" />
+              <span className="truncate">Clique em qualquer lugar para atirar!</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => dispatchCommand('TOGGLE_FOAM_CANNON_AIM')}
+              className="ml-1 rounded-md bg-[#EA580C] px-1.5 py-0.5 text-[10px] font-black uppercase text-white hover:bg-[#C2410C] transition cursor-pointer shrink-0"
+            >
+              Guardar
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Controle direcional manual: Exclusivo para Desktop (Teclado WASD / Setas D-Pad) */}

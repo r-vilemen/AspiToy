@@ -16,8 +16,17 @@ export function CommandInput() {
     const query = inputVal.trim().toLowerCase();
     if (!query) return;
 
-    if (query.includes('bolha') || query.includes('sabao') || query.includes('sabão')) {
-      dispatchCommand('FIRE_BUBBLES');
+    if (
+      query.includes('canhao') ||
+      query.includes('canhão') ||
+      query.includes('espuma') ||
+      query.includes('atirar') ||
+      query.includes('disparar') ||
+      query.includes('bolha') ||
+      query.includes('sabao') ||
+      query.includes('sabão')
+    ) {
+      dispatchCommand('FIRE_FOAM_CANNON');
     } else if (
       query.includes('voa') ||
       query.includes('decol') ||

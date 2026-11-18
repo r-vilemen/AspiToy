@@ -173,6 +173,22 @@ describe('Arquitetura de Estado Zustand (robotStore, environmentStore, commandSt
     expect(robotMotionBridge.bubbleBurstTrigger).toBe(initialTrigger + 1);
   });
 
+  it('deve gerenciar o canhão de espuma lateral e disparar jatos com alvo', () => {
+    const initialFoamTrigger = robotMotionBridge.foamCannonTrigger;
+    const { toggleFoamCannonAim, fireFoamCannon } = useRobotStore.getState();
+
+    const isAiming = toggleFoamCannonAim(true);
+    expect(isAiming).toBe(true);
+    expect(robotMotionBridge.isCannonAiming).toBe(true);
+
+    fireFoamCannon({ x: 1.5, y: 0.8, z: -2.0 });
+    expect(robotMotionBridge.foamCannonTrigger).toBe(initialFoamTrigger + 1);
+    expect(robotMotionBridge.foamTargetX).toBe(1.5);
+    expect(robotMotionBridge.foamTargetY).toBe(0.8);
+    expect(robotMotionBridge.foamTargetZ).toBe(-2.0);
+    expect(robotMotionBridge.cannonRecoil).toBe(1.0);
+  });
+
   it('deve gerenciar o modo do farol óptico (auto, on, off)', () => {
     const robot = useRobotStore.getState();
     expect(robot.headlightMode).toBe('auto');

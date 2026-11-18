@@ -102,23 +102,24 @@ describe('Componentes de Interface e Controles (Dia 1)', () => {
     expect(useSoundStore.getState().isEnabled).toBe(false);
   });
 
-  it('deve renderizar os botões de Helicóptero e Bolhas e responder aos cliques', () => {
+  it('deve renderizar os botões de Helicóptero e Canhão e responder aos cliques', () => {
     render(<ControlPanel />);
 
     const heliBtn = screen.getByRole('button', { name: /helicóptero/i });
-    const bubbleBtn = screen.getByRole('button', { name: /bolhas/i });
+    const cannonBtn = screen.getByRole('button', { name: /canhão|espuma/i });
 
     expect(heliBtn).toBeDefined();
-    expect(bubbleBtn).toBeDefined();
+    expect(cannonBtn).toBeDefined();
 
     fireEvent.click(heliBtn);
     expect(useRobotStore.getState().state).toBe('FLYING');
 
-    fireEvent.click(bubbleBtn);
-    expect(useRobotStore.getState().lastAction).toContain('Bolhas');
+    fireEvent.click(cannonBtn);
+    expect(useRobotStore.getState().isCannonAiming).toBe(true);
+    expect(useRobotStore.getState().lastAction).toMatch(/Canhão/i);
   });
 
-  it('reconhece comandos de linguagem natural para helicóptero e bolhas no CommandInput', () => {
+  it('reconhece comandos de linguagem natural para helicóptero e canhão no CommandInput', () => {
     render(<CommandInput />);
     const input = screen.getByPlaceholderText(/Instruir o AspiToy/i);
 
@@ -126,9 +127,9 @@ describe('Componentes de Interface e Controles (Dia 1)', () => {
     fireEvent.submit(input);
     expect(useRobotStore.getState().state).toBe('FLYING');
 
-    fireEvent.change(input, { target: { value: 'soltar bolhas' } });
+    fireEvent.change(input, { target: { value: 'atirar espuma' } });
     fireEvent.submit(input);
-    expect(useRobotStore.getState().lastAction).toContain('Bolhas');
+    expect(useRobotStore.getState().lastAction).toMatch(/Canhão|Espuma/i);
   });
 
   it('exibe indicativo de bateria fraca e bloqueia decolagem no ControlPanel', () => {

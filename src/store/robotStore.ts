@@ -12,6 +12,7 @@ import type {
 import { INITIAL_DOCK_POSITION } from './environmentStore';
 import { clamp } from '@/utils/math';
 import { getOverheadObstacleAt, getSurfaceLandingY } from '@/world/House/HouseObstacles';
+import { soundManager } from '@/services/soundManager';
 
 export const ROBOT_SKINS: Record<RobotSkinId, RobotSkin> = {
   classic: {
@@ -86,6 +87,16 @@ export const robotMotionBridge: RobotMotionBridge = {
   bumperCompression: 0,
   isFlying: false,
   bubbleBurstTrigger: 0,
+  // Canhão de Espuma Lateral estilo Crash Kart
+  cannonExtension: 0,
+  cannonRecoil: 0,
+  cannonAimPitch: 0,
+  cannonAimYaw: 0,
+  foamCannonTrigger: 0,
+  isCannonAiming: false,
+  foamTargetX: 0,
+  foamTargetY: 0,
+  foamTargetZ: 0,
 };
 
 /**
@@ -141,6 +152,9 @@ export interface RobotStoreState extends RobotTelemetry {
   setHeadlightMode: (mode: HeadlightMode) => void;
   toggleHeadlightMode: () => HeadlightMode;
   toggleHelicopterMode: () => boolean;
+  isCannonAiming: boolean;
+  toggleFoamCannonAim: (active?: boolean) => boolean;
+  fireFoamCannon: (target?: { x: number; y: number; z: number }) => void;
   fireBubbleCannon: () => void;
   resetRobot: () => void;
 }
@@ -171,6 +185,7 @@ const INITIAL_TELEMETRY: RobotTelemetry = {
 
 export const useRobotStore = create<RobotStoreState>((set, get) => ({
   ...INITIAL_TELEMETRY,
+  isCannonAiming: false,
 
   setOperationalState: (nextState, actionDescription) => {
     const current = get();
@@ -300,12 +315,60 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
     return isNowFlying;
   },
 
-  fireBubbleCannon: () => {
-    robotMotionBridge.bubbleBurstTrigger += 1;
+  toggleFoamCannonAim: (active) => {
+    const nextState = active !== undefined ? active : !get().isCannonAiming;
+    robotMotionBridge.isCannonAiming = nextState;
+    if (nextState) {
+      soundManager.playFoamCannonDeploy();
+      set({
+        isCannonAiming: true,
+        lastAction: 'Canhão de Espuma engatilhado na lateral! Mire e clique para disparar.',
+        expression: 'focused',
+      });
+    } else {
+      set({
+        isCannonAiming: false,
+        lastAction: 'Canhão de Espuma recolhido para a lateral.',
+      });
+    }
+    return nextState;
+  },
+
+  fireFoamCannon: (targetPoint) => {
+    // Garante que o canhão esteja estendido para disparar
+    robotMotionBridge.isCannonAiming = true;
+    if (robotMotionBridge.cannonExtension < 0.3) {
+      robotMotionBridge.cannonExtension = 0.5;
+    }
+
+    if (targetPoint) {
+      robotMotionBridge.foamTargetX = targetPoint.x;
+      robotMotionBridge.foamTargetY = targetPoint.y;
+      robotMotionBridge.foamTargetZ = targetPoint.z;
+    } else {
+      // Disparo frontal padrão na direção do robô
+      const heading = robotMotionBridge.rotationY;
+      robotMotionBridge.foamTargetX = robotMotionBridge.x + Math.sin(heading) * 2.5;
+      robotMotionBridge.foamTargetY = robotMotionBridge.y + 0.15;
+      robotMotionBridge.foamTargetZ = robotMotionBridge.z + Math.cos(heading) * 2.5;
+    }
+
+    // Gatilho de disparo e recuo mecânico
+    robotMotionBridge.foamCannonTrigger += 1;
+    robotMotionBridge.bubbleBurstTrigger += 1; // retrocompatibilidade com testes existentes
+    robotMotionBridge.cannonRecoil = 1.0;
+
+    soundManager.playFoamCannonShoot();
+
     set({
-      lastAction: 'Disparando Canhão de Bolhas Anti-Gravidade!',
+      isCannonAiming: true,
+      lastAction: 'Disparando Jato de Espuma do Canhão Lateral! 🫧',
       expression: 'happy',
     });
+  },
+
+  fireBubbleCannon: () => {
+    get().fireFoamCannon();
   },
 
   resetRobot: () => {
@@ -326,9 +389,19 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
     robotMotionBridge.bumperCompression = 0;
     robotMotionBridge.isFlying = false;
     robotMotionBridge.bubbleBurstTrigger = 0;
+    robotMotionBridge.cannonExtension = 0;
+    robotMotionBridge.cannonRecoil = 0;
+    robotMotionBridge.cannonAimPitch = 0;
+    robotMotionBridge.cannonAimYaw = 0;
+    robotMotionBridge.foamCannonTrigger = 0;
+    robotMotionBridge.isCannonAiming = false;
+    robotMotionBridge.foamTargetX = 0;
+    robotMotionBridge.foamTargetY = 0;
+    robotMotionBridge.foamTargetZ = 0;
 
     set({
       ...INITIAL_TELEMETRY,
+      isCannonAiming: false,
       skin: currentSkin,
       position: { ...INITIAL_DOCK_POSITION },
     });
