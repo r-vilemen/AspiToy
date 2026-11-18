@@ -86,6 +86,16 @@ const ROOM_PATROL_POINTS: Record<string, Vector2D[]> = {
   ],
 };
 
+/**
+ * Waypoints aéreos de superfícies elevadas (mesas e sofás) para o Modo Aspi-Helicóptero
+ */
+export const AERIAL_FURNITURE_WAYPOINTS = [
+  { x: 10.5, z: -0.5, y: 0.58, label: 'Mesa de Centro' },
+  { x: 10.5, z: -2.5, y: 0.68, label: 'Sofá Principal' },
+  { x: 8.8, z: 2.2, y: 0.55, label: 'Mesa Lateral' },
+  { x: -3.5, z: 2.0, y: 0.62, label: 'Mesa de Apoio' },
+];
+
 const GLOBAL_HOUSE_PATROL_POINTS: Vector2D[] = [
   // Quarto
   { x: -2.0, z: 1.8 },
@@ -186,6 +196,10 @@ export function Robot() {
   const coverageTimerRef = useRef(0);
   const patrolReverseRef = useRef(false);
   const laneVariationIdxRef = useRef(0);
+
+  // Navegação e patrulha aérea do Modo Aspi-Helicóptero
+  const aerialWaypointIdxRef = useRef(0);
+  const aerialHoverTimerRef = useRef(0);
 
   useFrame((_, rawDelta) => {
     const delta = Math.min(rawDelta, 0.05);
@@ -298,6 +312,27 @@ export function Robot() {
           };
         }
       }
+    } else if (robotState.state === 'FLYING' || robotMotionBridge.isFlying) {
+      const currentWp =
+        AERIAL_FURNITURE_WAYPOINTS[
+          aerialWaypointIdxRef.current % AERIAL_FURNITURE_WAYPOINTS.length
+        ];
+      if (robotState.targetPosition) {
+        targetPoint = robotState.targetPosition;
+      } else {
+        targetPoint = { x: currentWp.x, z: currentWp.z };
+        const distToWp = distance2D({ x: loc.x, z: loc.z }, targetPoint);
+        if (distToWp < 0.55) {
+          aerialHoverTimerRef.current += delta;
+          // Limpeza aérea contínua sobre a mobília
+          envState.cleanDustNearPoint({ x: loc.x, z: loc.z }, 0.85, 0.16);
+          if (aerialHoverTimerRef.current > 3.0) {
+            aerialHoverTimerRef.current = 0;
+            aerialWaypointIdxRef.current =
+              (aerialWaypointIdxRef.current + 1) % AERIAL_FURNITURE_WAYPOINTS.length;
+          }
+        }
+      }
     } else if (robotState.state === 'RETURNING') {
       targetPoint = envState.dockPosition;
     }
@@ -338,16 +373,44 @@ export function Robot() {
       const desiredX = loc.x + Math.sin(loc.rotationY) * loc.speed * delta;
       const desiredZ = loc.z + Math.cos(loc.rotationY) * loc.speed * delta;
 
-      const collisionResult = agent.resolveSafeMovement(
-        { x: loc.x, z: loc.z },
-        { x: desiredX, z: desiredZ },
-        0.29
-      );
+      // Se estiver voando acima dos móveis (y > 0.35m), sobrevoa sem colisão terrestre
+      if (robotMotionBridge.isFlying && robotMotionBridge.y > 0.35) {
+        loc.x = desiredX;
+        loc.z = desiredZ;
+      } else {
+        const collisionResult = agent.resolveSafeMovement(
+          { x: loc.x, z: loc.z },
+          { x: desiredX, z: desiredZ },
+          0.29
+        );
 
-      loc.x = collisionResult.position.x;
-      loc.z = collisionResult.position.z;
-      if (collisionResult.collided) {
-        loc.bumperCompression = 0.028;
+        loc.x = collisionResult.position.x;
+        loc.z = collisionResult.position.z;
+        if (collisionResult.collided) {
+          loc.bumperCompression = 0.028;
+        }
+      }
+    } else if (robotMotionBridge.isFlying && robotMotionBridge.y > 0.35) {
+      // Voo livre autônomo sobre mesas e sofás
+      if (targetPoint) {
+        const dx = targetPoint.x - loc.x;
+        const dz = targetPoint.z - loc.z;
+        const dist = Math.hypot(dx, dz);
+        if (dist > 0.12) {
+          const targetHeading = Math.atan2(dx, dz);
+          loc.targetRotationY = targetHeading;
+          loc.rotationY = dampAngle(loc.rotationY, targetHeading, 5.0, delta);
+          loc.speed = damp(loc.speed, Math.min(1.2, dist * 1.5), 3.5, delta);
+          loc.x += Math.sin(loc.rotationY) * loc.speed * delta;
+          loc.z += Math.cos(loc.rotationY) * loc.speed * delta;
+          loc.pitch = damp(loc.pitch, Math.min(0.12, loc.speed * 0.08), 5.0, delta);
+          const turnDiff = Math.sin(loc.targetRotationY - loc.rotationY);
+          loc.roll = damp(loc.roll, -turnDiff * 0.14, 6.0, delta);
+        } else {
+          loc.speed = damp(loc.speed, 0, 5.0, delta);
+          loc.pitch = damp(loc.pitch, 0, 5.0, delta);
+          loc.roll = damp(loc.roll, 0, 5.0, delta);
+        }
       }
     } else {
       // Quando não há controle manual ativo:
@@ -592,6 +655,55 @@ export function Robot() {
     robotMotionBridge.rotationY = loc.rotationY;
     robotMotionBridge.currentSpeed = loc.speed;
     robotMotionBridge.wheelSpin = loc.wheelSpin;
+    robotMotionBridge.pitch = loc.pitch;
+    robotMotionBridge.roll = loc.roll;
+
+    // Gerenciamento de física vertical e rotor do helicóptero
+    if (robotMotionBridge.isFlying) {
+      robotMotionBridge.propellerExtension = damp(
+        robotMotionBridge.propellerExtension,
+        1.0,
+        4.0,
+        delta
+      );
+      robotMotionBridge.propellerSpeed = damp(
+        robotMotionBridge.propellerSpeed,
+        45.0,
+        4.5,
+        delta
+      );
+      soundManager.startPropellerSound();
+      soundManager.updatePropellerSpeed(robotMotionBridge.propellerSpeed);
+
+      const currentWp =
+        AERIAL_FURNITURE_WAYPOINTS[
+          aerialWaypointIdxRef.current % AERIAL_FURNITURE_WAYPOINTS.length
+        ];
+      robotMotionBridge.targetY = currentWp ? currentWp.y : 0.65;
+      robotMotionBridge.y = damp(
+        robotMotionBridge.y,
+        robotMotionBridge.targetY,
+        3.2,
+        delta
+      );
+    } else {
+      robotMotionBridge.propellerExtension = damp(
+        robotMotionBridge.propellerExtension,
+        0.0,
+        5.0,
+        delta
+      );
+      robotMotionBridge.propellerSpeed = damp(
+        robotMotionBridge.propellerSpeed,
+        0.0,
+        6.0,
+        delta
+      );
+      robotMotionBridge.y = damp(robotMotionBridge.y, 0.0, 4.0, delta);
+      if (robotMotionBridge.propellerSpeed < 1.0) {
+        soundManager.stopPropellerSound();
+      }
+    }
 
     // Sincroniza áudio procedural do motor do aspirador em tempo real
     // Ativa tanto em navegação autônoma quanto em pilotagem manual ou clique de navegação
@@ -635,9 +747,9 @@ export function Robot() {
       }
     }
 
-    // Atualiza nós Three.js diretamente
+    // Atualiza nós Three.js diretamente com a elevação de voo do helicóptero
     if (rootRef.current) {
-      rootRef.current.position.set(loc.x, floorY, loc.z);
+      rootRef.current.position.set(loc.x, floorY + robotMotionBridge.y, loc.z);
       rootRef.current.rotation.y = loc.rotationY;
     }
 
@@ -680,6 +792,23 @@ export function Robot() {
             'warning'
           );
         }
+      } else if (robotState.state === 'FLYING' || robotMotionBridge.isFlying) {
+        robotState.updateBattery(-0.09);
+
+        if (robotState.battery <= 18) {
+          robotMotionBridge.isFlying = false;
+          robotMotionBridge.targetY = 0;
+          robotState.setTargetPosition(envState.dockPosition);
+          robotState.setOperationalState(
+            'RETURNING',
+            'Bateria baixa em voo (18%). Pouso de emergência e retorno à base de recarga.'
+          );
+          cmdState.pushNotification(
+            'Bateria baixa',
+            'Pousando e retornando à base de recarga.',
+            'warning'
+          );
+        }
       } else if (
         manualControlBridge.active ||
         isManualPointToPoint ||
@@ -708,8 +837,10 @@ export function Robot() {
         pitch={locomotionRef.current.pitch}
         roll={locomotionRef.current.roll}
         bobY={
-          Math.sin(locomotionRef.current.bobPhase) *
-          (locomotionRef.current.speed > 0.1 ? 0.006 : 0.002)
+          robotMotionBridge.isFlying
+            ? Math.sin(locomotionRef.current.bobPhase * 1.5) * 0.012
+            : Math.sin(locomotionRef.current.bobPhase) *
+              (locomotionRef.current.speed > 0.1 ? 0.006 : 0.002)
         }
         bumperCompression={locomotionRef.current.bumperCompression}
         state={state}
