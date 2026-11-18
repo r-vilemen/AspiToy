@@ -95,14 +95,14 @@ const ROOM_PATROL_POINTS: Record<string, Vector2D[]> = {
  * Waypoints aéreos de superfícies elevadas (mesas e sofás) para o Modo Aspi-Helicóptero
  */
 export const AERIAL_FURNITURE_WAYPOINTS = [
-  { x: -1.45, z: -1.15, y: 0.82, label: 'Mesa de Centro do Quarto' },
-  { x: 0.0, z: 2.5, y: 1.08, label: 'Sofá-Baú do Quarto' },
-  { x: 0.95, z: 0.15, y: 0.95, label: 'Poltrona Verde do Quarto' },
-  { x: 12.8, z: -0.7, y: 0.62, label: 'Mesa de Centro da Sala' },
-  { x: 13.2, z: 0.88, y: 0.76, label: 'Sofá da Sala' },
-  { x: 12.0, z: 0.88, y: 0.76, label: 'Sofá da Sala (Esquerda)' },
-  { x: 15.6, z: -0.10, y: 0.76, label: 'Chaise do Sofá' },
-  { x: 12.8, z: 4.4, y: 1.36, label: 'Ilha da Cozinha' },
+  { x: -1.45, z: -1.15, y: 0.87, label: 'Mesa de Centro do Quarto' },
+  { x: 0.0, z: 2.6, y: 1.07, label: 'Sofá-Baú do Quarto' },
+  { x: 0.95, z: -0.75, y: 1.06, label: 'Poltrona Verde do Quarto' },
+  { x: 12.8, z: -0.7, y: 0.67, label: 'Mesa de Centro da Sala' },
+  { x: 13.2, z: 0.88, y: 0.77, label: 'Sofá da Sala' },
+  { x: 12.0, z: 0.88, y: 0.77, label: 'Sofá da Sala (Esquerda)' },
+  { x: 15.6, z: -0.10, y: 0.77, label: 'Chaise do Sofá' },
+  { x: 12.8, z: 4.4, y: 1.34, label: 'Ilha da Cozinha' },
 ];
 
 const GLOBAL_HOUSE_PATROL_POINTS: Vector2D[] = [
@@ -529,7 +529,8 @@ export function Robot() {
           const revResult = agent.resolveSafeMovement(
             { x: loc.x, z: loc.z },
             { x: revX, z: revZ },
-            0.29
+            0.29,
+            robotMotionBridge.y
           );
           loc.x = revResult.position.x;
           loc.z = revResult.position.z;
@@ -666,10 +667,30 @@ export function Robot() {
           const desiredX = loc.x + Math.sin(loc.rotationY) * loc.speed * delta;
           const desiredZ = loc.z + Math.cos(loc.rotationY) * loc.speed * delta;
 
+          // Se estiver pousado em cima de uma mesa, sofá ou baú, mantém o robô nos limites do tampo
+          let targetAutonomousX = desiredX;
+          let targetAutonomousZ = desiredZ;
+          if (!robotMotionBridge.isFlying && robotMotionBridge.y > 0.3) {
+            const currentSurf = HOUSE_ELEVATED_SURFACES.find((s) =>
+              isPointInsideBounds({ x: loc.x, z: loc.z }, s.bounds, 0.08)
+            );
+            if (currentSurf) {
+              targetAutonomousX = Math.max(
+                currentSurf.bounds.minX + 0.22,
+                Math.min(currentSurf.bounds.maxX - 0.22, desiredX)
+              );
+              targetAutonomousZ = Math.max(
+                currentSurf.bounds.minZ + 0.22,
+                Math.min(currentSurf.bounds.maxZ - 0.22, desiredZ)
+              );
+            }
+          }
+
           const collisionResult = agent.resolveSafeMovement(
             { x: loc.x, z: loc.z },
-            { x: desiredX, z: desiredZ },
-            0.29
+            { x: targetAutonomousX, z: targetAutonomousZ },
+            0.29,
+            robotMotionBridge.y
           );
 
           const actualMovedDist = Math.hypot(
@@ -766,22 +787,50 @@ export function Robot() {
           aerialWaypointIdxRef.current % AERIAL_FURNITURE_WAYPOINTS.length
         ];
 
-      // Se estiver voando em trânsito entre móveis distantes, mantém altitude de cruzeiro segura (1.25m)
-      // para passar confortavelmente por cima de todos os brinquedos, figuras altas e obstáculos do piso.
-      // Ao aproximar-se da mobília (< 0.55m), desce suavemente para a altitude de aspiração da superfície.
-      let targetAltitude = 1.25;
+      // Gerenciamento de altitude inteligente para o Aspi-Helicóptero:
+      // Altitude de cruzeiro segura (1.35m) para sobrevoar confortavelmente todos os móveis,
+      // mesas, sofás, balcões e brinquedos da casa sem colidir em suas laterais.
+      // Ao se aproximar de uma mobília para limpeza ou pouso, desce suavemente para a cota da superfície.
+      let targetAltitude = 1.35;
+
+      let activeTarget: Vector2D | null = null;
+      let targetDesiredHoverY: number | null = null;
+
       if (robotState.state === 'CLEANING' && currentWp) {
-        const distToWp = distance2D({ x: loc.x, z: loc.z }, { x: currentWp.x, z: currentWp.z });
-        if (distToWp < 0.55) {
-          targetAltitude = currentWp.y;
-        }
+        activeTarget = { x: currentWp.x, z: currentWp.z };
+        targetDesiredHoverY = currentWp.y;
       } else if (robotState.targetPosition) {
-        const distToManual = distance2D({ x: loc.x, z: loc.z }, robotState.targetPosition);
-        if (distToManual < 0.55) {
-          targetAltitude = 0.75;
+        activeTarget = robotState.targetPosition;
+        const targetSurf = HOUSE_ELEVATED_SURFACES.find((s) =>
+          isPointInsideBounds(activeTarget!, s.bounds, 0.08)
+        );
+        if (targetSurf) {
+          targetDesiredHoverY = targetSurf.surfaceY + 0.18;
+        } else {
+          targetDesiredHoverY = 0.95;
         }
+      }
+
+      // Verifica se o robô já está posicionado diretamente sobre uma superfície elevada
+      const surfaceUnderRobot = HOUSE_ELEVATED_SURFACES.find((s) =>
+        isPointInsideBounds({ x: loc.x, z: loc.z }, s.bounds, 0.05)
+      );
+
+      if (activeTarget && targetDesiredHoverY !== null) {
+        const distToTarget = distance2D({ x: loc.x, z: loc.z }, activeTarget);
+        // Desce para a altura de aspiração da superfície se já estiver sobre ela ou bem próximo (< 0.40m)
+        if (surfaceUnderRobot || distToTarget < 0.40) {
+          targetAltitude = targetDesiredHoverY;
+        } else {
+          // Em trânsito até o móvel: voa a 1.35m para passar limpo por cima da borda
+          targetAltitude = 1.35;
+        }
+      } else if (surfaceUnderRobot) {
+        // Sem alvo, pairando sobre uma mesa, sofá ou baú
+        targetAltitude = surfaceUnderRobot.surfaceY + 0.18;
       } else {
-        targetAltitude = 0.85;
+        // Sem alvo, pairando no ar sobre piso livre
+        targetAltitude = 1.30;
       }
 
       robotMotionBridge.targetY = targetAltitude;
