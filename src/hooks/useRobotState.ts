@@ -64,6 +64,12 @@ export const STATE_DESCRIPTORS: Record<RobotOperationalState, OperationalStateDe
     dotColorClass: 'bg-[#F59E0B]',
     badgeClass: 'bg-[#F59E0B]/16 text-[#B45309] border-[#F59E0B]/40',
   },
+  FLYING: {
+    label: 'Modo Aspi-Helicóptero',
+    shortNote: 'Higienização aérea de mesas e sofás',
+    dotColorClass: 'bg-[#0284C7]',
+    badgeClass: 'bg-[#0284C7]/18 text-[#0369A1] border-[#0284C7]/40',
+  },
 };
 
 export function formatDuration(seconds: number): string {

@@ -22,7 +22,7 @@ import { useCommandStore } from '@/store/commandStore';
 import { AgentController } from '@/agent/AgentController';
 import { PriorityManager } from '@/agent/decision/PriorityManager';
 import { ToyOrganizer } from '@/agent/decision/ToyOrganizer';
-import { distance2D, damp } from '@/utils/math';
+import { distance2D, damp, dampAngle } from '@/utils/math';
 import type { Vector2D } from '@/types/robot';
 import { soundManager } from '@/services/soundManager';
 
