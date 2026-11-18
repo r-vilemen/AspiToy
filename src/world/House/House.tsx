@@ -1,4 +1,5 @@
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
+import type { ThreeEvent } from '@react-three/fiber';
 import { Floor } from './Floor';
 import { Walls } from './Walls';
 import { Furniture } from './Furniture';
@@ -14,6 +15,7 @@ import {
   PushableFloorToys,
 } from './ToyStoryFigures';
 import { useEnvironmentStore } from '@/store/environmentStore';
+import { robotMotionBridge, useRobotStore } from '@/store/robotStore';
 
 /**
  * Residência 3D Completa e Conectada do AspiToy:
@@ -23,12 +25,27 @@ import { useEnvironmentStore } from '@/store/environmentStore';
  * - Cozinha Residencial: azulejos xadrez, geladeira retrô, fogão, bancada em L com pia e balcão
  * - Banheiro Social: box de vidro com ducha, vaso sanitário de porcelana e pia com espelho
  * - Sistema de Portas e Passagens: aberturas funcionais permitindo circulação contínua do robô
+ * - Captura de Mira do Canhão de Espuma em qualquer superfície (paredes, móveis e chão)
  */
 export const House = memo(function House() {
   const roomDimensions = useEnvironmentStore((s) => s.roomDimensions);
 
+  const handleHousePointerDown = useCallback((e: ThreeEvent<PointerEvent>) => {
+    // Ignora arraste de câmera via OrbitControls
+    if (e.delta > 6) return;
+
+    if (robotMotionBridge.isCannonAiming || useRobotStore.getState().isCannonAiming) {
+      e.stopPropagation();
+      useRobotStore.getState().fireFoamCannon({
+        x: e.point.x,
+        y: e.point.y,
+        z: e.point.z,
+      });
+    }
+  }, []);
+
   return (
-    <group name="house-complete-residence">
+    <group name="house-complete-residence" onPointerDown={handleHousePointerDown}>
       {/* ======================================================== */}
       {/* 1. ESTRUTURA ARQUITETÔNICA GLOBAL & PORTAS               */}
       {/* ======================================================== */}

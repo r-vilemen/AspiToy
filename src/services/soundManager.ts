@@ -184,12 +184,29 @@ export class SoundManager {
   private musicVolume = 0.7; // Volume da trilha sonora (0 to 1)
   private sfxVolume = 0.8; // Volume dos efeitos sonoros (0 to 1)
   private isMusicMuted = false; // Estado mutado da trilha sonora (preserva o volume configurado)
+  private timeOfDay: 'day' | 'sunset' | 'night' = 'sunset'; // Período do dia adaptativo
 
   // Gerador de Ruído de Aspiração (Motor AspiToy)
   private noiseNode: AudioBufferSourceNode | null = null;
   private motorFilter: BiquadFilterNode | null = null;
   private motorOsc: OscillatorNode | null = null;
   private isMotorRunning = false;
+
+  // Hélice do Modo Aspi-Helicóptero (Sintetizador Procedural de Rotor Aéreo)
+  private propellerGain: GainNode | null = null;
+  private propellerNoiseSource: AudioBufferSourceNode | null = null;
+  private propellerAirFilter: BiquadFilterNode | null = null;
+  private propellerChopGain: GainNode | null = null;
+  private propellerChopLfo: OscillatorNode | null = null;
+  private propellerChopDepth: GainNode | null = null;
+  private propellerThumpOsc: OscillatorNode | null = null;
+  private propellerThumpFilter: BiquadFilterNode | null = null;
+  private propellerThumpGain: GainNode | null = null;
+  private propellerWhineOsc: OscillatorNode | null = null;
+  private propellerWhineFilter: BiquadFilterNode | null = null;
+  private propellerWhineGain: GainNode | null = null;
+  private isPropellerRunning = false;
+  private pinkNoiseBuffer: AudioBuffer | null = null;
 
   // Agendador de Trilha Sonora
   private schedulerTimer: number | null = null;
@@ -243,20 +260,20 @@ export class SoundManager {
     }
 
     if (this.ctx.state === 'suspended') {
-      this.ctx.resume().catch(() => {});
+      this.ctx.resume().catch(() => { });
     }
 
     return this.ctx;
   }
 
   /**
-   * Sintetizador procedural do motor de aspiração do AspiToy:
-   * Combina ruído de fluxo de ar passa-faixa com zumbido harmônico de motor elétrico miniatura.
+   * Gera ou retorna o buffer em loop de ruído rosa compartilhado.
+   * Usado para a sucção do aspirador e para a aerodinâmica das pás da hélice.
    */
-  private setupMotorSynth(): void {
-    if (!this.ctx || !this.motorGain) return;
+  private getPinkNoiseBuffer(): AudioBuffer | null {
+    if (!this.ctx) return null;
+    if (this.pinkNoiseBuffer) return this.pinkNoiseBuffer;
 
-    // 1. Buffer de Ruído Rosa de 2 segundos em loop contínuo
     const bufferSize = this.ctx.sampleRate * 2;
     const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
     const data = noiseBuffer.getChannelData(0);
@@ -279,6 +296,21 @@ export class SoundManager {
       data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.08;
       b6 = white * 0.115926;
     }
+
+    this.pinkNoiseBuffer = noiseBuffer;
+    return this.pinkNoiseBuffer;
+  }
+
+  /**
+   * Sintetizador procedural do motor de aspiração do AspiToy:
+   * Combina ruído de fluxo de ar passa-faixa com zumbido harmônico de motor elétrico miniatura.
+   */
+  private setupMotorSynth(): void {
+    if (!this.ctx || !this.motorGain) return;
+
+    // 1. Buffer de Ruído Rosa em loop contínuo
+    const noiseBuffer = this.getPinkNoiseBuffer();
+    if (!noiseBuffer) return;
 
     this.noiseNode = this.ctx.createBufferSource();
     this.noiseNode.buffer = noiseBuffer;
@@ -320,7 +352,7 @@ export class SoundManager {
       this.initContext();
     }
     if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume().catch(() => {});
+      this.ctx.resume().catch(() => { });
     }
     if (this.isEnabled && this.schedulerTimer === null) {
       this.startMusicScheduler();
@@ -446,8 +478,24 @@ export class SoundManager {
   }
 
   /**
+   * Ajusta a atmosfera sonora para o período do dia (Dia, Pôr do Sol ou Noite).
+   * À noite ativa a caixinha de música suave e modo motor silencioso.
+   */
+  public setTimeOfDay(time: 'day' | 'sunset' | 'night'): void {
+    this.timeOfDay = time;
+    if (this.isMotorRunning) {
+      this.setMotorOperating(true);
+    }
+  }
+
+  public getTimeOfDay(): 'day' | 'sunset' | 'night' {
+    return this.timeOfDay;
+  }
+
+  /**
    * Atualiza o estado físico do motor de aspiração.
    * Modula o volume e a frequência com a velocidade do robô.
+   * No modo noturno, opera em Modo Silencioso para não acordar os brinquedos e os gatos.
    */
   public setMotorOperating(isOperating: boolean, speed = 0.8): void {
     if (!this.isEnabled) {
@@ -471,11 +519,14 @@ export class SoundManager {
 
     const t = this.ctx.currentTime;
     if (isOperating) {
-      const targetGain = 0.14 + Math.min(speed, 1.2) * 0.05;
+      const isNight = this.timeOfDay === 'night';
+      // No modo noturno, volume cai pela metade e o ruído fica mais abafado
+      const nightDamping = isNight ? 0.45 : 1.0;
+      const targetGain = (0.14 + Math.min(speed, 1.2) * 0.05) * nightDamping;
       this.motorGain.gain.setTargetAtTime(targetGain, t, 0.25);
 
       if (this.motorFilter) {
-        const targetFreq = 320 + Math.min(speed, 1.5) * 80;
+        const targetFreq = (320 + Math.min(speed, 1.5) * 80) * (isNight ? 0.65 : 1.0);
         this.motorFilter.frequency.setTargetAtTime(targetFreq, t, 0.2);
       }
     } else {
@@ -604,33 +655,38 @@ export class SoundManager {
   }
 
   /**
-   * Nota de Marimba / Glockenspiel de Brinquedo Saltitante
+   * Nota de Marimba / Glockenspiel de Brinquedo Saltitante.
+   * No modo noturno, transmuta para timbre límpido de Caixinha de Música (Music Box / Celesta).
    */
   private playToyMarimbaNote(noteName: string, startTime: number, duration: number): void {
     const freq = NOTES[noteName];
     if (!freq || !this.ctx || !this.musicGain) return;
 
-    // Oscilador de onda triangular quente (fundamental)
+    const isNight = this.timeOfDay === 'night';
+
+    // Oscilador fundamental: senoidal doce à noite (Music Box) ou triangular animado de dia (Marimba)
     const osc1 = this.ctx.createOscillator();
-    osc1.type = 'triangle';
+    osc1.type = isNight ? 'sine' : 'triangle';
     osc1.frequency.setValueAtTime(freq, startTime);
 
-    // Oscilador de onda senoidal de brilho (harmônico duplo sutil)
+    // Oscilador harmônico: brilho de sino puro à noite (oitava dobrada)
     const osc2 = this.ctx.createOscillator();
     osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(freq * 2, startTime);
+    osc2.frequency.setValueAtTime(freq * (isNight ? 3 : 2), startTime);
 
-    // Envelope de ganho percussivo e saltitante
+    // Envelope de ganho
     const noteGain = this.ctx.createGain();
     noteGain.gain.setValueAtTime(0.0001, startTime);
-    noteGain.gain.linearRampToValueAtTime(0.36, startTime + 0.012);
-    const decay = Math.min(duration * 0.95, 0.45);
+    const attackTime = isNight ? 0.006 : 0.012;
+    const peakGain = isNight ? 0.22 : 0.36;
+    noteGain.gain.linearRampToValueAtTime(peakGain, startTime + attackTime);
+    const decay = isNight ? Math.min(duration * 1.2, 0.65) : Math.min(duration * 0.95, 0.45);
     noteGain.gain.exponentialRampToValueAtTime(0.0001, startTime + decay);
 
-    // Filtro para calor acústico de xilofone/madeira
+    // Filtro aveludado
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(3200, startTime);
+    filter.frequency.setValueAtTime(isNight ? 1900 : 3200, startTime);
 
     osc1.connect(noteGain);
     osc2.connect(noteGain);
@@ -650,19 +706,21 @@ export class SoundManager {
     const freq = NOTES[noteName];
     if (!freq || !this.ctx || !this.musicGain) return;
 
+    const isNight = this.timeOfDay === 'night';
+
     const osc = this.ctx.createOscillator();
-    osc.type = 'triangle';
+    osc.type = isNight ? 'sine' : 'triangle';
     osc.frequency.setValueAtTime(freq, startTime);
 
     const bassGain = this.ctx.createGain();
     bassGain.gain.setValueAtTime(0.0001, startTime);
-    bassGain.gain.linearRampToValueAtTime(0.32, startTime + 0.015);
+    bassGain.gain.linearRampToValueAtTime(isNight ? 0.16 : 0.32, startTime + 0.015);
     const decay = Math.min(duration * 0.9, 0.4);
     bassGain.gain.exponentialRampToValueAtTime(0.0001, startTime + decay);
 
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(380, startTime);
+    filter.frequency.setValueAtTime(isNight ? 240 : 380, startTime);
 
     osc.connect(bassGain);
     bassGain.connect(filter);
@@ -678,6 +736,8 @@ export class SoundManager {
   private playToyChord(chordNotes: string[], startTime: number, duration: number): void {
     if (!this.ctx || !this.musicGain) return;
 
+    const isNight = this.timeOfDay === 'night';
+
     chordNotes.forEach((noteName) => {
       const freq = NOTES[noteName];
       if (!freq || !this.ctx || !this.musicGain) return;
@@ -688,13 +748,13 @@ export class SoundManager {
 
       const gain = this.ctx.createGain();
       gain.gain.setValueAtTime(0.0001, startTime);
-      gain.gain.linearRampToValueAtTime(0.075, startTime + 0.012);
+      gain.gain.linearRampToValueAtTime(isNight ? 0.045 : 0.075, startTime + 0.012);
       const decay = Math.min(duration * 0.85, 0.35);
       gain.gain.exponentialRampToValueAtTime(0.0001, startTime + decay);
 
       const filter = this.ctx.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(1600, startTime);
+      filter.frequency.setValueAtTime(isNight ? 1100 : 1600, startTime);
 
       osc.connect(gain);
       gain.connect(filter);
@@ -711,6 +771,8 @@ export class SoundManager {
   private playWoodblock(startTime: number, isHigh = false): void {
     if (!this.ctx || !this.musicGain) return;
 
+    const isNight = this.timeOfDay === 'night';
+
     const osc = this.ctx.createOscillator();
     osc.type = 'sine';
     const startFreq = isHigh ? 920 : 620;
@@ -720,7 +782,8 @@ export class SoundManager {
 
     const gain = this.ctx.createGain();
     gain.gain.setValueAtTime(0.0001, startTime);
-    gain.gain.linearRampToValueAtTime(isHigh ? 0.08 : 0.06, startTime + 0.003);
+    const volume = isNight ? 0.025 : isHigh ? 0.08 : 0.06;
+    gain.gain.linearRampToValueAtTime(volume, startTime + 0.003);
     gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.045);
 
     osc.connect(gain);
@@ -728,6 +791,35 @@ export class SoundManager {
 
     osc.start(startTime);
     osc.stop(startTime + 0.05);
+  }
+
+  /**
+   * Fanfarra brilhante de celebração quando um brinquedo é guardado no tapete ou a oficina desbloqueia uma skin!
+   */
+  public playToyCelebrationChime(): void {
+    const ctx = this.initContext();
+    if (!ctx || !this.sfxGain || !this.isEnabled) return;
+
+    const t = ctx.currentTime;
+    const notes = [NOTES.C5, NOTES.E5, NOTES.G5, NOTES.C6, NOTES.E6 || 1318.5];
+
+    notes.forEach((freq, idx) => {
+      const noteTime = t + idx * 0.065;
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, noteTime);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, noteTime);
+      gain.gain.linearRampToValueAtTime(0.28, noteTime + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, noteTime + 0.42);
+
+      osc.connect(gain);
+      gain.connect(this.sfxGain!);
+
+      osc.start(noteTime);
+      osc.stop(noteTime + 0.45);
+    });
   }
 
   // ==========================================================================
@@ -811,6 +903,323 @@ export class SoundManager {
 
     osc.start(t);
     osc.stop(t + 0.06);
+  }
+
+  /**
+   * Inicia o som aerodinâmico e lúdico da hélice do helicóptero:
+   * Combina turbulência de ar cortado pelas pás (chopped pink noise),
+   * pulso rítmico de baixa frequência (blade thump) e um suave zumbido
+   * tecnológico de micro-turbina de brinquedo.
+   */
+  public startPropellerSound(): void {
+    if (!this.isEnabled) return;
+    const ctx = this.initContext();
+    if (!ctx || !this.sfxGain || this.isPropellerRunning) return;
+
+    try {
+      this.isPropellerRunning = true;
+      const t = ctx.currentTime;
+
+      // Ganho master da hélice (volume equilibrado com a música e SFX)
+      this.propellerGain = ctx.createGain();
+      this.propellerGain.gain.setValueAtTime(0.0001, t);
+      this.propellerGain.gain.exponentialRampToValueAtTime(0.16, t + 0.35);
+      this.propellerGain.connect(this.sfxGain);
+
+      // 1. Camada de Ar / Turbulência cortada pelas pás (Chopped Air Wash)
+      const noiseBuffer = this.getPinkNoiseBuffer();
+      if (noiseBuffer) {
+        this.propellerNoiseSource = ctx.createBufferSource();
+        this.propellerNoiseSource.buffer = noiseBuffer;
+        this.propellerNoiseSource.loop = true;
+
+        this.propellerAirFilter = ctx.createBiquadFilter();
+        this.propellerAirFilter.type = 'bandpass';
+        this.propellerAirFilter.frequency.setValueAtTime(450, t);
+        this.propellerAirFilter.Q.setValueAtTime(1.5, t);
+
+        this.propellerChopGain = ctx.createGain();
+        this.propellerChopGain.gain.setValueAtTime(0.38, t);
+
+        // LFO senoidal suave que simula a passagem periódica de cada pá (16 Hz inicial)
+        this.propellerChopLfo = ctx.createOscillator();
+        this.propellerChopLfo.type = 'sine';
+        this.propellerChopLfo.frequency.setValueAtTime(16, t);
+
+        this.propellerChopDepth = ctx.createGain();
+        this.propellerChopDepth.gain.setValueAtTime(0.28, t);
+
+        this.propellerChopLfo.connect(this.propellerChopDepth);
+        this.propellerChopDepth.connect(this.propellerChopGain.gain);
+
+        this.propellerNoiseSource.connect(this.propellerAirFilter);
+        this.propellerAirFilter.connect(this.propellerChopGain);
+        this.propellerChopGain.connect(this.propellerGain);
+
+        this.propellerNoiseSource.start(t);
+        this.propellerChopLfo.start(t);
+      }
+
+      // 2. Camada de Batimento Grave das Pás (Blade Thump encorpado)
+      this.propellerThumpOsc = ctx.createOscillator();
+      this.propellerThumpOsc.type = 'sine';
+      this.propellerThumpOsc.frequency.setValueAtTime(36, t);
+
+      this.propellerThumpFilter = ctx.createBiquadFilter();
+      this.propellerThumpFilter.type = 'lowpass';
+      this.propellerThumpFilter.frequency.setValueAtTime(90, t);
+
+      this.propellerThumpGain = ctx.createGain();
+      this.propellerThumpGain.gain.setValueAtTime(0.12, t);
+
+      this.propellerThumpOsc.connect(this.propellerThumpFilter);
+      this.propellerThumpFilter.connect(this.propellerThumpGain);
+      this.propellerThumpGain.connect(this.propellerGain);
+      this.propellerThumpOsc.start(t);
+
+      // 3. Camada de Micro-Turbina High-Tech (Zumbido sutil e amigável de drone)
+      this.propellerWhineOsc = ctx.createOscillator();
+      this.propellerWhineOsc.type = 'sine';
+      this.propellerWhineOsc.frequency.setValueAtTime(290, t);
+
+      this.propellerWhineFilter = ctx.createBiquadFilter();
+      this.propellerWhineFilter.type = 'lowpass';
+      this.propellerWhineFilter.frequency.setValueAtTime(700, t);
+
+      this.propellerWhineGain = ctx.createGain();
+      this.propellerWhineGain.gain.setValueAtTime(0.03, t);
+
+      this.propellerWhineOsc.connect(this.propellerWhineFilter);
+      this.propellerWhineFilter.connect(this.propellerWhineGain);
+      this.propellerWhineGain.connect(this.propellerGain);
+      this.propellerWhineOsc.start(t);
+    } catch (e) {
+      console.warn('Erro ao iniciar som de hélice:', e);
+    }
+  }
+
+  /**
+   * Modula a frequência e dinâmica da hélice conforme a rotação varia (decolagem, voo e pouso)
+   */
+  public updatePropellerSpeed(speed: number): void {
+    if (!this.ctx || !this.isPropellerRunning) return;
+    const t = this.ctx.currentTime;
+    const k = Math.min(Math.max(speed / 45, 0), 1.25);
+
+    // Modulação da cadência das pás de vento (14Hz a 28Hz)
+    if (this.propellerChopLfo) {
+      const chopRate = 14 + k * 14;
+      this.propellerChopLfo.frequency.setTargetAtTime(chopRate, t, 0.05);
+    }
+
+    // Abertura do filtro de ar (ar fica mais brilhante e cortante com velocidade)
+    if (this.propellerAirFilter) {
+      const airCutoff = 380 + k * 340;
+      this.propellerAirFilter.frequency.setTargetAtTime(airCutoff, t, 0.06);
+    }
+
+    // Frequência do pulso grave do rotor (32Hz a 54Hz)
+    if (this.propellerThumpOsc) {
+      const thumpFreq = 32 + k * 22;
+      this.propellerThumpOsc.frequency.setTargetAtTime(thumpFreq, t, 0.05);
+    }
+
+    // Zumbido doce da micro-turbina (260Hz a 440Hz / nota Lá musical)
+    if (this.propellerWhineOsc) {
+      const whineFreq = 260 + k * 180;
+      this.propellerWhineOsc.frequency.setTargetAtTime(whineFreq, t, 0.06);
+    }
+  }
+
+  /**
+   * Interrompe o som da hélice com desaceleração e desvanecimento orgânico
+   */
+  public stopPropellerSound(): void {
+    if (!this.isPropellerRunning || !this.ctx || !this.propellerGain) {
+      this.isPropellerRunning = false;
+      return;
+    }
+    const t = this.ctx.currentTime;
+    this.propellerGain.gain.cancelScheduledValues(t);
+    this.propellerGain.gain.setValueAtTime(this.propellerGain.gain.value, t);
+    this.propellerGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+
+    // Efeito sonoro de rotação desacelerando até parar
+    if (this.propellerChopLfo) {
+      this.propellerChopLfo.frequency.setTargetAtTime(6, t, 0.25);
+    }
+    if (this.propellerThumpOsc) {
+      this.propellerThumpOsc.frequency.setTargetAtTime(18, t, 0.25);
+    }
+    if (this.propellerWhineOsc) {
+      this.propellerWhineOsc.frequency.setTargetAtTime(120, t, 0.25);
+    }
+
+    const noise = this.propellerNoiseSource;
+    const chopLfo = this.propellerChopLfo;
+    const thump = this.propellerThumpOsc;
+    const whine = this.propellerWhineOsc;
+    const pGain = this.propellerGain;
+
+    setTimeout(() => {
+      try {
+        noise?.stop();
+        chopLfo?.stop();
+        thump?.stop();
+        whine?.stop();
+        noise?.disconnect();
+        chopLfo?.disconnect();
+        thump?.disconnect();
+        whine?.disconnect();
+        pGain?.disconnect();
+      } catch {
+        // Ignora caso já esteja finalizado
+      }
+    }, 500);
+
+    this.propellerNoiseSource = null;
+    this.propellerAirFilter = null;
+    this.propellerChopGain = null;
+    this.propellerChopLfo = null;
+    this.propellerChopDepth = null;
+    this.propellerThumpOsc = null;
+    this.propellerThumpFilter = null;
+    this.propellerThumpGain = null;
+    this.propellerWhineOsc = null;
+    this.propellerWhineFilter = null;
+    this.propellerWhineGain = null;
+    this.propellerGain = null;
+    this.isPropellerRunning = false;
+  }
+
+  /**
+   * Disparo suave e aquoso do canhão de bolhas
+   */
+  public playBubbleShoot(): void {
+    this.playFoamCannonShoot();
+  }
+
+  /**
+   * Estouro cristalino de sabão encantado (pop + cintilância)
+   */
+  public playBubblePop(): void {
+    if (!this.isEnabled) return;
+    const ctx = this.initContext();
+    if (!ctx || !this.sfxGain) return;
+
+    const t = ctx.currentTime;
+    // Tom agudo e saltitante
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(980, t);
+    osc.frequency.exponentialRampToValueAtTime(1850, t + 0.06);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(0.22, t + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+
+    osc.start(t);
+    osc.stop(t + 0.08);
+  }
+
+  /**
+   * Som mecânico estilizado de extensão lateral da arma (Crash Kart Style).
+   */
+  public playFoamCannonDeploy(): void {
+    if (!this.isEnabled) return;
+    const ctx = this.initContext();
+    if (!ctx || !this.sfxGain) return;
+
+    const t = ctx.currentTime;
+    // Clique mecânico de trava
+    const osc = ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(260, t);
+    osc.frequency.exponentialRampToValueAtTime(680, t + 0.08);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(0.24, t + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+
+    osc.start(t);
+    osc.stop(t + 0.13);
+  }
+
+  /**
+   * Som de tiro de bolha do canhão (plop-blooop aquoso, alegre e saltitante).
+   */
+  public playFoamCannonShoot(): void {
+    if (!this.isEnabled) return;
+    const ctx = this.initContext();
+    if (!ctx || !this.sfxGain) return;
+
+    const t = ctx.currentTime;
+
+    // 1. Bolha primária: chirp ascendente elástico e aquoso (blup!)
+    const osc1 = ctx.createOscillator();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(260, t);
+    osc1.frequency.exponentialRampToValueAtTime(840, t + 0.085);
+
+    const gain1 = ctx.createGain();
+    gain1.gain.setValueAtTime(0.0001, t);
+    gain1.gain.linearRampToValueAtTime(0.38, t + 0.01);
+    gain1.gain.exponentialRampToValueAtTime(0.0001, t + 0.11);
+
+    osc1.connect(gain1);
+    gain1.connect(this.sfxGain);
+    osc1.start(t);
+    osc1.stop(t + 0.12);
+
+    // 2. Bolha secundária em rápida sucessão criando o clássico "plop-blooop" borbulhante de desenho animado
+    const osc2 = ctx.createOscillator();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(440, t + 0.032);
+    osc2.frequency.exponentialRampToValueAtTime(1260, t + 0.11);
+
+    const gain2 = ctx.createGain();
+    gain2.gain.setValueAtTime(0.0001, t + 0.032);
+    gain2.gain.linearRampToValueAtTime(0.32, t + 0.042);
+    gain2.gain.exponentialRampToValueAtTime(0.0001, t + 0.135);
+
+    osc2.connect(gain2);
+    gain2.connect(this.sfxGain);
+    osc2.start(t + 0.032);
+    osc2.stop(t + 0.14);
+  }
+
+  /**
+   * Impacto encorpado e espumoso ao atingir parede, móvel ou piso (Splat / Squish).
+   */
+  public playFoamSplat(): void {
+    if (!this.isEnabled) return;
+    const ctx = this.initContext();
+    if (!ctx || !this.sfxGain) return;
+
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(420, t);
+    osc.frequency.exponentialRampToValueAtTime(120, t + 0.11);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(0.28, t + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+
+    osc.start(t);
+    osc.stop(t + 0.15);
   }
 }
 

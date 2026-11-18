@@ -106,6 +106,105 @@ const DUST_PALETTE = [
   '#8A7B6B', // Poeira densa de canto
 ];
 
+interface FurnitureDustZone {
+  surfaceLabel: string;
+  regionId: string;
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+  surfaceY: number;
+  targetCount: number;
+  patchCount: number;
+}
+
+const FURNITURE_DUST_ZONES: FurnitureDustZone[] = [
+  // 1. Quarto - Mesa de Centro de Vidro
+  {
+    surfaceLabel: 'Mesa de Vidro do Quarto',
+    regionId: 'bedroom',
+    minX: -1.95,
+    maxX: -0.95,
+    minZ: -1.45,
+    maxZ: -0.85,
+    surfaceY: 0.692,
+    targetCount: 16,
+    patchCount: 3,
+  },
+  // 2. Quarto - Sofá-Baú de Brinquedos (parede Sul)
+  {
+    surfaceLabel: 'Sofá-Baú do Quarto',
+    regionId: 'bedroom',
+    minX: -1.1,
+    maxX: 1.1,
+    minZ: 2.25,
+    maxZ: 2.85,
+    surfaceY: 0.895,
+    targetCount: 20,
+    patchCount: 4,
+  },
+  // 3. Quarto - Poltrona Verde Oliva
+  {
+    surfaceLabel: 'Poltrona do Quarto',
+    regionId: 'bedroom',
+    minX: 0.65,
+    maxX: 1.25,
+    minZ: -0.75,
+    maxZ: -0.40,
+    surfaceY: 0.875,
+    targetCount: 12,
+    patchCount: 2,
+  },
+  // 4. Sala de Estar - Mesa de Centro de Madeira
+  {
+    surfaceLabel: 'Mesa de Centro da Sala',
+    regionId: 'living-room',
+    minX: 12.1,
+    maxX: 13.5,
+    minZ: -1.0,
+    maxZ: -0.4,
+    surfaceY: 0.468,
+    targetCount: 18,
+    patchCount: 4,
+  },
+  // 5. Sala de Estar - Sofá Principal (Assentos)
+  {
+    surfaceLabel: 'Sofá da Sala',
+    regionId: 'living-room',
+    minX: 11.6,
+    maxX: 14.8,
+    minZ: 0.65,
+    maxZ: 1.20,
+    surfaceY: 0.585,
+    targetCount: 26,
+    patchCount: 5,
+  },
+  // 6. Sala de Estar - Chaise do Sofá
+  {
+    surfaceLabel: 'Chaise do Sofá',
+    regionId: 'living-room',
+    minX: 15.2,
+    maxX: 16.0,
+    minZ: -0.75,
+    maxZ: 0.55,
+    surfaceY: 0.585,
+    targetCount: 16,
+    patchCount: 3,
+  },
+  // 7. Cozinha - Mesa / Ilha Balcão de Refeições
+  {
+    surfaceLabel: 'Ilha da Cozinha',
+    regionId: 'kitchen',
+    minX: 11.8,
+    maxX: 13.8,
+    minZ: 4.0,
+    maxZ: 4.8,
+    surfaceY: 1.23,
+    targetCount: 22,
+    patchCount: 4,
+  },
+];
+
 /**
  * Gera sementes de poeira espalhadas uniformemente pelas áreas caminháveis de cada cômodo.
  */
@@ -224,6 +323,64 @@ function generateDustSeeds(): { seeds: DustSeed[]; patches: GroundPatchSeed[] } 
     }
   }
 
+  // Gera sujeira sobre móveis elevados (mesas e sofás) para serem limpos no modo Aspi-Helicóptero
+  for (const zone of FURNITURE_DUST_ZONES) {
+    for (let i = 0; i < zone.targetCount; i++) {
+      const x = zone.minX + prng() * (zone.maxX - zone.minX);
+      const z = zone.minZ + prng() * (zone.maxZ - zone.minZ);
+      const y = zone.surfaceY + 0.008;
+
+      const sizeType = prng();
+      let sx = 0.025;
+      let sy = 0.012;
+      let sz = 0.025;
+
+      if (sizeType > 0.7) {
+        sx = 0.045 + prng() * 0.025;
+        sy = 0.015 + prng() * 0.01;
+        sz = 0.04 + prng() * 0.025;
+      } else if (sizeType > 0.3) {
+        sx = 0.03 + prng() * 0.015;
+        sy = 0.012 + prng() * 0.006;
+        sz = 0.028 + prng() * 0.015;
+      } else {
+        sx = 0.018 + prng() * 0.01;
+        sy = 0.008 + prng() * 0.004;
+        sz = 0.016 + prng() * 0.008;
+      }
+
+      const colorHex = DUST_PALETTE[Math.floor(prng() * DUST_PALETTE.length)];
+      const color = new THREE.Color(colorHex);
+
+      seeds.push({
+        x,
+        y,
+        z,
+        scaleX: sx,
+        scaleY: sy,
+        scaleZ: sz,
+        rotY: prng() * Math.PI * 2,
+        color,
+        regionId: zone.regionId,
+      });
+    }
+
+    for (let p = 0; p < zone.patchCount; p++) {
+      const px = zone.minX + prng() * (zone.maxX - zone.minX);
+      const pz = zone.minZ + prng() * (zone.maxZ - zone.minZ);
+      const py = zone.surfaceY + 0.004;
+
+      patches.push({
+        x: px,
+        z: pz,
+        y: py,
+        radius: 0.16 + prng() * 0.18,
+        opacity: 0.16 + prng() * 0.12,
+        regionId: zone.regionId,
+      });
+    }
+  }
+
   return { seeds, patches };
 }
 
@@ -334,63 +491,56 @@ export const FloorDust = memo(function FloorDust() {
     patchesMesh.instanceMatrix.needsUpdate = true;
   }, [patches]);
 
-  // Listener para repor a poeira quando o usuário clica em reiniciar/recarregar
+  // Listener para repor a poeira APENAS em reinicializações explícitas da cena (mudança de dustVersion)
+  const dustVersion = useEnvironmentStore((s) => s.dustVersion);
+  const prevDustVersionRef = useRef(dustVersion);
+
   useEffect(() => {
-    const unsubscribe = useEnvironmentStore.subscribe((state, prevState) => {
-      // Se a quantidade ou intensidade dos dustSpots aumentou substancialmente (respawn)
-      const currentAvg =
-        state.dustSpots.reduce((acc, s) => acc + s.intensity, 0) /
-        state.dustSpots.length;
-      const prevAvg =
-        prevState.dustSpots.reduce((acc, s) => acc + s.intensity, 0) /
-        prevState.dustSpots.length;
+    // Se a versão não mudou em relação ao snapshot anterior, não restaura nada
+    if (dustVersion === prevDustVersionRef.current) return;
+    prevDustVersionRef.current = dustVersion;
 
-      if (currentAvg > prevAvg + 0.35 || state.dustSpots.every((s) => s.intensity > 0.8)) {
-        // Restaura todos os tufos e manchas do piso
-        const dummy = new THREE.Object3D();
-        const clumpsMesh = clumpsMeshRef.current;
-        const patchesMesh = patchesMeshRef.current;
+    // Restaura todos os tufos e manchas do piso apenas quando a cena for explicitamente reiniciada
+    const dummy = new THREE.Object3D();
+    const clumpsMesh = clumpsMeshRef.current;
+    const patchesMesh = patchesMeshRef.current;
 
-        for (let i = 0; i < clumpsStateRef.current.length; i++) {
-          const item = clumpsStateRef.current[i];
-          const s = seeds[i];
-          item.isCleaned = false;
-          item.animScale = 1.0;
-          item.curX = s.x;
-          item.curZ = s.z;
-          item.curY = s.y;
+    for (let i = 0; i < clumpsStateRef.current.length; i++) {
+      const item = clumpsStateRef.current[i];
+      const s = seeds[i];
+      item.isCleaned = false;
+      item.animScale = 1.0;
+      item.curX = s.x;
+      item.curZ = s.z;
+      item.curY = s.y;
 
-          if (clumpsMesh) {
-            dummy.position.set(s.x, s.y, s.z);
-            dummy.rotation.set(0, s.rotY, 0);
-            dummy.scale.set(s.scaleX, s.scaleY, s.scaleZ);
-            dummy.updateMatrix();
-            clumpsMesh.setMatrixAt(i, dummy.matrix);
-          }
-        }
-        if (clumpsMesh) clumpsMesh.instanceMatrix.needsUpdate = true;
-
-        for (let i = 0; i < patchesStateRef.current.length; i++) {
-          const pItem = patchesStateRef.current[i];
-          const p = patches[i];
-          pItem.isCleaned = false;
-          pItem.animScale = 1.0;
-
-          if (patchesMesh) {
-            dummy.position.set(p.x, p.y, p.z);
-            dummy.rotation.set(-Math.PI / 2, 0, 0);
-            dummy.scale.set(p.radius, p.radius, 1);
-            dummy.updateMatrix();
-            patchesMesh.setMatrixAt(i, dummy.matrix);
-          }
-        }
-        if (patchesMesh) patchesMesh.instanceMatrix.needsUpdate = true;
-        useRobotStore.getState().setSanitizedAreaTelemetry(0, 0, 0, TOTAL_HOUSE_WALKABLE_AREA);
+      if (clumpsMesh) {
+        dummy.position.set(s.x, s.y, s.z);
+        dummy.rotation.set(0, s.rotY, 0);
+        dummy.scale.set(s.scaleX, s.scaleY, s.scaleZ);
+        dummy.updateMatrix();
+        clumpsMesh.setMatrixAt(i, dummy.matrix);
       }
-    });
+    }
+    if (clumpsMesh) clumpsMesh.instanceMatrix.needsUpdate = true;
 
-    return () => unsubscribe();
-  }, [seeds, patches]);
+    for (let i = 0; i < patchesStateRef.current.length; i++) {
+      const pItem = patchesStateRef.current[i];
+      const p = patches[i];
+      pItem.isCleaned = false;
+      pItem.animScale = 1.0;
+
+      if (patchesMesh) {
+        dummy.position.set(p.x, p.y, p.z);
+        dummy.rotation.set(-Math.PI / 2, 0, 0);
+        dummy.scale.set(p.radius, p.radius, 1);
+        dummy.updateMatrix();
+        patchesMesh.setMatrixAt(i, dummy.matrix);
+      }
+    }
+    if (patchesMesh) patchesMesh.instanceMatrix.needsUpdate = true;
+    useRobotStore.getState().setSanitizedAreaTelemetry(0, 0, 0, TOTAL_HOUSE_WALKABLE_AREA);
+  }, [dustVersion, seeds, patches]);
 
   // Dummy reutilizável para cálculos de matriz em useFrame
   const dummy = useMemo(() => new THREE.Object3D(), []);
@@ -403,6 +553,7 @@ export const FloorDust = memo(function FloorDust() {
     if (!clumpsMesh || !clumpsStateRef.current.length) return;
 
     const robotX = robotMotionBridge.x;
+    const robotY = robotMotionBridge.y ?? 0;
     const robotZ = robotMotionBridge.z;
     const robotSpeed = robotMotionBridge.currentSpeed ?? 0;
     const robotState = useRobotStore.getState();
@@ -419,7 +570,7 @@ export const FloorDust = memo(function FloorDust() {
     let clumpsNeedUpdate = false;
     let patchesNeedUpdate = false;
 
-    // 1. Atualização dos tufos 3D de poeira
+    // 1. Atualização dos tufos 3D de poeira (chão e mobílias elevadas)
     for (let i = 0; i < clumpsStateRef.current.length; i++) {
       const item = clumpsStateRef.current[i];
       const s = seeds[i];
@@ -428,8 +579,10 @@ export const FloorDust = memo(function FloorDust() {
         const dx = s.x - robotX;
         const dz = s.z - robotZ;
         const dist = Math.hypot(dx, dz);
+        const dy = Math.abs(s.y - robotY);
 
-        if (dist <= vacuumReach) {
+        // Aspira somente quando próximo horizontalmente e na mesma faixa vertical de altitude
+        if (dist <= vacuumReach && dy < 0.45) {
           item.isCleaned = true;
           const now = performance.now();
           if (now - lastPopTimeRef.current > 180) {
@@ -439,7 +592,7 @@ export const FloorDust = memo(function FloorDust() {
         }
       }
 
-      // Animação de sucção: o tufo é puxado para o bocal do robô e encolhe até sumir
+      // Animação de sucção: o tufo é puxado para o bocal do robô (3D) e encolhe até sumir
       if (item.isCleaned && item.animScale > 0) {
         item.animScale = Math.max(0, item.animScale - delta * 5.5);
         clumpsNeedUpdate = true;
@@ -447,7 +600,7 @@ export const FloorDust = memo(function FloorDust() {
         const pullRatio = 1 - item.animScale;
         item.curX = THREE.MathUtils.lerp(s.x, robotX, pullRatio * 0.45);
         item.curZ = THREE.MathUtils.lerp(s.z, robotZ, pullRatio * 0.45);
-        item.curY = s.y + pullRatio * 0.03;
+        item.curY = THREE.MathUtils.lerp(s.y, robotY, pullRatio * 0.45);
 
         dummy.position.set(item.curX, item.curY, item.curZ);
         dummy.rotation.set(0, s.rotY, 0);
@@ -465,7 +618,7 @@ export const FloorDust = memo(function FloorDust() {
       clumpsMesh.instanceMatrix.needsUpdate = true;
     }
 
-    // 2. Atualização das manchas suaves de poeira no chão
+    // 2. Atualização das manchas suaves de poeira no chão e mobílias
     if (patchesMesh && patchesStateRef.current.length) {
       for (let i = 0; i < patchesStateRef.current.length; i++) {
         const pItem = patchesStateRef.current[i];
@@ -473,7 +626,8 @@ export const FloorDust = memo(function FloorDust() {
 
         if (!pItem.isCleaned && isVacuumActive) {
           const dist = Math.hypot(p.x - robotX, p.z - robotZ);
-          if (dist <= vacuumReach + p.radius * 0.4) {
+          const dy = Math.abs(p.y - robotY);
+          if (dist <= vacuumReach + p.radius * 0.4 && dy < 0.45) {
             pItem.isCleaned = true;
           }
         }

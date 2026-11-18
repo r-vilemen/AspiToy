@@ -1,8 +1,11 @@
-import { forwardRef } from 'react';
+import { forwardRef, useMemo, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
 import { RoundedBox } from '@react-three/drei';
 import * as THREE from 'three';
 import { sharedMaterials, WORLD_PALETTE } from '../Environment/Materials';
-import type { RobotExpression, RobotOperationalState } from '@/types/robot';
+import type { RobotExpression, RobotOperationalState, RobotSkinId } from '@/types/robot';
+import { ROBOT_SKINS, robotMotionBridge, useRobotStore } from '@/store/robotStore';
+import { useEnvironmentStore } from '@/store/environmentStore';
 
 interface RobotModelProps {
   wheelSpin?: number;
@@ -12,17 +15,20 @@ interface RobotModelProps {
   bumperCompression?: number;
   state?: RobotOperationalState;
   expression?: RobotExpression;
+  skinId?: RobotSkinId;
 }
 
 /**
- * Protagonista AspiToy — Design Industrial de Personagem de Animação 3D (Seção 6 da Direção de Arte):
- * - Corpo circular suavemente esculpido (36 segmentos) com cúpula superior boleada
- * - Para-choque frontal articulado com faixa de amortecimento emborrachada
- * - Compartimento traseiro translúcido de coleta de pó com filtro visível
+ * Protagonista AspiToy — Design Industrial de Personagem de Animação 3D:
+ * - Corpo circular com suporte a skins customizáveis da Oficina Toy Box (Clássico, Patrulheiro, Xerife, Cyber)
+ * - Faróis ópticos frontais com feixe luminoso no piso para o modo noturno e operações
+ * - Para-choque frontal articulado com amortecimento
+ * - Compartimento traseiro translúcido de coleta de pó
  * - Torre óptica de sensores ToF/LiDAR com anel luminoso de estado
- * - Visor OLED curvo integrado ao chassi comunicando 7 estados emocionais distintos
- * - Rodas emborrachadas integradas e escovas laterais giratórias funcionais
+ * - Visor OLED curvo comunicando 7 estados emocionais distintos
  */
+const scratchLensColor = new THREE.Color();
+
 export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function RobotModel(
   {
     wheelSpin = 0,
@@ -32,19 +38,277 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
     bumperCompression = 0,
     state = 'IDLE',
     expression = 'neutral',
+    skinId,
   },
   ref
 ) {
+  const currentSkinId = useRobotStore((s) => s.skin);
+  const activeSkinId = skinId ?? currentSkinId;
+
+  const mastMeshRef = useRef<THREE.Mesh>(null);
+  const rotorHeadRef = useRef<THREE.Group>(null);
+  const bladesGroupRef = useRef<THREE.Group>(null);
+  const blurRingRef = useRef<THREE.Group>(null);
+  const headlightPodRef = useRef<THREE.Group>(null);
+  const headlightExtensionRef = useRef(0);
+  const headlightSpotRef = useRef<THREE.SpotLight>(null);
+  const headlightFillRef = useRef<THREE.PointLight>(null);
+  const headlightLensMatRefs = useRef<(THREE.MeshBasicMaterial | null)[]>([]);
+
+  // Canhão de Espuma Lateral (Estilo Crash Kart)
+  const cannonArmGroupRef = useRef<THREE.Group>(null);
+  const cannonHatchRef = useRef<THREE.Group>(null);
+  const cannonBarrelRef = useRef<THREE.Group>(null);
+
+  useFrame((_, delta) => {
+    const ext = robotMotionBridge.propellerExtension;
+    const speed = robotMotionBridge.propellerSpeed;
+
+    // Transição suave dos faróis do robô (acende de noite e apaga de dia sem recompilar shaders)
+    const isNightNow = useEnvironmentStore.getState().timeOfDay === 'night';
+    const isRechargingNow = useRobotStore.getState().state === 'RECHARGING';
+    const isHeadlightOn = isNightNow && !isRechargingNow;
+
+    // Extensão suave do farol embutido no topo (pop-up ao acender, recolhe rente ao capô ao apagar)
+    const targetExtension = isHeadlightOn ? 1.0 : 0.0;
+    headlightExtensionRef.current = THREE.MathUtils.damp(
+      headlightExtensionRef.current,
+      targetExtension,
+      3.2,
+      delta
+    );
+    const headExt = headlightExtensionRef.current;
+
+    // Eleva o módulo do farol para fora do nicho do capô superior e inclina suavemente para a frente
+    if (headlightPodRef.current) {
+      headlightPodRef.current.position.y = -0.012 + headExt * 0.038;
+      headlightPodRef.current.rotation.x = -headExt * 0.12;
+    }
+
+    const targetSpot = isHeadlightOn ? 3.6 * Math.min(1.0, headExt * 1.5) : 0;
+    const targetFill = isHeadlightOn ? 0.95 * Math.min(1.0, headExt * 1.5) : 0;
+    const targetLensOpacity = isHeadlightOn ? 0.95 : 0.25;
+    const targetLensColorHex = isHeadlightOn ? '#FEF08A' : '#78716C';
+    const lensAlpha = 1 - Math.exp(-2.2 * delta);
+
+    if (headlightSpotRef.current) {
+      headlightSpotRef.current.intensity = THREE.MathUtils.damp(
+        headlightSpotRef.current.intensity,
+        targetSpot,
+        2.5,
+        delta
+      );
+    }
+
+    if (headlightFillRef.current) {
+      headlightFillRef.current.intensity = THREE.MathUtils.damp(
+        headlightFillRef.current.intensity,
+        targetFill,
+        2.5,
+        delta
+      );
+    }
+
+    headlightLensMatRefs.current.forEach((mat) => {
+      if (!mat) return;
+      mat.opacity = THREE.MathUtils.damp(mat.opacity, targetLensOpacity, 2.5, delta);
+      mat.color.lerp(scratchLensColor.set(targetLensColorHex), lensAlpha);
+    });
+
+    // Altura total da extensão telescópica (de 0.012m recolhido a 0.138m totalmente estendido)
+    const currentMastHeight = 0.012 + ext * 0.126;
+
+    // Atualiza o mastro: a base fica permanentemente ancorada no colar (y=0.005) e o topo atinge o rotor
+    if (mastMeshRef.current) {
+      if (ext < 0.01) {
+        mastMeshRef.current.visible = false;
+      } else {
+        mastMeshRef.current.visible = true;
+        mastMeshRef.current.scale.set(1, currentMastHeight, 1);
+        // O cilindro unitário de altura 1 tem centro em currentMastHeight / 2
+        mastMeshRef.current.position.y = 0.005 + currentMastHeight / 2;
+      }
+    }
+
+    // Atualiza a cabeça do rotor no topo exato do mastro telescópico (ZERO gap flutuante!)
+    if (rotorHeadRef.current) {
+      if (ext < 0.01) {
+        rotorHeadRef.current.visible = false;
+      } else {
+        rotorHeadRef.current.visible = true;
+        rotorHeadRef.current.position.y = 0.005 + currentMastHeight;
+        // As pás se desdobram suavemente ao erguer o mastro
+        const bladeScale = Math.min(1.0, ext * 1.3);
+        rotorHeadRef.current.scale.set(bladeScale, bladeScale, bladeScale);
+      }
+    }
+
+    // Rotação contínua de alta rotação das pás
+    if (bladesGroupRef.current && speed > 0.01) {
+      bladesGroupRef.current.rotation.y += delta * speed;
+    }
+
+    // Vórtice dinâmico de desfoque óptico (motion blur suave, sem parecer um prato branco)
+    if (blurRingRef.current) {
+      const tipMesh = blurRingRef.current.children[0] as THREE.Mesh | undefined;
+      const innerMesh = blurRingRef.current.children[1] as THREE.Mesh | undefined;
+      if (tipMesh && innerMesh) {
+        const tipMat = tipMesh.material as THREE.MeshBasicMaterial;
+        const innerMat = innerMesh.material as THREE.MeshBasicMaterial;
+        if (tipMat && innerMat) {
+          const blurFactor = Math.min(1.0, speed / 40);
+          tipMat.opacity = blurFactor * 0.28;
+          innerMat.opacity = blurFactor * 0.12;
+        }
+      }
+    }
+
+    // Extensão e articulação do Canhão de Espuma Lateral (Estilo Crash Kart)
+    const targetCannonExt = robotMotionBridge.isCannonAiming ? 1.0 : 0.0;
+    robotMotionBridge.cannonExtension = THREE.MathUtils.damp(
+      robotMotionBridge.cannonExtension,
+      targetCannonExt,
+      3.8,
+      delta
+    );
+    robotMotionBridge.cannonRecoil = THREE.MathUtils.damp(
+      robotMotionBridge.cannonRecoil,
+      0,
+      8.0,
+      delta
+    );
+
+    const cExt = robotMotionBridge.cannonExtension;
+    const cRecoil = robotMotionBridge.cannonRecoil;
+
+    if (cannonHatchRef.current) {
+      // Escotilha lateral articulada no chassi abrindo para cima
+      cannonHatchRef.current.rotation.z = -cExt * 1.35;
+    }
+
+    if (cannonArmGroupRef.current) {
+      if (cExt < 0.008) {
+        cannonArmGroupRef.current.visible = false;
+      } else {
+        cannonArmGroupRef.current.visible = true;
+        // Desliza mecanicamente para fora da lateral da lataria
+        cannonArmGroupRef.current.position.x = 0.235 + cExt * 0.11;
+      }
+    }
+
+    if (cannonBarrelRef.current) {
+      // Recuo axial mecânico de tiro (kickback)
+      cannonBarrelRef.current.position.z = -cRecoil * 0.035;
+
+      // Mira angular direcionada ao ponto 3D clicado pelo usuário
+      if (
+        robotMotionBridge.isCannonAiming &&
+        (robotMotionBridge.foamTargetX !== 0 || robotMotionBridge.foamTargetZ !== 0)
+      ) {
+        const heading = robotMotionBridge.rotationY;
+        const dx = robotMotionBridge.foamTargetX - (robotMotionBridge.x + Math.sin(heading) * 0.15);
+        const dz = robotMotionBridge.foamTargetZ - (robotMotionBridge.z + Math.cos(heading) * 0.15);
+        const dy = robotMotionBridge.foamTargetY - (robotMotionBridge.y + 0.02);
+
+        // Conversão para coordenadas locais do robô
+        const cosH = Math.cos(-heading);
+        const sinH = Math.sin(-heading);
+        const localX = dx * cosH - dz * sinH;
+        const localZ = dx * sinH + dz * cosH;
+
+        const targetYaw = Math.atan2(localX, localZ);
+        const horizDist = Math.hypot(localX, localZ);
+        const targetPitch = -Math.atan2(dy, Math.max(0.1, horizDist));
+
+        // Limita a rotação para um cone frontal-lateral seguro (-50° a +50°)
+        const clampedYaw = THREE.MathUtils.clamp(targetYaw, -0.85, 0.85);
+        const clampedPitch = THREE.MathUtils.clamp(targetPitch, -0.65, 0.65);
+
+        robotMotionBridge.cannonAimYaw = THREE.MathUtils.damp(
+          robotMotionBridge.cannonAimYaw,
+          clampedYaw,
+          5.0,
+          delta
+        );
+        robotMotionBridge.cannonAimPitch = THREE.MathUtils.damp(
+          robotMotionBridge.cannonAimPitch,
+          clampedPitch,
+          5.0,
+          delta
+        );
+
+        cannonBarrelRef.current.rotation.y = robotMotionBridge.cannonAimYaw;
+        cannonBarrelRef.current.rotation.x = robotMotionBridge.cannonAimPitch;
+      } else {
+        robotMotionBridge.cannonAimYaw = THREE.MathUtils.damp(
+          robotMotionBridge.cannonAimYaw,
+          0,
+          4.0,
+          delta
+        );
+        robotMotionBridge.cannonAimPitch = THREE.MathUtils.damp(
+          robotMotionBridge.cannonAimPitch,
+          0,
+          4.0,
+          delta
+        );
+        cannonBarrelRef.current.rotation.y = robotMotionBridge.cannonAimYaw;
+        cannonBarrelRef.current.rotation.x = robotMotionBridge.cannonAimPitch;
+      }
+    }
+  });
+
+  const skin = ROBOT_SKINS[activeSkinId] ?? ROBOT_SKINS.classic;
+
+  // Alvo óptico posicionado na frente (+Z) e rente ao piso (-Y) para o feixe do SpotLight
+  const lightTarget = useMemo(() => {
+    const obj = new THREE.Object3D();
+    obj.position.set(0, -0.06, 1.8);
+    return obj;
+  }, []);
+
+  // Materiais dinâmicos derivados da Skin equipada na Oficina Toy Box
+  const skinMaterials = useMemo(() => {
+    return {
+      shell: new THREE.MeshPhysicalMaterial({
+        color: skin.shellColor,
+        roughness: skin.isTranslucent ? 0.18 : 0.35,
+        metalness: 0.05,
+        clearcoat: skin.isTranslucent ? 0.85 : 0.35,
+        transparent: !!skin.isTranslucent,
+        opacity: skin.isTranslucent ? 0.74 : 1.0,
+        transmission: skin.isTranslucent ? 0.45 : 0,
+      }),
+      coralTrim: new THREE.MeshStandardMaterial({
+        color: skin.coralTrimColor,
+        roughness: 0.38,
+        metalness: 0.1,
+      }),
+      blueTrim: new THREE.MeshStandardMaterial({
+        color: skin.blueTrimColor,
+        roughness: 0.4,
+        metalness: 0.08,
+      }),
+      yellowTrim: new THREE.MeshStandardMaterial({
+        color: skin.yellowTrimColor,
+        roughness: 0.35,
+        metalness: 0.08,
+      }),
+    };
+  }, [skin]);
+
   const statusColor =
     state === 'CLEANING'
-      ? WORLD_PALETTE.robotCoral
-      : state === 'AVOIDING' || state === 'PAUSED'
-        ? WORLD_PALETTE.ledAmber
-        : state === 'RETURNING'
-          ? '#F97316'
-          : state === 'COMPLETED'
-            ? WORLD_PALETTE.ledEmerald
-            : WORLD_PALETTE.sensorCyan;
+      ? skin.coralTrimColor
+      : state === 'ORGANIZING'
+        ? '#F59E0B'
+        : state === 'AVOIDING' || state === 'PAUSED'
+          ? WORLD_PALETTE.ledAmber
+          : state === 'RETURNING'
+            ? '#F97316'
+            : state === 'COMPLETED'
+              ? WORLD_PALETTE.ledEmerald
+              : skin.eyeColor;
 
   const eyeColor =
     expression === 'alert'
@@ -54,8 +318,8 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
         : expression === 'happy'
           ? '#4ADE80'
           : expression === 'focused'
-            ? '#38BDF8'
-            : WORLD_PALETTE.sensorCyan;
+            ? skin.eyeColor
+            : skin.eyeColor;
 
   // Parametrização das 7 expressões faciais integradas ao visor industrial
   const eyeScaleY =
@@ -117,7 +381,7 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
       {/* Corpo articulado com física de suspensão (pitch, roll, bobY) */}
       <group position={[0, 0.098 + bobY, 0]} rotation={[pitch, 0, roll]}>
         {/* 1. CHASSI PRINCIPAL ARREDONDADO DE ACABAMENTO INDUSTRIAL */}
-        <mesh castShadow receiveShadow material={sharedMaterials.robotShell}>
+        <mesh castShadow receiveShadow material={skinMaterials.shell}>
           <cylinderGeometry args={[0.268, 0.284, 0.118, 36]} />
         </mesh>
 
@@ -127,36 +391,109 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
           receiveShadow
           position={[0, 0.058, 0]}
           scale={[1, 0.22, 1]}
-          material={sharedMaterials.robotShell}
+          material={skinMaterials.shell}
         >
           <sphereGeometry args={[0.266, 36, 18, 0, Math.PI * 2, 0, Math.PI / 2]} />
         </mesh>
 
-        {/* Anel de acabamento superior coral acetinado */}
+        {/* Anel de acabamento superior */}
         <mesh
           castShadow
           position={[0, 0.064, 0]}
           rotation={[Math.PI / 2, 0, 0]}
-          material={sharedMaterials.robotCoralTrim}
+          material={skinMaterials.coralTrim}
         >
           <torusGeometry args={[0.22, 0.016, 14, 36]} />
         </mesh>
 
         {/* Painel de controle superior com botão de acionamento iluminado */}
-        <group position={[0, 0.088, 0.095]}>
-          <mesh castShadow material={sharedMaterials.robotYellowTrim}>
-            <cylinderGeometry args={[0.038, 0.044, 0.016, 24]} />
+        <group position={[0, 0.086, 0.045]}>
+          <mesh castShadow material={skinMaterials.yellowTrim}>
+            <cylinderGeometry args={[0.034, 0.04, 0.014, 24]} />
           </mesh>
-          <mesh position={[0, 0.0095, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[0.022, 0.03, 20]} />
+          <mesh position={[0, 0.0085, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[0.018, 0.026, 20]} />
             <meshBasicMaterial color={statusColor} />
           </mesh>
         </group>
 
-        {/* 2. PARA-CHOQUE FRONTAL COM AMORTECIMENTO E BORRACHA PROTETORA */}
+        {/* MÓDULO DE FAROL POP-UP EMBUTIDO NO TOPO (EMERGE QUANDO ACESO) */}
+        <group position={[0, 0.068, 0.14]}>
+          {/* Nicho / Cavidade embutida no chassi com acabamento protetor */}
+          <mesh position={[0, -0.005, 0]} material={sharedMaterials.robotRubberBumper}>
+            <boxGeometry args={[0.134, 0.02, 0.066]} />
+          </mesh>
+          <mesh position={[0, 0.002, 0]} material={sharedMaterials.metalChrome}>
+            <boxGeometry args={[0.126, 0.008, 0.058]} />
+          </mesh>
+
+          {/* Módulo mecânico retrátil do farol (pop-up animado suavemente em useFrame) */}
+          <group ref={headlightPodRef} position={[0, -0.012, 0]}>
+            {/* Corpo / Cápsula do farol retrátil */}
+            <RoundedBox
+              castShadow
+              args={[0.12, 0.03, 0.052]}
+              radius={0.006}
+              smoothness={3}
+              position={[0, 0.015, 0]}
+              material={skinMaterials.shell}
+            />
+            {/* Tampa / Friso estético superior que fica rente ao capô quando recolhido */}
+            <mesh position={[0, 0.031, 0]} material={skinMaterials.coralTrim}>
+              <boxGeometry args={[0.116, 0.003, 0.048]} />
+            </mesh>
+
+            {/* Duplo canhão de lentes LED frontais */}
+            {[-0.036, 0.036].map((lx, idx) => (
+              <group key={idx} position={[lx, 0.015, 0.026]}>
+                {/* Aro cromado metálico do farol */}
+                <mesh rotation={[Math.PI / 2, 0, 0]} material={sharedMaterials.metalChrome}>
+                  <cylinderGeometry args={[0.016, 0.017, 0.006, 20]} />
+                </mesh>
+                {/* Lente convexa iluminada */}
+                <mesh position={[0, 0, 0.003]} rotation={[Math.PI / 2, 0, 0]}>
+                  <circleGeometry args={[0.014, 20]} />
+                  <meshBasicMaterial
+                    ref={(el) => {
+                      headlightLensMatRefs.current[idx] = el;
+                    }}
+                    color="#78716C"
+                    transparent
+                    opacity={0.25}
+                  />
+                </mesh>
+              </group>
+            ))}
+
+            {/* Alvo óptico e feixe direcional SpotLight projetado no solo à frente */}
+            <primitive object={lightTarget} />
+            <spotLight
+              ref={headlightSpotRef}
+              target={lightTarget}
+              position={[0, 0.015, 0.03]}
+              intensity={0}
+              distance={6.2}
+              angle={Math.PI / 4.0}
+              penumbra={0.65}
+              color="#FFFDF0"
+              castShadow={false}
+            />
+            {/* Luz suave de preenchimento do solo à frente */}
+            <pointLight
+              ref={headlightFillRef}
+              position={[0, 0.01, 0.14]}
+              intensity={0}
+              distance={1.9}
+              decay={1.8}
+              color="#FEF9C3"
+            />
+          </group>
+        </group>
+
+        {/* 2. PARA-CHOQUE FRONTAL COM AMORTECIMENTO */}
         <group position={[0, -0.004, 0.012 - bumperCompression]}>
-          {/* Carenagem frontal azul do amortecedor */}
-          <mesh castShadow material={sharedMaterials.robotBlueTrim}>
+          {/* Carenagem frontal do amortecedor */}
+          <mesh castShadow material={skinMaterials.blueTrim}>
             <cylinderGeometry
               args={[
                 0.292,
@@ -170,6 +507,7 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
               ]}
             />
           </mesh>
+
           {/* Faixa emborrachada de impacto na parte inferior do para-choque */}
           <mesh
             position={[0, -0.026, 0]}
@@ -210,13 +548,13 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
             smoothness={3}
             material={sharedMaterials.robotDustBin}
           />
-          {/* Filtro HEPA amarelo visível dentro do compartimento translúcido */}
+          {/* Filtro HEPA visível dentro do compartimento translúcido */}
           <RoundedBox
             args={[0.14, 0.048, 0.06]}
             radius={0.01}
             smoothness={2}
             position={[0, 0, 0.01]}
-            material={sharedMaterials.robotYellowTrim}
+            material={skinMaterials.yellowTrim}
           />
           {/* Alça metálica de liberação do reservatório */}
           <RoundedBox
@@ -241,7 +579,7 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
         {/* 4. TORRE DE SENSORES LIDAR / TOF E INDICADOR LUMINOSO */}
         <group position={[0, 0.088, -0.035]}>
           {/* Base cônica da torre de navegação */}
-          <mesh castShadow material={sharedMaterials.robotBlueTrim}>
+          <mesh castShadow material={skinMaterials.blueTrim}>
             <cylinderGeometry args={[0.068, 0.086, 0.044, 28]} />
           </mesh>
           {/* Disco óptico giratório cromado */}
@@ -256,7 +594,7 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
           <mesh
             castShadow
             position={[0, 0.04, 0]}
-            material={sharedMaterials.robotCoralTrim}
+            material={skinMaterials.coralTrim}
           >
             <cylinderGeometry args={[0.062, 0.066, 0.014, 28]} />
           </mesh>
@@ -264,6 +602,104 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
             <ringGeometry args={[0.038, 0.054, 24]} />
             <meshBasicMaterial color={statusColor} />
           </mesh>
+
+          {/* HÉLICE RETRÁTIL DO MODO ASPI-HELICÓPTERO (SISTEMA TELESCÓPICO DE ALTA PRECISÃO) */}
+          <group position={[0, 0.048, 0]}>
+            {/* Colar mecânico fixo no topo da torre LIDAR (porta de saída telescópica) */}
+            <mesh position={[0, 0.003, 0]} material={sharedMaterials.robotRubberBumper}>
+              <cylinderGeometry args={[0.02, 0.024, 0.008, 24]} />
+            </mesh>
+            <mesh position={[0, 0.007, 0]} material={sharedMaterials.metalChrome}>
+              <cylinderGeometry args={[0.014, 0.015, 0.004, 24]} />
+            </mesh>
+
+            {/* Mastro telescópico contínuo ancorado no colar */}
+            <mesh
+              ref={mastMeshRef}
+              position={[0, 0.01, 0]}
+              material={sharedMaterials.metalChrome}
+            >
+              <cylinderGeometry args={[0.008, 0.01, 1, 16]} />
+            </mesh>
+
+            {/* Conjunto do Rotor e Pás (posicionado dinamicamente no topo do mastro) */}
+            <group ref={rotorHeadRef} position={[0, 0.012, 0]}>
+              {/* Hub central do rotor */}
+              <mesh position={[0, 0.008, 0]} material={skinMaterials.coralTrim}>
+                <cylinderGeometry args={[0.024, 0.02, 0.016, 20]} />
+              </mesh>
+              {/* Spinner cônico superior aerodinâmico */}
+              <mesh position={[0, 0.02, 0]} material={skinMaterials.yellowTrim}>
+                <coneGeometry args={[0.014, 0.018, 18]} />
+              </mesh>
+
+              {/* Conjunto rotativo de alta velocidade (gira com speed da hélice) */}
+              <group ref={bladesGroupRef} position={[0, 0.012, 0]}>
+                {/* Barra estabilizadora transversal (Flybar estilo helicóptero de brinquedo Pixar) */}
+                <group rotation={[0, Math.PI / 4, 0]}>
+                  <mesh material={sharedMaterials.metalChrome} rotation={[0, 0, Math.PI / 2]}>
+                    <cylinderGeometry args={[0.003, 0.003, 0.22, 12]} />
+                  </mesh>
+                  {/* Pesos esferoidais cromados nas extremidades da flybar */}
+                  {[-0.11, 0.11].map((fx, i) => (
+                    <mesh key={i} position={[fx, 0, 0]} material={sharedMaterials.metalChrome}>
+                      <sphereGeometry args={[0.007, 12, 12]} />
+                    </mesh>
+                  ))}
+                </group>
+
+                {/* Duas pás aerodinâmicas principais de alta sustentação (52cm de envergadura) */}
+                {[-1, 1].map((dir, i) => (
+                  <group key={i} position={[dir * 0.018, 0, 0]} rotation={[0, dir === 1 ? 0 : Math.PI, 0]}>
+                    {/* Haste/raiz de fixação da pá no cubo */}
+                    <mesh position={[0.02, 0, 0]} material={sharedMaterials.metalChrome}>
+                      <boxGeometry args={[0.024, 0.006, 0.012]} />
+                    </mesh>
+                    {/* Corpo aerodinâmico da pá com passo positivo */}
+                    <group position={[0.13, 0, 0]} rotation={[0.12, 0, 0]}>
+                      <RoundedBox
+                        args={[0.22, 0.004, 0.038]}
+                        radius={0.002}
+                        smoothness={2}
+                        material={sharedMaterials.robotRubberBumper}
+                      />
+                      {/* Faixa de segurança amarela vibrante na ponta da pá */}
+                      <mesh position={[0.095, 0.0005, 0]} material={skinMaterials.yellowTrim}>
+                        <boxGeometry args={[0.032, 0.005, 0.038]} />
+                      </mesh>
+                    </group>
+                  </group>
+                ))}
+
+                {/* Vórtice dinâmico translúcido de rotação (Motion Blur Arc) */}
+                <group ref={blurRingRef} rotation={[-Math.PI / 2, 0, 0]}>
+                  {/* Anel de ponta de pá de alta rotação */}
+                  <mesh>
+                    <ringGeometry args={[0.22, 0.265, 48]} />
+                    <meshBasicMaterial
+                      color="#E2E8F0"
+                      transparent
+                      opacity={0}
+                      depthWrite={false}
+                      side={THREE.DoubleSide}
+                      blending={THREE.AdditiveBlending}
+                    />
+                  </mesh>
+                  {/* Disco interno aveludado de fluxo de ar */}
+                  <mesh>
+                    <ringGeometry args={[0.06, 0.22, 36]} />
+                    <meshBasicMaterial
+                      color="#CBD5E1"
+                      transparent
+                      opacity={0}
+                      depthWrite={false}
+                      side={THREE.DoubleSide}
+                    />
+                  </mesh>
+                </group>
+              </group>
+            </group>
+          </group>
         </group>
 
         {/* 5. VISOR CURVO OLED INTEGRADO E FACE EXPRESSIVA (7 ESTADOS) */}
@@ -367,11 +803,11 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
             >
               <cylinderGeometry args={[0.056, 0.056, 0.044, 24]} />
             </mesh>
-            {/* Calota amarela industrial */}
+            {/* Calota com acabamento da skin */}
             <mesh
               position={[idx === 0 ? -0.023 : 0.023, 0, 0]}
               rotation={[0, 0, Math.PI / 2]}
-              material={sharedMaterials.robotYellowTrim}
+              material={skinMaterials.yellowTrim}
             >
               <cylinderGeometry args={[0.034, 0.034, 0.008, 18]} />
             </mesh>
@@ -393,7 +829,7 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
             position={[bx, -0.074, 0.185]}
             rotation={[0, (idx === 0 ? -1 : 1) * wheelSpin * 2.4, 0]}
           >
-            <mesh material={sharedMaterials.robotYellowTrim}>
+            <mesh material={skinMaterials.yellowTrim}>
               <cylinderGeometry args={[0.022, 0.022, 0.014, 14]} />
             </mesh>
             {[0, (Math.PI * 2) / 3, (Math.PI * 4) / 3].map((ang, i) => (
@@ -408,6 +844,112 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
             ))}
           </group>
         ))}
+
+        {/* 8. CANHÃO DE ESPUMA LATERAL RETRÁTIL (ESTILO CRASH KART) */}
+        <group position={[0, 0, 0]}>
+          {/* Nicho / Escotilha lateral articulada no chassi direito */}
+          <group position={[0.262, 0.005, 0.09]}>
+            {/* Porta da escotilha com dobradiça superior */}
+            <group ref={cannonHatchRef} position={[0, 0.038, 0]}>
+              <mesh position={[0, -0.038, 0]} material={skinMaterials.shell}>
+                <boxGeometry args={[0.012, 0.076, 0.088]} />
+              </mesh>
+              {/* Friso estético da borda da escotilha */}
+              <mesh position={[0.006, -0.038, 0]} material={skinMaterials.coralTrim}>
+                <boxGeometry args={[0.003, 0.072, 0.084]} />
+              </mesh>
+            </group>
+          </group>
+
+          {/* Conjunto Mecânico Deslizante do Canhão */}
+          <group ref={cannonArmGroupRef} position={[0.235, 0.005, 0.09]}>
+            {/* Trilho corrediço telescópico metálico cromado */}
+            <mesh position={[-0.045, 0, 0]} material={sharedMaterials.metalChrome}>
+              <boxGeometry args={[0.09, 0.018, 0.03]} />
+            </mesh>
+            {/* Cilindro hidráulico de extensão */}
+            <mesh
+              position={[-0.03, -0.015, 0]}
+              rotation={[0, 0, Math.PI / 2]}
+              material={sharedMaterials.metalChrome}
+            >
+              <cylinderGeometry args={[0.008, 0.008, 0.07, 12]} />
+            </mesh>
+
+            {/* Cabeça do Canhão e Cano Articulado */}
+            <group ref={cannonBarrelRef} position={[0.03, 0, 0]}>
+              {/* Receptor central / carcaça do canhão */}
+              <RoundedBox
+                args={[0.046, 0.052, 0.072]}
+                radius={0.01}
+                smoothness={3}
+                material={skinMaterials.coralTrim}
+              >
+                <mesh position={[0, 0.027, 0]} material={sharedMaterials.robotRubberBumper}>
+                  <boxGeometry args={[0.038, 0.006, 0.06]} />
+                </mesh>
+              </RoundedBox>
+
+              {/* Tanque cilíndrico de fluido de sabão translúcido (Vivid Cyan) */}
+              <group position={[0.025, 0.016, -0.01]}>
+                <mesh material={sharedMaterials.robotDustBin} rotation={[Math.PI / 2, 0, 0]}>
+                  <cylinderGeometry args={[0.016, 0.016, 0.052, 16]} />
+                </mesh>
+                {/* Sabão líquido no interior */}
+                <mesh rotation={[Math.PI / 2, 0, 0]}>
+                  <cylinderGeometry args={[0.013, 0.013, 0.046, 14]} />
+                  <meshBasicMaterial color="#06B6D4" transparent opacity={0.85} />
+                </mesh>
+              </group>
+
+              {/* Manômetro analógico com ponteiro de pressão */}
+              <group position={[0, 0.034, -0.014]} rotation={[-0.3, 0, 0]}>
+                <mesh material={sharedMaterials.metalChrome}>
+                  <cylinderGeometry args={[0.012, 0.012, 0.006, 16]} />
+                </mesh>
+                <mesh position={[0, 0.004, 0]}>
+                  <circleGeometry args={[0.01, 16]} />
+                  <meshBasicMaterial color="#FFFFFF" />
+                </mesh>
+                <mesh position={[0.003, 0.005, 0]} rotation={[0, 0, -0.8]}>
+                  <boxGeometry args={[0.008, 0.002, 0.001]} />
+                  <meshBasicMaterial color="#EF4444" />
+                </mesh>
+              </group>
+
+              {/* Cano principal metálico de lançamento da espuma */}
+              <mesh
+                position={[0, 0, 0.055]}
+                rotation={[Math.PI / 2, 0, 0]}
+                material={sharedMaterials.metalChrome}
+              >
+                <cylinderGeometry args={[0.018, 0.02, 0.06, 20]} />
+              </mesh>
+
+              {/* Bocal alargado em corneta / trombeta (Nozzle estilo desenho animado) */}
+              <mesh
+                position={[0, 0, 0.092]}
+                rotation={[-Math.PI / 2, 0, 0]}
+                material={skinMaterials.yellowTrim}
+              >
+                <coneGeometry args={[0.028, 0.022, 20, 1, true]} />
+              </mesh>
+              {/* Anel de borracha protetor da boca */}
+              <mesh
+                position={[0, 0, 0.102]}
+                rotation={[Math.PI / 2, 0, 0]}
+                material={sharedMaterials.robotRubberBumper}
+              >
+                <torusGeometry args={[0.028, 0.004, 8, 20]} />
+              </mesh>
+
+              {/* Alça de mira superior */}
+              <mesh position={[0, 0.026, 0.075]} material={sharedMaterials.metalChrome}>
+                <boxGeometry args={[0.004, 0.012, 0.008]} />
+              </mesh>
+            </group>
+          </group>
+        </group>
       </group>
     </group>
   );

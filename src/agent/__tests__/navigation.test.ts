@@ -3,6 +3,7 @@ import { GridMap } from '../navigation/GridMap';
 import { PathPlanner } from '../navigation/PathPlanner';
 import { ObstacleDetector } from '../navigation/ObstacleDetector';
 import { INITIAL_DOCK_POSITION, INITIAL_OBSTACLES, INITIAL_ROOM_DIMENSIONS } from '@/store/environmentStore';
+import { ALL_HOUSE_OBSTACLES } from '@/world/House/HouseObstacles';
 
 describe('Inteligência e Navegação com Grade e Algoritmo A* (Sprint 2)', () => {
   const grid = new GridMap(
@@ -237,6 +238,152 @@ describe('Inteligência e Navegação com Grade e Algoritmo A* (Sprint 2)', () =
       result.position.z >= -1.63 &&
       result.position.z <= -1.55
     ).toBe(false);
+  });
+
+  it('impede penetração em paredes e móveis altos mesmo quando em voo (actorY)', () => {
+    const obstacles = [
+      {
+        id: 'tv-rack',
+        label: 'Rack da TV',
+        category: 'furniture' as const,
+        bounds: { minX: 11.0, maxX: 14.5, minZ: -3.8, maxZ: -3.0 },
+        collidable: true,
+        height: 2.4,
+      },
+      {
+        id: 'wall-north',
+        label: 'Parede Norte',
+        category: 'wall' as const,
+        bounds: { minX: 7.0, maxX: 17.0, minZ: -4.1, maxZ: -3.9 },
+        collidable: true,
+        height: 3.0,
+      },
+      {
+        id: 'coffee-table-low',
+        label: 'Mesa Baixa',
+        category: 'furniture' as const,
+        bounds: { minX: 12.0, maxX: 13.5, minZ: -1.0, maxZ: -0.2 },
+        collidable: true,
+        height: 0.45,
+      },
+    ];
+
+    const detector = new ObstacleDetector(obstacles, 22.6, 17.5);
+
+    // 1. Em voo a 0.65m de altura, tentando entrar na parede norte (height: 3.0)
+    const resWall = detector.resolveSafeMovement({ x: 10.0, z: -3.5 }, { x: 10.0, z: -4.0 }, 0.29, 0.65);
+    expect(resWall.collided).toBe(true);
+    expect(resWall.position.z).toBeGreaterThan(-3.9 + 0.28);
+
+    // 2. Em voo a 0.65m de altura, tentando entrar no Rack de TV alto (height: 2.4)
+    const resRack = detector.resolveSafeMovement({ x: 10.5, z: -3.4 }, { x: 12.0, z: -3.4 }, 0.29, 0.65);
+    expect(resRack.collided).toBe(true);
+    expect(resRack.position.x).toBeLessThan(11.0 - 0.28);
+
+    // 3. Em voo a 0.65m de altura, sobre a mesa baixa (height: 0.45):
+    // Como 0.65m é mais alto que a mesa (0.45m), o robô pode sobrevoar o centro da mesa
+    const resTableFlying = detector.resolveSafeMovement({ x: 11.5, z: -0.6 }, { x: 12.5, z: -0.6 }, 0.29, 0.65);
+    expect(resTableFlying.position.x).toBeCloseTo(12.5, 1);
+
+    // 4. Mas se estiver voando baixo (0.25m) ou no chão, a mesa baixa DEVE colidir!
+    const resTableLow = detector.resolveSafeMovement({ x: 11.5, z: -0.6 }, { x: 12.5, z: -0.6 }, 0.29, 0.25);
+    expect(resTableLow.collided).toBe(true);
+    expect(resTableLow.position.x).toBeLessThan(12.0 - 0.28);
+  });
+
+  it('permite que o helicóptero sobrevoe e pouse em superfícies elevadas (baú, poltrona e ilha) sem travar no ar', () => {
+    const furnitureObstacles = [
+      {
+        id: 'sofa-main',
+        label: 'Baú de Brinquedos',
+        category: 'furniture' as const,
+        bounds: { minX: -1.44, maxX: 1.44, minZ: 2.05, maxZ: 3.15 },
+        collidable: true,
+        height: 0.89,
+      },
+      {
+        id: 'armchair-olive-seat',
+        label: 'Assento da Poltrona Verde',
+        category: 'furniture' as const,
+        bounds: { minX: 0.36, maxX: 1.85, minZ: -1.25, maxZ: -0.22 },
+        collidable: true,
+        height: 0.88,
+      },
+      {
+        id: 'kitchen-island',
+        label: 'Ilha da Cozinha',
+        category: 'furniture' as const,
+        bounds: { minX: 11.5, maxX: 14.1, minZ: 3.85, maxZ: 4.95 },
+        collidable: true,
+        height: 1.16,
+      },
+    ];
+
+    const detector = new ObstacleDetector(furnitureObstacles, 22.6, 17.5);
+
+    // 1. No chão (actorY = 0), o robô colide e não consegue atravessar o baú
+    const groundMove = detector.resolveSafeMovement({ x: 0, z: 1.5 }, { x: 0, z: 2.5 }, 0.29, 0.0);
+    expect(groundMove.collided).toBe(true);
+    expect(groundMove.position.z).toBeLessThan(2.05);
+
+    // 2. Em altitude de cruzeiro (1.35m), o robô sobrevoa livremente o baú de brinquedos
+    const cruiseMove = detector.resolveSafeMovement({ x: 0, z: 1.5 }, { x: 0, z: 2.5 }, 0.29, 1.35);
+    expect(cruiseMove.collided).toBe(false);
+    expect(cruiseMove.position.z).toBeCloseTo(2.5, 2);
+
+    // 3. Ao pairar sobre a superfície do baú (hover a 1.07m), o robô se desloca sobre o tampo sem ser expelido
+    const hoverMove = detector.resolveSafeMovement({ x: 0, z: 2.3 }, { x: 0, z: 2.6 }, 0.29, 1.07);
+    expect(hoverMove.collided).toBe(false);
+    expect(hoverMove.position.z).toBeCloseTo(2.6, 2);
+
+    // 4. Ao pousar exatamente sobre o topo do baú (actorY = 0.89), não é expelido
+    const landedMove = detector.resolveSafeMovement({ x: 0, z: 2.3 }, { x: 0.2, z: 2.3 }, 0.29, 0.89);
+    expect(landedMove.collided).toBe(false);
+    expect(landedMove.position.x).toBeCloseTo(0.2, 2);
+
+    // 5. Em altitude de cruzeiro (1.35m), o robô também sobrevoa a ilha da cozinha (height: 1.16m)
+    const islandMove = detector.resolveSafeMovement({ x: 12.8, z: 3.2 }, { x: 12.8, z: 4.4 }, 0.29, 1.35);
+    expect(islandMove.collided).toBe(false);
+    expect(islandMove.position.z).toBeCloseTo(4.4, 2);
+  });
+
+  it('impede penetração do robô na parede da cozinha e quina com o corredor durante o voo', () => {
+    // Configura detector com todos os obstáculos da residência
+    const detector = new ObstacleDetector(ALL_HOUSE_OBSTACLES, 22.6, 17.5);
+
+    // 1. Robô voando na cozinha (Y = 0.55m), tentando avançar em direção à parede sul (Z = 8.5m)
+    const southFlight = detector.resolveSafeMovement(
+      { x: 9.5, z: 7.8 },
+      { x: 9.5, z: 8.6 },
+      0.315,
+      0.55
+    );
+    expect(southFlight.collided).toBe(true);
+    // Parede norte do banheiro tem minZ = 8.35. Com raio 0.315, Z deve ser <= 8.35 - 0.315 = 8.035
+    expect(southFlight.position.z).toBeLessThanOrEqual(8.04);
+
+    // 2. Robô voando na cozinha (Y = 0.55m), tentando penetrar na parede divisória com o corredor (X = 7.6m)
+    const westFlight = detector.resolveSafeMovement(
+      { x: 8.4, z: 7.5 },
+      { x: 7.3, z: 7.5 },
+      0.315,
+      0.55
+    );
+    expect(westFlight.collided).toBe(true);
+    // Parede do corredor tem maxX = 7.75. Com raio 0.315, X deve ser >= 7.75 + 0.315 = 8.065
+    expect(westFlight.position.x).toBeGreaterThanOrEqual(8.06);
+
+    // 3. Robô voando em direção à quina sul da cozinha a partir do piso livre (X = 9.5, Z = 6.8)
+    const cornerFlight = detector.resolveSafeMovement(
+      { x: 9.5, z: 6.8 },
+      { x: 7.5, z: 8.5 },
+      0.315,
+      0.55
+    );
+    expect(cornerFlight.collided).toBe(true);
+    // Não pode penetrar nem na geladeira nem nas paredes perimétricas
+    expect(cornerFlight.position.x).toBeGreaterThanOrEqual(8.0);
+    expect(cornerFlight.position.z).toBeLessThanOrEqual(8.2);
   });
 });
 

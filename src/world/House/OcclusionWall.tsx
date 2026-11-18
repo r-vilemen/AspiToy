@@ -8,20 +8,37 @@ export interface OcclusionWallProps {
   position: [number, number, number];
   meshPosition?: [number, number, number];
   args: [number, number, number];
-  roomCenter?: [number, number]; // [x, z] centro do cômodo que a parede delimita (legado/opcional)
+  roomCenter?: [number, number]; // [x, z] centro do cômodo que a parede delimita
+  facing?: 'south' | 'north' | 'east' | 'west'; // Direção da face externa da parede
   materialType?: 'plaster' | 'bathroomTile';
-  minOpacity?: number; // Opacidade quando a parede obstrui a visão do robô (padrão: 0.14)
+  minOpacity?: number; // Opacidade quando a parede obstrui a visão (padrão: 0.14)
   maxOpacity?: number; // Opacidade quando a parede está ao fundo / visível (padrão: 1.0)
   name?: string;
   receiveShadow?: boolean;
   children?: React.ReactNode;
 }
 
+export interface WallOcclusionParams {
+  cameraPos: { x: number; y: number; z: number };
+  cameraDir: { x: number; y: number; z: number };
+  wallBounds: {
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
+    minZ: number;
+    maxZ: number;
+  };
+  wallPos: { x: number; z: number };
+  wallNormal: { x: number; z: number };
+  robotPos: { x: number; y: number; z: number };
+}
+
 /**
  * Teste exato de interseção entre segmento de reta (Câmera -> Ponto de foco) e caixa alinhada (AABB).
  * Retorna true se o segmento atravessar o volume da parede, significando obstrução direta da visão.
  */
-function segmentIntersectsAABB(
+export function segmentIntersectsAABB(
   p0x: number,
   p0y: number,
   p0z: number,
@@ -110,6 +127,126 @@ function segmentIntersectsAABB(
 }
 
 /**
+ * Calcula se a parede deve ficar translúcida combinando:
+ * 1. Ângulo de Visão da Câmera (perspectiva arquitetônica / dollhouse cutaway):
+ *    Paredes externas que ficam no primeiro plano voltadas para a câmera tornam-se translúcidas.
+ * 2. Linha de Visão Direta até o Robô (Line-of-Sight Occlusion):
+ *    Qualquer parede (externa ou divisória interna) que intercepte a visão do jogador até o robô torna-se translúcida.
+ */
+export function computeWallOcclusion(params: WallOcclusionParams): {
+  isAngleOccluding: boolean;
+  isLineOfSightObstructing: boolean;
+  isObstructing: boolean;
+} {
+  const { cameraPos, cameraDir, wallBounds, wallPos, wallNormal, robotPos } = params;
+  const { minX, maxX, minY, maxY, minZ, maxZ } = wallBounds;
+  const cx = cameraPos.x;
+  const cy = cameraPos.y;
+  const cz = cameraPos.z;
+
+  // 1. Transparência por Ângulo de Câmera (Perspectiva Arquitetônica / Dollhouse Cutaway)
+  let isAngleOccluding = false;
+  const nx = wallNormal.x;
+  const nz = wallNormal.z;
+
+  if (nx !== 0 || nz !== 0) {
+    // Distância da câmera à face externa da parede
+    const camToWallDist = (cx - wallPos.x) * nx + (cz - wallPos.z) * nz;
+
+    // Vetor de direção horizontal da câmera normalizado no plano XZ
+    const dirLenXZ = Math.hypot(cameraDir.x, cameraDir.z);
+
+    if (dirLenXZ > 0.001) {
+      const normDirX = cameraDir.x / dirLenXZ;
+      const normDirZ = cameraDir.z / dirLenXZ;
+      // Produto escalar entre a direção do olhar da câmera e a normal externa da parede
+      // Valor negativo = câmera olhando para dentro da casa através da face externa
+      const viewDotNormal = normDirX * nx + normDirZ * nz;
+
+      // Câmera está no exterior (ou na face externa) E olhando na direção do interior do cômodo:
+      if (camToWallDist > -0.2 && viewDotNormal < -0.08) {
+        isAngleOccluding = true;
+      }
+    }
+  }
+
+  // 2. Linha de Visão Direta até o Robô (Line-of-Sight Occlusion)
+  let isLineOfSightObstructing = false;
+  const rx = robotPos.x;
+  const ry = robotPos.y;
+  const rz = robotPos.z;
+
+  if (segmentIntersectsAABB(cx, cy, cz, rx, ry, rz, minX, maxX, minY, maxY, minZ, maxZ)) {
+    isLineOfSightObstructing = true;
+  } else {
+    const toRobotX = rx - cx;
+    const toRobotZ = rz - cz;
+    const distXZ = Math.hypot(toRobotX, toRobotZ);
+
+    if (distXZ > 0.001) {
+      const perpX = -toRobotZ / distXZ;
+      const perpZ = toRobotX / distXZ;
+
+      const hitLeft = segmentIntersectsAABB(
+        cx,
+        cy,
+        cz,
+        rx - perpX * 0.22,
+        ry,
+        rz - perpZ * 0.22,
+        minX,
+        maxX,
+        minY,
+        maxY,
+        minZ,
+        maxZ
+      );
+      const hitRight =
+        !hitLeft &&
+        segmentIntersectsAABB(
+          cx,
+          cy,
+          cz,
+          rx + perpX * 0.22,
+          ry,
+          rz + perpZ * 0.22,
+          minX,
+          maxX,
+          minY,
+          maxY,
+          minZ,
+          maxZ
+        );
+      const hitTop =
+        !hitLeft &&
+        !hitRight &&
+        segmentIntersectsAABB(
+          cx,
+          cy,
+          cz,
+          rx,
+          ry + 0.16,
+          rz,
+          minX,
+          maxX,
+          minY,
+          maxY,
+          minZ,
+          maxZ
+        );
+
+      isLineOfSightObstructing = hitLeft || hitRight || hitTop;
+    }
+  }
+
+  return {
+    isAngleOccluding,
+    isLineOfSightObstructing,
+    isObstructing: isAngleOccluding || isLineOfSightObstructing,
+  };
+}
+
+/**
  * Parede com Transparência Dinâmica por Linha de Visão (Line-of-Sight Occlusion):
  * - Mantém a parede 100% sólida e opaca (1.0) com depthWrite=true por padrão.
  * - Detecta em tempo real se a parede está fisicamente posicionada ENTRE a câmera e o robô
@@ -122,6 +259,8 @@ export const OcclusionWall = memo(function OcclusionWall({
   position,
   meshPosition,
   args,
+  roomCenter,
+  facing,
   materialType = 'plaster',
   minOpacity = 0.14,
   maxOpacity = 1.0,
@@ -134,6 +273,7 @@ export const OcclusionWall = memo(function OcclusionWall({
   const currentOpacityRef = useRef<number>(maxOpacity);
   const childMeshesRef = useRef<THREE.Mesh[]>([]);
   const worldPos = useMemo(() => new THREE.Vector3(), []);
+  const camDirRef = useRef<THREE.Vector3>(new THREE.Vector3());
 
   const aabbRef = useRef<{
     minX: number;
@@ -142,6 +282,10 @@ export const OcclusionWall = memo(function OcclusionWall({
     maxY: number;
     minZ: number;
     maxZ: number;
+    wallX: number;
+    wallZ: number;
+    nx: number;
+    nz: number;
     initialized: boolean;
   }>({
     minX: 0,
@@ -150,12 +294,16 @@ export const OcclusionWall = memo(function OcclusionWall({
     maxY: 0,
     minZ: 0,
     maxZ: 0,
+    wallX: 0,
+    wallZ: 0,
+    nx: 0,
+    nz: 0,
     initialized: false,
   });
 
   useEffect(() => {
     aabbRef.current.initialized = false;
-  }, [position, meshPosition, args]);
+  }, [position, meshPosition, args, facing, roomCenter]);
 
   // Material dedicado e clonado para esta parede específica — inicia 100% opaco e sólido
   const wallMaterial = useMemo(() => {
@@ -209,104 +357,66 @@ export const OcclusionWall = memo(function OcclusionWall({
     if (!groupRef.current || !wallMeshRef.current) return;
     const delta = Math.min(rawDelta, 0.05);
 
-    // Obtém ou inicializa a AABB da parede em coordenadas globais de mundo
+    // Obtém ou inicializa a AABB e normal da parede em coordenadas globais de mundo
     if (!aabbRef.current.initialized) {
       wallMeshRef.current.updateWorldMatrix(true, false);
       wallMeshRef.current.getWorldPosition(worldPos);
       const halfX = args[0] / 2;
       const halfY = args[1] / 2;
       const halfZ = args[2] / 2;
+      const wallX = worldPos.x;
+      const wallZ = worldPos.z;
+
+      // Determina a normal da face externa da parede (nx, nz)
+      let nx = 0;
+      let nz = 0;
+      if (facing === 'south') {
+        nz = 1;
+      } else if (facing === 'north') {
+        nz = -1;
+      } else if (facing === 'east') {
+        nx = 1;
+      } else if (facing === 'west') {
+        nx = -1;
+      } else if (roomCenter) {
+        if (args[0] > args[2]) {
+          nz = wallZ >= roomCenter[1] ? 1 : -1;
+        } else {
+          nx = wallX >= roomCenter[0] ? 1 : -1;
+        }
+      }
+
       aabbRef.current = {
-        minX: worldPos.x - halfX,
-        maxX: worldPos.x + halfX,
+        minX: wallX - halfX,
+        maxX: wallX + halfX,
         minY: worldPos.y - halfY,
         maxY: worldPos.y + halfY,
-        minZ: worldPos.z - halfZ,
-        maxZ: worldPos.z + halfZ,
+        minZ: wallZ - halfZ,
+        maxZ: wallZ + halfZ,
+        wallX,
+        wallZ,
+        nx,
+        nz,
         initialized: true,
       };
     }
 
-    const { minX, maxX, minY, maxY, minZ, maxZ } = aabbRef.current;
+    const { minX, maxX, minY, maxY, minZ, maxZ, wallX, wallZ, nx, nz } = aabbRef.current;
 
-    // Posição da câmera
-    const cx = camera.position.x;
-    const cy = camera.position.y;
-    const cz = camera.position.z;
+    camera.getWorldDirection(camDirRef.current);
 
-    // Posição do robô
-    const rx = robotMotionBridge.x;
-    const ry = 0.28;
-    const rz = robotMotionBridge.z;
-
-    // Vetor diretor câmera -> robô (plano XZ para cálculo de raio periférico)
-    const dirX = rx - cx;
-    const dirZ = rz - cz;
-    const distXZ = Math.hypot(dirX, dirZ);
-
-    let isObstructing = false;
-
-    // Teste 1: Linha de visão direta até o centro do robô
-    if (segmentIntersectsAABB(cx, cy, cz, rx, ry, rz, minX, maxX, minY, maxY, minZ, maxZ)) {
-      isObstructing = true;
-    } else if (distXZ > 0.001) {
-      // Vetor normalizado perpendicular à linha de visão no chão (para cobrir bordas do robô)
-      const perpX = -dirZ / distXZ;
-      const perpZ = dirX / distXZ;
-
-      // Teste 2 & 3: Raios para a borda esquerda e direita do chassi do robô
-      const hitLeft = segmentIntersectsAABB(
-        cx,
-        cy,
-        cz,
-        rx - perpX * 0.22,
-        ry,
-        rz - perpZ * 0.22,
-        minX,
-        maxX,
-        minY,
-        maxY,
-        minZ,
-        maxZ
-      );
-      const hitRight =
-        !hitLeft &&
-        segmentIntersectsAABB(
-          cx,
-          cy,
-          cz,
-          rx + perpX * 0.22,
-          ry,
-          rz + perpZ * 0.22,
-          minX,
-          maxX,
-          minY,
-          maxY,
-          minZ,
-          maxZ
-        );
-
-      // Teste 4: Raio para o topo da cúpula do robô
-      const hitTop =
-        !hitLeft &&
-        !hitRight &&
-        segmentIntersectsAABB(
-          cx,
-          cy,
-          cz,
-          rx,
-          ry + 0.16,
-          rz,
-          minX,
-          maxX,
-          minY,
-          maxY,
-          minZ,
-          maxZ
-        );
-
-      isObstructing = hitLeft || hitRight || hitTop;
-    }
+    const { isObstructing } = computeWallOcclusion({
+      cameraPos: camera.position,
+      cameraDir: camDirRef.current,
+      wallBounds: { minX, maxX, minY, maxY, minZ, maxZ },
+      wallPos: { x: wallX, z: wallZ },
+      wallNormal: { x: nx, z: nz },
+      robotPos: {
+        x: robotMotionBridge.x,
+        y: (robotMotionBridge.y ?? 0) + 0.28,
+        z: robotMotionBridge.z,
+      },
+    });
 
     const targetOpacity = isObstructing ? minOpacity : maxOpacity;
 

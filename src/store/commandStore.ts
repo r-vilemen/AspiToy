@@ -8,6 +8,8 @@ import type {
 import type { Vector2D } from '@/types/robot';
 import { useRobotStore, manualControlBridge, robotMotionBridge } from './robotStore';
 import { useEnvironmentStore } from './environmentStore';
+import { soundManager } from '@/services/soundManager';
+import { getOverheadObstacleAt } from '@/world/House/HouseObstacles';
 
 export type CameraPreset = 'follow' | 'overview' | 'closeup';
 
@@ -120,6 +122,41 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
         break;
       }
 
+      case 'START_ORGANIZING': {
+        manualControlBridge.active = false;
+        manualControlBridge.forward = 0;
+        manualControlBridge.turn = 0;
+
+        if (robot.state === 'ORGANIZING') {
+          accepted = false;
+          label = 'Guardar brinquedos';
+          reason = 'O AspiToy já está organizando os brinquedos no tapete.';
+          break;
+        }
+
+        env.setSelectedRegion('bedroom');
+
+        // Se estiver acoplado na base recarregando, desacopla para frente da estação
+        if (robot.state === 'RECHARGING') {
+          robotMotionBridge.x = -3.8;
+          robotMotionBridge.z = 2.6;
+          robotMotionBridge.rotationY = 0;
+        }
+
+        robot.setTargetPosition(null);
+        label = 'Guardar brinquedos no tapete';
+        robot.setOperationalState(
+          'ORGANIZING',
+          'Arrumando os brinquedos do quarto em direção ao tapete'
+        );
+        get().pushNotification(
+          'Missão: Guarda-Brinquedos!',
+          'O AspiToy começou a empurrar os brinquedos espalhados para a área do tapete.',
+          'info'
+        );
+        break;
+      }
+
       case 'PAUSE_CLEANING': {
         manualControlBridge.active = false;
         manualControlBridge.forward = 0;
@@ -127,6 +164,7 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
 
         if (
           robot.state !== 'CLEANING' &&
+          robot.state !== 'ORGANIZING' &&
           robot.state !== 'EXPLORING' &&
           robot.state !== 'RETURNING' &&
           robot.state !== 'AVOIDING' &&
@@ -260,6 +298,76 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
         get().pushNotification(
           'Ambiente restaurado',
           'AspiToy reposicionado na base com bateria carregada.',
+          'info'
+        );
+        break;
+      }
+
+      case 'TOGGLE_HELICOPTER': {
+        const isTryingToFly = !robotMotionBridge.isFlying;
+
+        if (isTryingToFly) {
+          if (robot.battery <= 20) {
+            soundManager.playChime(false);
+            get().pushNotification(
+              'Bateria Fraca 🪫',
+              `O voo não pode ser realizado com a bateria fraca (${Math.round(robot.battery)}%). O modo helicóptero requer mais de 20% de carga. Recarregue na base para decolar!`,
+              'warning'
+            );
+            return false;
+          }
+
+          const overhead = getOverheadObstacleAt(
+            { x: robotMotionBridge.x, z: robotMotionBridge.z },
+            robotMotionBridge.y
+          );
+          if (overhead) {
+            soundManager.playChime(false);
+            get().pushNotification(
+              'Decolagem Bloqueada 🚫',
+              `Não é seguro decolar sob a mobília (${overhead.label})! Mova o robô para uma área aberta antes de acionar a hélice.`,
+              'warning'
+            );
+            return false;
+          }
+        }
+
+        const isNowFlying = robot.toggleHelicopterMode();
+        if (!isNowFlying && isTryingToFly) {
+          return false;
+        }
+
+        label = isNowFlying ? 'Ativar Modo Helicóptero' : 'Pousar Helicóptero';
+        get().pushNotification(
+          isNowFlying ? 'Modo Aspi-Helicóptero Ativado! 🚁' : 'Pouso Concluído',
+          isNowFlying
+            ? 'Hélice acionada! O robô está pairando no ar. Pilote manualmente ou clique em "Iniciar limpeza" para higienizar mesas e sofás.'
+            : 'Trem de pouso suave acoplado com segurança à superfície.',
+          'info'
+        );
+        break;
+      }
+
+      case 'FIRE_BUBBLES':
+      case 'FIRE_FOAM_CANNON': {
+        robot.fireFoamCannon();
+        label = 'Disparar Canhão de Espuma';
+        get().pushNotification(
+          'Canhão de Espuma Disparado! 🫧',
+          'Jato de espuma pressurizado lançado pelo canhão lateral.',
+          'info'
+        );
+        break;
+      }
+
+      case 'TOGGLE_FOAM_CANNON_AIM': {
+        const isAiming = robot.toggleFoamCannonAim();
+        label = isAiming ? 'Mirar Canhão de Espuma' : 'Recolher Canhão';
+        get().pushNotification(
+          isAiming ? 'Canhão Lateral Engatilhado! 🎯' : 'Canhão Recolhido',
+          isAiming
+            ? 'Clique em qualquer parede, móvel ou chão para disparar a espuma.'
+            : 'Arma guardada no chassi.',
           'info'
         );
         break;

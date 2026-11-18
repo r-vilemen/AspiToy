@@ -24,7 +24,8 @@ export class PriorityManager {
     _regions: RoomRegion[],
     battery: number,
     dockPos: Vector2D,
-    coverageTarget?: Vector2D | null
+    coverageTarget?: Vector2D | null,
+    isFlying: boolean = false
   ): Vector2D | null {
     // 1. Regra de segurança de bateria crítica (< 18%): a base de recarga é prioridade absoluta
     if (battery <= 18) {
@@ -33,6 +34,11 @@ export class PriorityManager {
 
     // 2. Filtra pontos que ainda precisam de limpeza (intensidade > 0.05)
     let candidateSpots = dustSpots.filter((s) => s.intensity > 0.05);
+
+    // Se o robô não está voando (modo chão), ignora sujeiras elevadas em mesas e sofás
+    if (!isFlying) {
+      candidateSpots = candidateSpots.filter((s) => !s.y || s.y <= 0.35);
+    }
 
     // Se um cômodo/região específica foi selecionada, o robô atua EXCLUSIVAMENTE nela
     if (selectedRegionId && selectedRegionId !== 'all') {

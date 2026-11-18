@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Send } from 'lucide-react';
 import { useCommandStore } from '@/store/commandStore';
+import { useEnvironmentStore } from '@/store/environmentStore';
 
 /**
  * Caixa de entrada de comandos de linguagem natural e atalhos rápidos do usuário.
@@ -15,7 +16,63 @@ export function CommandInput() {
     const query = inputVal.trim().toLowerCase();
     if (!query) return;
 
-    if (query.includes('limp') || query.includes('inici') || query.includes('começ')) {
+    if (
+      query.includes('canhao') ||
+      query.includes('canhão') ||
+      query.includes('espuma') ||
+      query.includes('atirar') ||
+      query.includes('disparar') ||
+      query.includes('bolha') ||
+      query.includes('sabao') ||
+      query.includes('sabão')
+    ) {
+      dispatchCommand('FIRE_FOAM_CANNON');
+    } else if (
+      query.includes('voa') ||
+      query.includes('decol') ||
+      query.includes('helicopter') ||
+      query.includes('hélice') ||
+      query.includes('pous')
+    ) {
+      dispatchCommand('TOGGLE_HELICOPTER');
+    } else if (query.includes('mesa') || (query.includes('limp') && (query.includes('sofa') || query.includes('sofá')))) {
+      // Limpeza de mobílias elevadas ativa o modo helicóptero se ainda não estiver voando
+      dispatchCommand('TOGGLE_HELICOPTER');
+    } else if (query.includes('farol') || query.includes('lanterna') || query.includes('luz')) {
+      pushNotification(
+        'Farol Automático',
+        'O farol do AspiToy é 100% automático: acende sozinho de noite e apaga de dia.',
+        'info'
+      );
+    } else if (query.includes('noite') || query.includes('noturno') || query.includes('escuro')) {
+      useEnvironmentStore.getState().setTimeOfDay('night', true);
+      pushNotification(
+        'Modo Noturno (Manual)',
+        'Período fixado em Noite. Luzes acesas e motor no modo silencioso.',
+        'info'
+      );
+    } else if (query.includes('dia') || query.includes('manha') || query.includes('manhã') || query.includes('claro')) {
+      useEnvironmentStore.getState().setTimeOfDay('day', true);
+      pushNotification(
+        'Modo Manhã (Manual)',
+        'Período fixado em Manhã. Iluminação solar matinal clara.',
+        'info'
+      );
+    } else if (query.includes('tarde') || query.includes('sunset') || query.includes('por do sol') || query.includes('pôr do sol')) {
+      useEnvironmentStore.getState().setTimeOfDay('sunset', true);
+      pushNotification(
+        'Modo Entardecer (Manual)',
+        'Período fixado em Tarde. Iluminação dourada acolhedora.',
+        'info'
+      );
+    } else if (query.includes('tempo auto') || query.includes('ciclo auto') || query.includes('dia auto') || query.includes('modo auto')) {
+      useEnvironmentStore.getState().setTimeOfDayAuto(true);
+      pushNotification(
+        'Ciclo Circadiano Automático',
+        'O tempo passará naturalmente a cada minuto (Manhã -> Tarde -> Noite).',
+        'success'
+      );
+    } else if (query.includes('limp') || query.includes('inici') || query.includes('começ')) {
       dispatchCommand('START_CLEANING');
     } else if (query.includes('paus') || query.includes('par')) {
       dispatchCommand('PAUSE_CLEANING');

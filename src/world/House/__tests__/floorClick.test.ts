@@ -70,5 +70,21 @@ describe('Navegação Interativa por Clique no Chão da Casa Inteira', () => {
     expect(useRobotStore.getState().targetPosition).toEqual({ x: 12.0, z: 0.0 });
     expect(useRobotStore.getState().state).toBe('PAUSED');
   });
+
+  it('permite direcionar o robô para superfícies elevadas (baú e sofá) sem ejetar o clique para o piso', () => {
+    const dispatchCommand = useCommandStore.getState().dispatchCommand;
+
+    // 1. Clique no topo do baú de brinquedos no quarto (x: 0.0, z: 2.5)
+    dispatchCommand('MOVE_TO_POINT', { point: { x: 0.0, z: 2.5 } });
+    expect(useRobotStore.getState().targetPosition).toEqual({ x: 0.0, z: 2.5 });
+
+    // 2. Clique no sofá da sala de estar (x: 13.0, z: 0.9)
+    dispatchCommand('MOVE_TO_POINT', { point: { x: 13.0, z: 0.9 } });
+    expect(useRobotStore.getState().targetPosition).toEqual({ x: 13.0, z: 0.9 });
+
+    // 3. Clique na bancada da ilha da cozinha (x: 12.8, z: 4.4)
+    dispatchCommand('MOVE_TO_POINT', { point: { x: 12.8, z: 4.4 } });
+    expect(useRobotStore.getState().targetPosition).toEqual({ x: 12.8, z: 4.4 });
+  });
 });
 

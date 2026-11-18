@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { RoundedBox } from '@react-three/drei';
 import * as THREE from 'three';
 import { pushableToysBridge } from '@/store/environmentStore';
+import { useRobotStore } from '@/store/robotStore';
 import { sharedMaterials } from '../Environment/Materials';
 import type { PushableToyKind } from '@/types/environment';
 
@@ -776,6 +777,7 @@ const _spinAxis = new THREE.Vector3(0, 1, 0);
 export const PushableFloorToys = memo(function PushableFloorToys() {
   const groupRefs = useRef<Array<THREE.Group | null>>([]);
   const visualRefs = useRef<Array<THREE.Group | null>>([]);
+  const isOrganizing = useRobotStore((s) => s.state === 'ORGANIZING');
 
   useFrame((state, delta) => {
     const t = state.clock.elapsedTime;
@@ -828,6 +830,17 @@ export const PushableFloorToys = memo(function PushableFloorToys() {
 
   return (
     <group name="pushable-floor-toys">
+      {/* Zona Demarcada de Arrumação de Brinquedos no Tapete do Andy */}
+      <group position={[-0.75, 0.026, -1.1]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[1.6, 1.66, 36]} />
+        <meshBasicMaterial
+          color={isOrganizing ? '#F59E0B' : '#E05A36'}
+          transparent
+          opacity={isOrganizing ? 0.75 : 0.22}
+          depthWrite={false}
+        />
+      </group>
+
       {pushableToysBridge.map((toy, idx) => (
         <group
           key={toy.id}

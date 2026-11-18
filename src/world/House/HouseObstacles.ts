@@ -1,4 +1,6 @@
-import type { EnvironmentObstacle } from '@/types/environment';
+import type { BoundingBox2D, EnvironmentObstacle } from '@/types/environment';
+import type { Vector2D } from '@/types/robot';
+import { isPointInsideBounds } from '@/utils/coordinates';
 
 /**
  * Obstáculos Originais do Quarto do AspiToy:
@@ -11,15 +13,63 @@ export const INITIAL_BEDROOM_OBSTACLES: EnvironmentObstacle[] = [
     category: 'furniture',
     bounds: { minX: -1.44, maxX: 1.44, minZ: 2.05, maxZ: 3.15 },
     collidable: true,
-    height: 0.95,
+    height: 0.89,
+  },
+  {
+    id: 'sofa-chest-pillow-left',
+    label: 'Almofada Esquerda do Baú',
+    category: 'furniture',
+    bounds: { minX: -1.35, maxX: -0.82, minZ: 2.45, maxZ: 2.98 },
+    collidable: true,
+    height: 1.15,
+  },
+  {
+    id: 'sofa-chest-pillow-right',
+    label: 'Almofada Direita do Baú',
+    category: 'furniture',
+    bounds: { minX: 0.82, maxX: 1.35, minZ: 2.45, maxZ: 2.98 },
+    collidable: true,
+    height: 1.15,
+  },
+  {
+    id: 'armchair-olive-backrest',
+    label: 'Encosto da Poltrona Verde',
+    category: 'furniture',
+    bounds: { minX: 0.36, maxX: 1.85, minZ: -1.85, maxZ: -1.25 },
+    collidable: true,
+    height: 2.1,
+  },
+  {
+    id: 'armchair-olive-armrest-left',
+    label: 'Braço Esquerdo da Poltrona Verde',
+    category: 'furniture',
+    bounds: { minX: 0.36, maxX: 0.58, minZ: -1.35, maxZ: -0.22 },
+    collidable: true,
+    height: 1.25,
+  },
+  {
+    id: 'armchair-olive-armrest-right',
+    label: 'Braço Direito da Poltrona Verde',
+    category: 'furniture',
+    bounds: { minX: 1.40, maxX: 1.85, minZ: -1.35, maxZ: -0.22 },
+    collidable: true,
+    height: 1.25,
+  },
+  {
+    id: 'armchair-olive-pillow',
+    label: 'Almofada Terracota da Poltrona Verde',
+    category: 'furniture',
+    bounds: { minX: 0.55, maxX: 0.95, minZ: -1.38, maxZ: -0.95 },
+    collidable: true,
+    height: 1.30,
   },
   {
     id: 'armchair-olive',
-    label: 'Poltrona Verde',
+    label: 'Assento da Poltrona Verde',
     category: 'furniture',
-    bounds: { minX: 0.4, maxX: 1.75, minZ: -1.75, maxZ: -0.35 },
+    bounds: { minX: 0.58, maxX: 1.40, minZ: -1.25, maxZ: -0.22 },
     collidable: true,
-    height: 1.8,
+    height: 0.88,
   },
   {
     id: 'coffee-table-leg-nw',
@@ -167,12 +217,32 @@ export const INITIAL_OBSTACLES = INITIAL_BEDROOM_OBSTACLES;
  * mas liberem completamente a passagem pelas portas.
  */
 export const HOUSE_WALL_OBSTACLES: EnvironmentObstacle[] = [
+  // Parede Oeste do Quarto (X = -5.0m)
+  {
+    id: 'wall-bedroom-west',
+    label: 'Parede Oeste do Quarto',
+    category: 'wall',
+    bounds: { minX: -5.25, maxX: -4.85, minZ: -4.20, maxZ: 4.15 },
+    collidable: true,
+    height: 4.6,
+  },
+
+  // Parede Norte do Quarto (Z = -4.0m)
+  {
+    id: 'wall-bedroom-north',
+    label: 'Parede Norte do Quarto',
+    category: 'wall',
+    bounds: { minX: -5.25, maxX: 5.05, minZ: -4.20, maxZ: -3.88 },
+    collidable: true,
+    height: 4.6,
+  },
+
   // Parede divisória Quarto / Corredor (X = 5.0m) - Vão da Porta em Z in [1.65, 3.05]
   {
     id: 'wall-bedroom-east-north',
     label: 'Parede Quarto/Corredor (Norte)',
     category: 'wall',
-    bounds: { minX: 4.88, maxX: 5.12, minZ: -4.0, maxZ: 1.65 },
+    bounds: { minX: 4.85, maxX: 5.18, minZ: -4.05, maxZ: 1.65 },
     collidable: true,
     height: 4.6,
   },
@@ -180,7 +250,7 @@ export const HOUSE_WALL_OBSTACLES: EnvironmentObstacle[] = [
     id: 'wall-hallway-west-south',
     label: 'Parede Corredor Oeste (Sul Completo)',
     category: 'wall',
-    bounds: { minX: 4.88, maxX: 5.12, minZ: 3.05, maxZ: 8.55 },
+    bounds: { minX: 4.85, maxX: 5.18, minZ: 3.05, maxZ: 8.55 },
     collidable: true,
     height: 4.6,
   },
@@ -188,7 +258,7 @@ export const HOUSE_WALL_OBSTACLES: EnvironmentObstacle[] = [
     id: 'wall-bedroom-south',
     label: 'Parede Sul do Quarto',
     category: 'wall',
-    bounds: { minX: -5.1, maxX: 5.1, minZ: 3.92, maxZ: 4.15 },
+    bounds: { minX: -5.25, maxX: 5.15, minZ: 3.88, maxZ: 4.25 },
     collidable: true,
     height: 4.6,
   },
@@ -198,7 +268,7 @@ export const HOUSE_WALL_OBSTACLES: EnvironmentObstacle[] = [
     id: 'wall-house-north-extended',
     label: 'Parede Norte da Casa',
     category: 'wall',
-    bounds: { minX: 5.0, maxX: 17.75, minZ: -4.15, maxZ: -3.92 },
+    bounds: { minX: 5.0, maxX: 17.80, minZ: -4.20, maxZ: -3.88 },
     collidable: true,
     height: 4.6,
   },
@@ -208,7 +278,7 @@ export const HOUSE_WALL_OBSTACLES: EnvironmentObstacle[] = [
     id: 'wall-house-east-outer',
     label: 'Parede Leste Externa',
     category: 'wall',
-    bounds: { minX: 17.52, maxX: 17.75, minZ: -4.0, maxZ: 8.6 },
+    bounds: { minX: 17.50, maxX: 17.80, minZ: -4.05, maxZ: 8.65 },
     collidable: true,
     height: 4.6,
   },
@@ -219,7 +289,7 @@ export const HOUSE_WALL_OBSTACLES: EnvironmentObstacle[] = [
     id: 'wall-hallway-east-1',
     label: 'Parede Corredor/Sala (Norte)',
     category: 'wall',
-    bounds: { minX: 7.48, maxX: 7.72, minZ: -4.0, maxZ: -0.4 },
+    bounds: { minX: 7.40, maxX: 7.75, minZ: -4.05, maxZ: -0.4 },
     collidable: true,
     height: 4.6,
   },
@@ -227,7 +297,7 @@ export const HOUSE_WALL_OBSTACLES: EnvironmentObstacle[] = [
     id: 'wall-hallway-east-2',
     label: 'Parede Corredor/Divisória Central',
     category: 'wall',
-    bounds: { minX: 7.48, maxX: 7.72, minZ: 1.4, maxZ: 5.35 },
+    bounds: { minX: 7.40, maxX: 7.75, minZ: 1.4, maxZ: 5.35 },
     collidable: true,
     height: 4.6,
   },
@@ -235,7 +305,7 @@ export const HOUSE_WALL_OBSTACLES: EnvironmentObstacle[] = [
     id: 'wall-hallway-east-3',
     label: 'Parede Corredor/Cozinha (Sul)',
     category: 'wall',
-    bounds: { minX: 7.48, maxX: 7.72, minZ: 6.65, maxZ: 8.55 },
+    bounds: { minX: 7.40, maxX: 7.75, minZ: 6.65, maxZ: 8.65 },
     collidable: true,
     height: 4.6,
   },
@@ -255,7 +325,7 @@ export const HOUSE_WALL_OBSTACLES: EnvironmentObstacle[] = [
     id: 'wall-kitchen-south',
     label: 'Parede Sul da Cozinha',
     category: 'wall',
-    bounds: { minX: 10.6, maxX: 17.75, minZ: 8.42, maxZ: 8.65 },
+    bounds: { minX: 10.55, maxX: 17.80, minZ: 8.38, maxZ: 8.75 },
     collidable: true,
     height: 4.6,
   },
@@ -265,7 +335,7 @@ export const HOUSE_WALL_OBSTACLES: EnvironmentObstacle[] = [
     id: 'wall-bathroom-north-west',
     label: 'Parede Banheiro (Norte Oeste)',
     category: 'wall',
-    bounds: { minX: 4.9, maxX: 5.65, minZ: 8.38, maxZ: 8.52 },
+    bounds: { minX: 4.85, maxX: 5.70, minZ: 8.35, maxZ: 8.65 },
     collidable: true,
     height: 4.6,
   },
@@ -273,7 +343,7 @@ export const HOUSE_WALL_OBSTACLES: EnvironmentObstacle[] = [
     id: 'wall-bathroom-north-east',
     label: 'Parede Banheiro (Norte Leste)',
     category: 'wall',
-    bounds: { minX: 6.95, maxX: 10.75, minZ: 8.38, maxZ: 8.52 },
+    bounds: { minX: 6.90, maxX: 10.75, minZ: 8.35, maxZ: 8.65 },
     collidable: true,
     height: 4.6,
   },
@@ -283,7 +353,7 @@ export const HOUSE_WALL_OBSTACLES: EnvironmentObstacle[] = [
     id: 'wall-bathroom-west',
     label: 'Parede Oeste do Banheiro',
     category: 'wall',
-    bounds: { minX: 4.85, maxX: 5.02, minZ: 8.5, maxZ: 13.65 },
+    bounds: { minX: 4.78, maxX: 5.08, minZ: 8.45, maxZ: 13.65 },
     collidable: true,
     height: 4.6,
   },
@@ -291,7 +361,7 @@ export const HOUSE_WALL_OBSTACLES: EnvironmentObstacle[] = [
     id: 'wall-bathroom-south',
     label: 'Parede Sul do Banheiro',
     category: 'wall',
-    bounds: { minX: 4.9, maxX: 10.75, minZ: 13.48, maxZ: 13.65 },
+    bounds: { minX: 4.85, maxX: 10.75, minZ: 13.45, maxZ: 13.75 },
     collidable: true,
     height: 4.6,
   },
@@ -299,7 +369,7 @@ export const HOUSE_WALL_OBSTACLES: EnvironmentObstacle[] = [
     id: 'wall-bathroom-east',
     label: 'Parede Leste do Banheiro',
     category: 'wall',
-    bounds: { minX: 10.58, maxX: 10.75, minZ: 8.5, maxZ: 13.65 },
+    bounds: { minX: 10.55, maxX: 10.82, minZ: 8.45, maxZ: 13.65 },
     collidable: true,
     height: 4.6,
   },
@@ -317,7 +387,7 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     category: 'furniture',
     bounds: { minX: 5.15, maxX: 5.23, minZ: -2.39, maxZ: -2.31 },
     collidable: true,
-    height: 1.1,
+    height: 1.09,
   },
   {
     id: 'hallway-console-leg-ne',
@@ -325,7 +395,7 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     category: 'furniture',
     bounds: { minX: 5.47, maxX: 5.55, minZ: -2.39, maxZ: -2.31 },
     collidable: true,
-    height: 1.1,
+    height: 1.09,
   },
   {
     id: 'hallway-console-leg-sw',
@@ -333,7 +403,7 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     category: 'furniture',
     bounds: { minX: 5.15, maxX: 5.23, minZ: -1.29, maxZ: -1.21 },
     collidable: true,
-    height: 1.1,
+    height: 1.09,
   },
   {
     id: 'hallway-console-leg-se',
@@ -341,7 +411,7 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     category: 'furniture',
     bounds: { minX: 5.47, maxX: 5.55, minZ: -1.29, maxZ: -1.21 },
     collidable: true,
-    height: 1.1,
+    height: 1.09,
   },
 
   // --- SALA DE ESTAR ---
@@ -455,6 +525,54 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     height: 0.8,
   },
 
+  // Corpo elevado do Sofá da Sala (minY: 0.26 permite que o robô de chão passe por baixo,
+  // enquanto o helicóptero colide fisicamente contra encosto, braço e almofadas em qualquer altitude de voo)
+  {
+    id: 'living-sofa-backrest',
+    label: 'Encosto do Sofá da Sala',
+    category: 'furniture',
+    bounds: { minX: 10.90, maxX: 15.40, minZ: 1.26, maxZ: 1.88 },
+    collidable: true,
+    minY: 0.26,
+    height: 2.2,
+  },
+  {
+    id: 'living-sofa-armrest-left',
+    label: 'Braço do Sofá da Sala',
+    category: 'furniture',
+    bounds: { minX: 10.90, maxX: 11.45, minZ: 0.55, maxZ: 1.88 },
+    collidable: true,
+    minY: 0.26,
+    height: 1.8,
+  },
+  {
+    id: 'living-sofa-seat',
+    label: 'Assento do Sofá da Sala',
+    category: 'furniture',
+    bounds: { minX: 11.45, maxX: 15.35, minZ: 0.55, maxZ: 1.26 },
+    collidable: true,
+    minY: 0.26,
+    height: 0.58,
+  },
+  {
+    id: 'living-chaise-seat',
+    label: 'Assento da Chaise da Sala',
+    category: 'furniture',
+    bounds: { minX: 15.0, maxX: 16.2, minZ: -1.05, maxZ: 0.85 },
+    collidable: true,
+    minY: 0.26,
+    height: 0.58,
+  },
+  {
+    id: 'living-chaise-headrest',
+    label: 'Rolinho da Chaise da Sala',
+    category: 'furniture',
+    bounds: { minX: 15.0, maxX: 16.2, minZ: -1.05, maxZ: -0.55 },
+    collidable: true,
+    minY: 0.58,
+    height: 0.82,
+  },
+
   // Mesa de Centro da Sala com 20cm de vão livre abaixo (o robô passa por baixo)
   {
     id: 'living-coffee-table-leg-nw',
@@ -552,7 +670,7 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     category: 'furniture',
     bounds: { minX: 11.5, maxX: 14.1, minZ: 3.85, maxZ: 4.95 },
     collidable: true,
-    height: 1.25,
+    height: 1.16,
   },
   {
     id: 'kitchen-stool-west',
@@ -622,3 +740,137 @@ export const ALL_HOUSE_OBSTACLES: EnvironmentObstacle[] = [
   ...HOUSE_WALL_OBSTACLES,
   ...NEW_ROOMS_FURNITURE_OBSTACLES,
 ];
+
+/**
+ * Superfícies Elevadas e Mobílias com Vão Inferior da Casa:
+ * Usadas pelo Aspi-Helicóptero para:
+ * 1. Impedir decolagem embaixo de mesas, aparadores ou sofás (teto físico baixo).
+ * 2. Garantir pouso físico no tampo/assento da mobília (sem afundar ou atravessar para o chão).
+ */
+export interface ElevatedFurnitureSurface {
+  id: string;
+  label: string;
+  bounds: BoundingBox2D;
+  surfaceY: number;
+  clearanceBottomY: number | null; // null se sólido até o piso
+}
+
+export const HOUSE_ELEVATED_SURFACES: ElevatedFurnitureSurface[] = [
+  // 1. Quarto - Mesa de Centro de Vidro
+  {
+    id: 'surface-bedroom-coffee-table',
+    label: 'Mesa de Centro do Quarto',
+    bounds: { minX: -2.35, maxX: -0.55, minZ: -1.75, maxZ: -0.55 },
+    surfaceY: 0.69,
+    clearanceBottomY: 0.56,
+  },
+  // 2. Quarto - Sofá-Baú de Brinquedos
+  {
+    id: 'surface-bedroom-chest',
+    label: 'Sofá-Baú do Quarto',
+    bounds: { minX: -0.80, maxX: 0.80, minZ: 2.05, maxZ: 3.10 },
+    surfaceY: 0.89,
+    clearanceBottomY: null,
+  },
+  // 3. Quarto - Poltrona Verde Oliva (Assento)
+  {
+    id: 'surface-bedroom-armchair',
+    label: 'Poltrona Verde do Quarto',
+    bounds: { minX: 0.58, maxX: 1.38, minZ: -0.95, maxZ: -0.22 },
+    surfaceY: 0.88,
+    clearanceBottomY: null,
+  },
+  // 4. Corredor - Aparador / Console Vintage
+  {
+    id: 'surface-hallway-console',
+    label: 'Aparador do Corredor',
+    bounds: { minX: 5.10, maxX: 5.60, minZ: -2.50, maxZ: -1.10 },
+    surfaceY: 1.09,
+    clearanceBottomY: 0.74,
+  },
+  // 5. Sala de Estar - Mesa de Centro de Madeira
+  {
+    id: 'surface-living-coffee-table',
+    label: 'Mesa de Centro da Sala',
+    bounds: { minX: 11.70, maxX: 13.90, minZ: -1.30, maxZ: -0.10 },
+    surfaceY: 0.49,
+    clearanceBottomY: 0.38,
+  },
+  // 6. Sala de Estar - Sofá Principal (Assento)
+  {
+    id: 'surface-living-sofa',
+    label: 'Sofá da Sala',
+    bounds: { minX: 11.00, maxX: 15.35, minZ: 0.55, maxZ: 1.26 },
+    surfaceY: 0.585,
+    clearanceBottomY: 0.26,
+  },
+  // 7. Sala de Estar - Chaise do Sofá
+  {
+    id: 'surface-living-chaise',
+    label: 'Chaise do Sofá',
+    bounds: { minX: 15.00, maxX: 16.20, minZ: -1.05, maxZ: 0.85 },
+    surfaceY: 0.585,
+    clearanceBottomY: 0.26,
+  },
+  // 8. Cozinha - Ilha / Balcão Americano Central
+  {
+    id: 'surface-kitchen-island',
+    label: 'Ilha da Cozinha',
+    bounds: { minX: 11.35, maxX: 14.25, minZ: 3.75, maxZ: 5.05 },
+    surfaceY: 1.16,
+    clearanceBottomY: null,
+  },
+  // 9. Cozinha - Banqueta Oeste
+  {
+    id: 'surface-kitchen-stool-west',
+    label: 'Banqueta da Cozinha (Oeste)',
+    bounds: { minX: 11.80, maxX: 12.30, minZ: 3.25, maxZ: 3.75 },
+    surfaceY: 0.85,
+    clearanceBottomY: 0.70,
+  },
+  // 10. Cozinha - Banqueta Leste
+  {
+    id: 'surface-kitchen-stool-east',
+    label: 'Banqueta da Cozinha (Leste)',
+    bounds: { minX: 13.30, maxX: 13.80, minZ: 3.25, maxZ: 3.75 },
+    surfaceY: 0.85,
+    clearanceBottomY: 0.70,
+  },
+];
+
+/**
+ * Retorna o obstáculo de teto se o robô estiver fisicamente embaixo de uma mesa ou mobília.
+ * Impede que o robô levante voo quando estiver no chão embaixo de algum móvel.
+ */
+export function getOverheadObstacleAt(
+  pos: Vector2D,
+  currentY = 0
+): ElevatedFurnitureSurface | null {
+  for (const s of HOUSE_ELEVATED_SURFACES) {
+    if (isPointInsideBounds(pos, s.bounds, 0.04)) {
+      if (s.clearanceBottomY !== null && currentY < s.clearanceBottomY) {
+        return s;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Retorna a cota de pouso da superfície em que o robô está posicionado.
+ * Se estiver sobre uma mesa, sofá ou baú, pousa no topo do móvel (surfaceY) em vez de atravessar para o chão.
+ */
+export function getSurfaceLandingY(
+  pos: Vector2D,
+  currentY: number
+): number {
+  for (const s of HOUSE_ELEVATED_SURFACES) {
+    if (isPointInsideBounds(pos, s.bounds, 0.05)) {
+      const thresholdY = s.clearanceBottomY !== null ? s.clearanceBottomY - 0.08 : s.surfaceY - 0.28;
+      if (currentY >= thresholdY) {
+        return s.surfaceY;
+      }
+    }
+  }
+  return 0.0;
+}

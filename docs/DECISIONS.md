@@ -17,3 +17,8 @@
   - HUD flutuante translúcido em creme quente (`rgba(251, 247, 240, 0.88)`) posicionado nas extremidades, deixando mais de 75% da área visível livre para o mundo 3D em telas desktop.
   - Tipografia combinando `Fraunces` (personalidade editorial/animação), `Plus Jakarta Sans` (interface) e `JetBrains Mono` (`tabular-nums` para telemetria).
 
+## ADR-004: Proibição Estrita de Ícones de Estrela/Brilho (Sparkles/Stars)
+- **Contexto**: Ícones de estrela de 4 pontas ou brilhos (*sparkles* / IA genérica) contrastam com a linguagem visual artesanal e analógica dos brinquedos dos anos 90/2000 do AspiToy.
+- **Decisão**: Remover e banir permanentemente qualquer uso de `Sparkles`, `Sparkle`, `Star`, `Stars` da interface. Para ações de oficina/personalização, utilizar ícones funcionais e tangíveis como `Paintbrush` (pincel para pinturas), `Boxes` (caixas para regiões padrão) e `Palette`.
+- **Consequência**: Coerência estética preservada e impedimento de reintrodução de ícones de estrela em qualquer tela ou componente.
+

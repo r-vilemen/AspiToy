@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import {
   ArrowDown,
   ArrowLeft,
@@ -5,13 +6,14 @@ import {
   ArrowUp,
   Bath,
   Bed,
+  Boxes,
   Compass,
+  Crosshair,
   Home,
   Pause,
   Play,
   RotateCcw,
   Sofa,
-  Sparkles,
   Utensils,
 } from 'lucide-react';
 import { manualControlBridge, useRobotStore } from '@/store/robotStore';
@@ -35,19 +37,35 @@ function getRegionIcon(id: string) {
     case 'bathroom':
       return Bath;
     default:
-      return Sparkles;
+      return Boxes;
   }
 }
 
 export function ControlPanel() {
   const state = useRobotStore((s) => s.state);
+  const battery = useRobotStore((s) => s.battery);
+  const isCannonAiming = useRobotStore((s) => s.isCannonAiming);
+  const organizedToysCount = useRobotStore((s) => s.organizedToysCount);
+  const totalToysToOrganize = useRobotStore((s) => s.totalToysToOrganize);
   const regions = useEnvironmentStore((s) => s.regions);
   const selectedRegionId = useEnvironmentStore((s) => s.selectedRegionId);
   const dispatchCommand = useCommandStore((s) => s.dispatchCommand);
   const keys = useKeyboardControls();
 
+  useEffect(() => {
+    if (isCannonAiming) {
+      document.body.style.cursor = 'crosshair';
+    } else {
+      document.body.style.cursor = 'auto';
+    }
+    return () => {
+      document.body.style.cursor = 'auto';
+    };
+  }, [isCannonAiming]);
+
   const isRunning =
     state === 'CLEANING' ||
+    state === 'ORGANIZING' ||
     state === 'EXPLORING' ||
     state === 'AVOIDING' ||
     state === 'RETURNING';
@@ -111,6 +129,27 @@ export function ControlPanel() {
           )}
         </div>
 
+        {/* Botão de Missão Especial: Guardar Brinquedos no Tapete */}
+        <div className="col-span-2">
+          <button
+            type="button"
+            onClick={() => dispatchCommand('START_ORGANIZING')}
+            className={`w-full inline-flex items-center justify-between rounded-xl border-2 border-[#2A211B] px-3.5 py-2.5 text-xs font-black uppercase tracking-wider transition cursor-pointer shadow-[0_3px_0px_#2A211B] hover:shadow-[0_1px_0px_#2A211B] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px] ${
+              state === 'ORGANIZING'
+                ? 'bg-[#FBBF24] text-[#2A211B]'
+                : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0]'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Boxes className="h-4 w-4 stroke-[2.4] text-[#E05A36]" />
+              <span>Guardar Brinquedos</span>
+            </div>
+            <span className="font-mono text-[10px] font-black rounded-lg border border-[#2A211B]/20 bg-[#F5ECE0] px-2 py-0.5 text-[#2A211B]">
+              {organizedToysCount}/{totalToysToOrganize} NO TAPETE
+            </span>
+          </button>
+        </div>
+
         <button
           id="tour-dock-button"
           type="button"
@@ -130,6 +169,71 @@ export function ControlPanel() {
           <RotateCcw className="h-3.5 w-3.5 stroke-[2.2]" aria-hidden="true" />
           Reiniciar cena
         </button>
+
+        {/* Gadgets e Dispositivos: Modo Helicóptero e Canhão de Bolhas */}
+        <div className="col-span-2 grid grid-cols-2 gap-2 pt-1 border-t border-[#2A211B]/15">
+          <button
+            type="button"
+            onClick={() => dispatchCommand('TOGGLE_HELICOPTER')}
+            className={`inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-[#2A211B] px-3 py-2 text-xs font-black uppercase tracking-wider transition cursor-pointer shadow-[0_3px_0px_#2A211B] hover:shadow-[0_1px_0px_#2A211B] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px] ${
+              state === 'FLYING'
+                ? 'bg-linear-to-b from-[#38BDF8] to-[#0284C7] text-white shadow-[0_3px_0px_#0369A1]'
+                : battery <= 20
+                ? 'bg-[#FFF5F5] text-[#991B1B] hover:bg-[#FEE2E2]'
+                : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F0F9FF]'
+            }`}
+            title={
+              battery <= 20 && state !== 'FLYING'
+                ? 'Bateria fraca (requer mais de 20% para decolar)'
+                : undefined
+            }
+          >
+            <span className="text-base">{battery <= 20 && state !== 'FLYING' ? '🪫' : '🚁'}</span>
+            <span className="text-xs truncate">
+              {state === 'FLYING' ? 'Pousar' : battery <= 20 ? 'Helicóptero (Fraca)' : 'Helicóptero'}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (!isCannonAiming) {
+                dispatchCommand('TOGGLE_FOAM_CANNON_AIM');
+              } else {
+                dispatchCommand('FIRE_FOAM_CANNON');
+              }
+            }}
+            className={`inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-[#2A211B] px-3 py-2 text-xs font-black uppercase tracking-wider transition cursor-pointer shadow-[0_3px_0px_#2A211B] hover:shadow-[0_1px_0px_#2A211B] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px] ${
+              isCannonAiming
+                ? 'bg-linear-to-b from-[#FB923C] to-[#EA580C] text-white shadow-[0_3px_0px_#9A3412]'
+                : 'bg-[#FFFDF8] hover:bg-[#FFF7ED] text-[#2A211B]'
+            }`}
+            title="Canhão de Espuma Lateral: Mire e clique em paredes, móveis ou no chão para disparar!"
+            aria-label={isCannonAiming ? 'Atirar Espuma (Canhão Ativo)' : 'Canhão de Espuma'}
+          >
+            <Crosshair className="h-4 w-4 stroke-[2.4]" aria-hidden="true" />
+            <span className="text-xs truncate">
+              {isCannonAiming ? 'Atirar' : 'Canhão'}
+            </span>
+          </button>
+        </div>
+
+        {/* Banner de feedback quando o modo de mira do canhão está ativo */}
+        {isCannonAiming && (
+          <div className="col-span-2 flex items-center justify-between rounded-xl border-2 border-[#EA580C] bg-[#FFF7ED] p-2 text-xs font-black text-[#9A3412] shadow-[0_2px_0px_#EA580C]">
+            <span className="flex items-center gap-1.5 truncate">
+              <Crosshair className="h-3.5 w-3.5 stroke-[2.4] animate-pulse shrink-0" />
+              <span className="truncate">Clique em qualquer lugar para atirar!</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => dispatchCommand('TOGGLE_FOAM_CANNON_AIM')}
+              className="ml-1 rounded-md bg-[#EA580C] px-1.5 py-0.5 text-[10px] font-black uppercase text-white hover:bg-[#C2410C] transition cursor-pointer shrink-0"
+            >
+              Guardar
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Controle direcional manual: Exclusivo para Desktop (Teclado WASD / Setas D-Pad) */}

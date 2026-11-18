@@ -38,6 +38,7 @@ export const Walls = memo(function Walls({
         meshPosition={[0, height / 2, 0]}
         args={[wallThick, height, depth + wallThick * 2]}
         roomCenter={[0, 0]}
+        facing="west"
         materialType="plaster"
       >
         {/* Painel de Lambris (Wainscoting) */}
@@ -193,6 +194,7 @@ export const Walls = memo(function Walls({
         meshPosition={[0, height / 2, 0]}
         args={[width + wallThick * 2, height, wallThick]}
         roomCenter={[0, 0]}
+        facing="north"
         materialType="plaster"
       >
         {/* Rodapé norte */}
@@ -379,6 +381,7 @@ export const Walls = memo(function Walls({
         position={[0, height / 2, halfD + wallThick / 2]}
         args={[width + wallThick * 2, height, wallThick]}
         roomCenter={[0, 0]}
+        facing="south"
         materialType="plaster"
       >
         {/* Rodapé interno da parede sul */}

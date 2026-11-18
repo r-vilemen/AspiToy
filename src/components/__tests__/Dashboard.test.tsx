@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { StatusCard } from '../ui/StatusCard';
 import { ControlPanel } from '../ui/ControlPanel';
+import { CommandInput } from '../ui/CommandInput';
 import { Header } from '../layout/Header';
 import { useRobotStore } from '@/store/robotStore';
 import { useEnvironmentStore } from '@/store/environmentStore';
@@ -99,6 +100,61 @@ describe('Componentes de Interface e Controles (Dia 1)', () => {
     fireEvent.click(soundBtn);
     expect(screen.getByRole('button', { name: /Ligar som do projeto/i })).toBeDefined();
     expect(useSoundStore.getState().isEnabled).toBe(false);
+  });
+
+  it('deve renderizar os botões de Helicóptero e Canhão e responder aos cliques', () => {
+    render(<ControlPanel />);
+
+    const heliBtn = screen.getByRole('button', { name: /helicóptero/i });
+    const cannonBtn = screen.getByRole('button', { name: /canhão|espuma/i });
+
+    expect(heliBtn).toBeDefined();
+    expect(cannonBtn).toBeDefined();
+
+    fireEvent.click(heliBtn);
+    expect(useRobotStore.getState().state).toBe('FLYING');
+
+    fireEvent.click(cannonBtn);
+    expect(useRobotStore.getState().isCannonAiming).toBe(true);
+    expect(useRobotStore.getState().lastAction).toMatch(/Canhão/i);
+  });
+
+  it('reconhece comandos de linguagem natural para helicóptero e canhão no CommandInput', () => {
+    render(<CommandInput />);
+    const input = screen.getByPlaceholderText(/Instruir o AspiToy/i);
+
+    fireEvent.change(input, { target: { value: 'voar para a mesa' } });
+    fireEvent.submit(input);
+    expect(useRobotStore.getState().state).toBe('FLYING');
+
+    fireEvent.change(input, { target: { value: 'atirar espuma' } });
+    fireEvent.submit(input);
+    expect(useRobotStore.getState().lastAction).toMatch(/Canhão|Espuma/i);
+  });
+
+  it('exibe indicativo de bateria fraca e bloqueia decolagem no ControlPanel', () => {
+    act(() => {
+      useRobotStore.setState({ battery: 14 });
+    });
+
+    render(
+      <div>
+        <StatusCard />
+        <ControlPanel />
+      </div>
+    );
+
+    // Deve exibir indicativo de que a bateria está fraca
+    expect(screen.getByTestId('battery-low-badge')).toBeDefined();
+    expect(screen.getByText(/Bateria fraca — Voo bloqueado/i)).toBeDefined();
+
+    // Botão de helicóptero indica que a bateria está fraca e ao clicar bloqueia o voo
+    const heliBtn = screen.getByRole('button', { name: /helicóptero \(fraca\)/i });
+    expect(heliBtn).toBeDefined();
+
+    fireEvent.click(heliBtn);
+    // Robô não deve decolar
+    expect(useRobotStore.getState().state).not.toBe('FLYING');
   });
 });
 
