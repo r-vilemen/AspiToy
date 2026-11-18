@@ -156,7 +156,7 @@ export function ControlPanel() {
           Reiniciar cena
         </button>
 
-        {/* Gadgets Mirabolantes: Modo Helicóptero e Canhão de Bolhas */}
+        {/* Gadgets e Dispositivos: Modo Helicóptero e Canhão de Bolhas */}
         <div className="col-span-2 grid grid-cols-2 gap-2 pt-1 border-t border-[#2A211B]/15">
           <button
             type="button"
@@ -167,8 +167,8 @@ export function ControlPanel() {
                 : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F0F9FF]'
             }`}
           >
-            <span className="text-sm">🚁</span>
-            <span>{state === 'FLYING' ? 'Pousar' : 'Helicóptero'}</span>
+            <span className="text-base">🚁</span>
+            <span className="text-xs truncate">{state === 'FLYING' ? 'Pousar' : 'Helicóptero'}</span>
           </button>
 
           <button
@@ -176,8 +176,8 @@ export function ControlPanel() {
             onClick={() => dispatchCommand('FIRE_BUBBLES')}
             className="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-[#2A211B] bg-[#FFFDF8] hover:bg-[#FDF4FF] px-3 py-2 text-xs font-black uppercase tracking-wider text-[#2A211B] shadow-[0_3px_0px_#2A211B] hover:shadow-[0_1px_0px_#2A211B] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px] transition cursor-pointer"
           >
-            <span className="text-sm">🫧</span>
-            <span>Bolhas</span>
+            <span className="text-base">🫧</span>
+            <span className="text-xs truncate">Bolhas</span>
           </button>
         </div>
       </div>
