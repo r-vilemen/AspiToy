@@ -70,6 +70,34 @@ describe('Arquitetura de Estado Zustand (robotStore, environmentStore, commandSt
     expect(progress).toBeGreaterThan(0);
   });
 
+  it('garante que sujeiras limpas não retornam durante o ciclo circadiano e apenas no reset explícito', () => {
+    const env = useEnvironmentStore.getState();
+    env.resetEnvironment();
+
+    const initialVersion = useEnvironmentStore.getState().dustVersion;
+    const firstSpot = useEnvironmentStore.getState().dustSpots[0];
+    const initialIntensity = firstSpot.intensity;
+
+    // 1. Limpa o ponto de poeira
+    env.cleanDustNearPoint(firstSpot.position, 0.6, 0.5);
+    const cleanedIntensity = useEnvironmentStore.getState().dustSpots[0].intensity;
+    expect(cleanedIntensity).toBeLessThan(initialIntensity);
+    expect(useEnvironmentStore.getState().dustVersion).toBe(initialVersion);
+
+    // 2. Simula o avanço contínuo do ciclo circadiano (60s, mudanças de período) e telemetria
+    for (let i = 0; i < 10; i++) {
+      env.tickCircadianTimer(1);
+    }
+    // A sujeira NÃO pode retornar nem o dustVersion ser alterado
+    expect(useEnvironmentStore.getState().dustSpots[0].intensity).toBe(cleanedIntensity);
+    expect(useEnvironmentStore.getState().dustVersion).toBe(initialVersion);
+
+    // 3. Apenas em respawnDustSpots ou resetEnvironment a poeira é regenerada com novo dustVersion
+    env.respawnDustSpots();
+    expect(useEnvironmentStore.getState().dustVersion).toBe(initialVersion + 1);
+    expect(useEnvironmentStore.getState().dustSpots[0].intensity).toBe(0.9);
+  });
+
   it('define destino no piso ao clicar no chão (MOVE_TO_POINT)', () => {
     const cmd = useCommandStore.getState();
     expect(

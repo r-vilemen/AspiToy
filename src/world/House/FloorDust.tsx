@@ -491,63 +491,56 @@ export const FloorDust = memo(function FloorDust() {
     patchesMesh.instanceMatrix.needsUpdate = true;
   }, [patches]);
 
-  // Listener para repor a poeira quando o usuário clica em reiniciar/recarregar
+  // Listener para repor a poeira APENAS em reinicializações explícitas da cena (mudança de dustVersion)
+  const dustVersion = useEnvironmentStore((s) => s.dustVersion);
+  const prevDustVersionRef = useRef(dustVersion);
+
   useEffect(() => {
-    const unsubscribe = useEnvironmentStore.subscribe((state, prevState) => {
-      // Se a quantidade ou intensidade dos dustSpots aumentou substancialmente (respawn)
-      const currentAvg =
-        state.dustSpots.reduce((acc, s) => acc + s.intensity, 0) /
-        state.dustSpots.length;
-      const prevAvg =
-        prevState.dustSpots.reduce((acc, s) => acc + s.intensity, 0) /
-        prevState.dustSpots.length;
+    // Se a versão não mudou em relação ao snapshot anterior, não restaura nada
+    if (dustVersion === prevDustVersionRef.current) return;
+    prevDustVersionRef.current = dustVersion;
 
-      if (currentAvg > prevAvg + 0.35 || state.dustSpots.every((s) => s.intensity > 0.8)) {
-        // Restaura todos os tufos e manchas do piso
-        const dummy = new THREE.Object3D();
-        const clumpsMesh = clumpsMeshRef.current;
-        const patchesMesh = patchesMeshRef.current;
+    // Restaura todos os tufos e manchas do piso apenas quando a cena for explicitamente reiniciada
+    const dummy = new THREE.Object3D();
+    const clumpsMesh = clumpsMeshRef.current;
+    const patchesMesh = patchesMeshRef.current;
 
-        for (let i = 0; i < clumpsStateRef.current.length; i++) {
-          const item = clumpsStateRef.current[i];
-          const s = seeds[i];
-          item.isCleaned = false;
-          item.animScale = 1.0;
-          item.curX = s.x;
-          item.curZ = s.z;
-          item.curY = s.y;
+    for (let i = 0; i < clumpsStateRef.current.length; i++) {
+      const item = clumpsStateRef.current[i];
+      const s = seeds[i];
+      item.isCleaned = false;
+      item.animScale = 1.0;
+      item.curX = s.x;
+      item.curZ = s.z;
+      item.curY = s.y;
 
-          if (clumpsMesh) {
-            dummy.position.set(s.x, s.y, s.z);
-            dummy.rotation.set(0, s.rotY, 0);
-            dummy.scale.set(s.scaleX, s.scaleY, s.scaleZ);
-            dummy.updateMatrix();
-            clumpsMesh.setMatrixAt(i, dummy.matrix);
-          }
-        }
-        if (clumpsMesh) clumpsMesh.instanceMatrix.needsUpdate = true;
-
-        for (let i = 0; i < patchesStateRef.current.length; i++) {
-          const pItem = patchesStateRef.current[i];
-          const p = patches[i];
-          pItem.isCleaned = false;
-          pItem.animScale = 1.0;
-
-          if (patchesMesh) {
-            dummy.position.set(p.x, p.y, p.z);
-            dummy.rotation.set(-Math.PI / 2, 0, 0);
-            dummy.scale.set(p.radius, p.radius, 1);
-            dummy.updateMatrix();
-            patchesMesh.setMatrixAt(i, dummy.matrix);
-          }
-        }
-        if (patchesMesh) patchesMesh.instanceMatrix.needsUpdate = true;
-        useRobotStore.getState().setSanitizedAreaTelemetry(0, 0, 0, TOTAL_HOUSE_WALKABLE_AREA);
+      if (clumpsMesh) {
+        dummy.position.set(s.x, s.y, s.z);
+        dummy.rotation.set(0, s.rotY, 0);
+        dummy.scale.set(s.scaleX, s.scaleY, s.scaleZ);
+        dummy.updateMatrix();
+        clumpsMesh.setMatrixAt(i, dummy.matrix);
       }
-    });
+    }
+    if (clumpsMesh) clumpsMesh.instanceMatrix.needsUpdate = true;
 
-    return () => unsubscribe();
-  }, [seeds, patches]);
+    for (let i = 0; i < patchesStateRef.current.length; i++) {
+      const pItem = patchesStateRef.current[i];
+      const p = patches[i];
+      pItem.isCleaned = false;
+      pItem.animScale = 1.0;
+
+      if (patchesMesh) {
+        dummy.position.set(p.x, p.y, p.z);
+        dummy.rotation.set(-Math.PI / 2, 0, 0);
+        dummy.scale.set(p.radius, p.radius, 1);
+        dummy.updateMatrix();
+        patchesMesh.setMatrixAt(i, dummy.matrix);
+      }
+    }
+    if (patchesMesh) patchesMesh.instanceMatrix.needsUpdate = true;
+    useRobotStore.getState().setSanitizedAreaTelemetry(0, 0, 0, TOTAL_HOUSE_WALKABLE_AREA);
+  }, [dustVersion, seeds, patches]);
 
   // Dummy reutilizável para cálculos de matriz em useFrame
   const dummy = useMemo(() => new THREE.Object3D(), []);

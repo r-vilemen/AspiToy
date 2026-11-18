@@ -634,6 +634,7 @@ export interface EnvironmentStoreState {
   regions: RoomRegion[];
   obstacles: EnvironmentObstacle[];
   dustSpots: DustSpot[];
+  dustVersion: number;
   selectedRegionId: string;
   timeOfDay: TimeOfDay;
   isTimeOfDayAuto: boolean;
@@ -666,6 +667,7 @@ export const useEnvironmentStore = create<EnvironmentStoreState>((set, get) => (
   regions: INITIAL_REGIONS,
   obstacles: ALL_HOUSE_OBSTACLES,
   dustSpots: INITIAL_DUST_SPOTS,
+  dustVersion: 0,
   selectedRegionId: 'all',
   timeOfDay: 'sunset',
   isTimeOfDayAuto: true,
@@ -814,9 +816,10 @@ export const useEnvironmentStore = create<EnvironmentStoreState>((set, get) => (
   },
 
   respawnDustSpots: () => {
-    set({
+    set((state) => ({
       dustSpots: INITIAL_DUST_SPOTS.map((spot) => ({ ...spot, intensity: 0.9 })),
-    });
+      dustVersion: state.dustVersion + 1,
+    }));
   },
 
   resetEnvironment: () => {
@@ -867,8 +870,9 @@ export const useEnvironmentStore = create<EnvironmentStoreState>((set, get) => (
 
     resetPushableToys();
 
-    set({
+    set((state) => ({
       dustSpots: INITIAL_DUST_SPOTS.map((spot) => ({ ...spot })),
+      dustVersion: state.dustVersion + 1,
       obstacles: ALL_HOUSE_OBSTACLES,
       selectedRegionId: 'all',
       timeOfDay: 'sunset',
@@ -876,6 +880,6 @@ export const useEnvironmentStore = create<EnvironmentStoreState>((set, get) => (
       timeOfDayElapsedSeconds: 0,
       catState: 'WALKING',
       catPosition: { ...INITIAL_CAT_POSITION },
-    });
+    }));
   },
 }));
