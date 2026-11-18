@@ -3,6 +3,7 @@ import { GridMap } from '../navigation/GridMap';
 import { PathPlanner } from '../navigation/PathPlanner';
 import { ObstacleDetector } from '../navigation/ObstacleDetector';
 import { INITIAL_DOCK_POSITION, INITIAL_OBSTACLES, INITIAL_ROOM_DIMENSIONS } from '@/store/environmentStore';
+import { ALL_HOUSE_OBSTACLES } from '@/world/House/HouseObstacles';
 
 describe('Inteligência e Navegação com Grade e Algoritmo A* (Sprint 2)', () => {
   const grid = new GridMap(
@@ -344,6 +345,45 @@ describe('Inteligência e Navegação com Grade e Algoritmo A* (Sprint 2)', () =
     const islandMove = detector.resolveSafeMovement({ x: 12.8, z: 3.2 }, { x: 12.8, z: 4.4 }, 0.29, 1.35);
     expect(islandMove.collided).toBe(false);
     expect(islandMove.position.z).toBeCloseTo(4.4, 2);
+  });
+
+  it('impede penetração do robô na parede da cozinha e quina com o corredor durante o voo', () => {
+    // Configura detector com todos os obstáculos da residência
+    const detector = new ObstacleDetector(ALL_HOUSE_OBSTACLES, 22.6, 17.5);
+
+    // 1. Robô voando na cozinha (Y = 0.55m), tentando avançar em direção à parede sul (Z = 8.5m)
+    const southFlight = detector.resolveSafeMovement(
+      { x: 9.5, z: 7.8 },
+      { x: 9.5, z: 8.6 },
+      0.315,
+      0.55
+    );
+    expect(southFlight.collided).toBe(true);
+    // Parede norte do banheiro tem minZ = 8.35. Com raio 0.315, Z deve ser <= 8.35 - 0.315 = 8.035
+    expect(southFlight.position.z).toBeLessThanOrEqual(8.04);
+
+    // 2. Robô voando na cozinha (Y = 0.55m), tentando penetrar na parede divisória com o corredor (X = 7.6m)
+    const westFlight = detector.resolveSafeMovement(
+      { x: 8.4, z: 7.5 },
+      { x: 7.3, z: 7.5 },
+      0.315,
+      0.55
+    );
+    expect(westFlight.collided).toBe(true);
+    // Parede do corredor tem maxX = 7.75. Com raio 0.315, X deve ser >= 7.75 + 0.315 = 8.065
+    expect(westFlight.position.x).toBeGreaterThanOrEqual(8.06);
+
+    // 3. Robô voando em direção à quina sul da cozinha a partir do piso livre (X = 9.5, Z = 6.8)
+    const cornerFlight = detector.resolveSafeMovement(
+      { x: 9.5, z: 6.8 },
+      { x: 7.5, z: 8.5 },
+      0.315,
+      0.55
+    );
+    expect(cornerFlight.collided).toBe(true);
+    // Não pode penetrar nem na geladeira nem nas paredes perimétricas
+    expect(cornerFlight.position.x).toBeGreaterThanOrEqual(8.0);
+    expect(cornerFlight.position.z).toBeLessThanOrEqual(8.2);
   });
 });
 

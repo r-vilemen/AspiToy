@@ -78,7 +78,7 @@ export class AgentController {
   public resolveSafeMovement(
     currentPos: Vector2D,
     desiredPos: Vector2D,
-    actorRadius = 0.31,
+    actorRadius = 0.315,
     actorY = 0
   ): CollisionResolutionResult {
     return this.detector.resolveSafeMovement(currentPos, desiredPos, actorRadius, actorY);

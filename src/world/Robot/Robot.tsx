@@ -410,7 +410,7 @@ export function Robot() {
       const collisionResult = agent.resolveSafeMovement(
         { x: loc.x, z: loc.z },
         { x: targetX, z: targetZ },
-        0.29,
+        0.315,
         robotMotionBridge.y
       );
 
@@ -465,7 +465,7 @@ export function Robot() {
           const colRes = agent.resolveSafeMovement(
             { x: loc.x, z: loc.z },
             { x: desiredFlightX, z: desiredFlightZ },
-            0.29,
+            0.315,
             robotMotionBridge.y
           );
 
@@ -529,7 +529,7 @@ export function Robot() {
           const revResult = agent.resolveSafeMovement(
             { x: loc.x, z: loc.z },
             { x: revX, z: revZ },
-            0.29,
+            0.315,
             robotMotionBridge.y
           );
           loc.x = revResult.position.x;
@@ -689,7 +689,7 @@ export function Robot() {
           const collisionResult = agent.resolveSafeMovement(
             { x: loc.x, z: loc.z },
             { x: targetAutonomousX, z: targetAutonomousZ },
-            0.29,
+            0.315,
             robotMotionBridge.y
           );
 

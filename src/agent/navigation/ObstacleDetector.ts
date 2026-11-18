@@ -67,13 +67,13 @@ export class ObstacleDetector {
   /**
    * Verifica se um ponto com raio de colisão intercepta paredes, móveis ou o gato.
    */
-  public isColliding(point: Vector2D, robotRadius = 0.30, actorY = 0): boolean {
+  public isColliding(point: Vector2D, robotRadius = 0.315, actorY = 0): boolean {
     return this.findCollidingObstacle(point, robotRadius, actorY) !== null;
   }
 
   public findCollidingObstacle(
     point: Vector2D,
-    robotRadius = 0.30,
+    robotRadius = 0.315,
     actorY = 0
   ): { id: string; label: string; bounds?: BoundingBox2D } | null {
     if (!this.isMultiRoom) {
@@ -94,12 +94,12 @@ export class ObstacleDetector {
       // Paredes perimétricas e limites da casa são contínuos do piso ao teto (height >= 2.8m).
       // Verifica se está dentro de algum cômodo da casa ou no vão de porta
       const inAnyRoom = Object.values(HOUSE_FLOOR_PLAN.rooms).some((room) =>
-        isPointInsideBounds(point, room.bounds, 0.12)
+        isPointInsideBounds(point, room.bounds, 0.02)
       );
       const inAnyDoor = HOUSE_FLOOR_PLAN.doors.some(
         (door) =>
           door.isOpen &&
-          isPointInsideBounds(point, door.traversableBounds, 0.12)
+          isPointInsideBounds(point, door.traversableBounds, 0.05)
       );
 
       if (!inAnyRoom && !inAnyDoor) {
@@ -123,18 +123,69 @@ export class ObstacleDetector {
   /**
    * Resolve fisicamente o movimento do robô (ou gato), impedindo atravessar qualquer objeto
    * e aplicando deslizamento tangencial contínuo com normais radiais em quinas (evita travar em cantos de portas).
+   * Possui prevenção automática contra tunelamento (sub-stepping contínuo para deslocamentos rápidos).
    */
   public resolveSafeMovement(
     currentPos: Vector2D,
     desiredPos: Vector2D,
-    actorRadius = 0.29,
+    actorRadius = 0.315,
+    actorY = 0
+  ): CollisionResolutionResult {
+    const totalDist = Math.hypot(
+      desiredPos.x - currentPos.x,
+      desiredPos.z - currentPos.z
+    );
+    const maxStep = actorRadius * 0.45;
+
+    // Se o deslocamento é maior que o sub-passo de segurança, fragmenta o movimento
+    // para impedir que o robô salte por cima de paredes finas em um único frame (tunelamento)
+    if (totalDist > maxStep) {
+      const steps = Math.ceil(totalDist / maxStep);
+      let stepCurrent = { ...currentPos };
+      let lastResult: CollisionResolutionResult = {
+        position: currentPos,
+        collided: false,
+        obstacleId: null,
+        obstacleLabel: null,
+      };
+
+      for (let s = 1; s <= steps; s++) {
+        const t = s / steps;
+        const subDesired: Vector2D = {
+          x: currentPos.x + (desiredPos.x - currentPos.x) * t,
+          z: currentPos.z + (desiredPos.z - currentPos.z) * t,
+        };
+
+        lastResult = this.resolveSafeStep(
+          stepCurrent,
+          subDesired,
+          actorRadius,
+          actorY
+        );
+        stepCurrent = { ...lastResult.position };
+
+        if (lastResult.collided) {
+          break;
+        }
+      }
+
+      return lastResult;
+    }
+
+    return this.resolveSafeStep(currentPos, desiredPos, actorRadius, actorY);
+  }
+
+  private resolveSafeStep(
+    currentPos: Vector2D,
+    desiredPos: Vector2D,
+    actorRadius = 0.315,
     actorY = 0
   ): CollisionResolutionResult {
     let resolved: Vector2D;
 
     if (!this.isMultiRoom) {
-      const halfW = this.roomWidth / 2 - actorRadius - 0.02;
-      const halfD = this.roomDepth / 2 - actorRadius - 0.02;
+      const halfW = this.roomWidth / 2 - actorRadius - 0.005;
+      const halfD = this.roomDepth / 2 - actorRadius - 0.005;
       resolved = {
         x: clamp(desiredPos.x, -halfW, halfW),
         z: clamp(desiredPos.z, -halfD, halfD),
@@ -160,7 +211,8 @@ export class ObstacleDetector {
     let primaryObstacleLabel: string = directHit.label;
 
     // Resolução contínua com normais radiais (contorna quinas, batentes e móveis suavemente)
-    for (let iter = 0; iter < 4; iter++) {
+    // 6 iterações para garantir convergência em cantos côncavos/esquinas estreitas
+    for (let iter = 0; iter < 6; iter++) {
       let anyCorrection = false;
 
       for (const obs of this.getAllCollidableObstacles(actorY)) {
@@ -171,9 +223,8 @@ export class ObstacleDetector {
           primaryObstacleLabel = obs.label;
 
           if (info.isInside) {
-            // Robô penetrou no interior do AABB: ejeta de volta na direção de onde veio (currentPos)
-            const cx = (obs.bounds.minX + obs.bounds.maxX) / 2;
-            const cz = (obs.bounds.minZ + obs.bounds.maxZ) / 2;
+            // Robô penetrou no interior do AABB:
+            // Se currentPos estava fora do obstáculo, ejeta na direção de onde o robô veio (currentPos)
             const clampedX = Math.max(obs.bounds.minX, Math.min(currentPos.x, obs.bounds.maxX));
             const clampedZ = Math.max(obs.bounds.minZ, Math.min(currentPos.z, obs.bounds.maxZ));
 
@@ -181,22 +232,18 @@ export class ObstacleDetector {
             let dirZ = currentPos.z - clampedZ;
             let len = Math.hypot(dirX, dirZ);
 
-            if (len < 1e-4) {
-              dirX = currentPos.x - cx;
-              dirZ = currentPos.z - cz;
-              len = Math.hypot(dirX, dirZ);
-              if (len < 1e-4) {
-                dirX = 0;
-                dirZ = 1;
-                len = 1;
-              }
+            if (len > 1e-4) {
+              resolved.x = clampedX + (dirX / len) * (actorRadius + 0.004);
+              resolved.z = clampedZ + (dirZ / len) * (actorRadius + 0.004);
+            } else {
+              // Se currentPos também estava dentro do obstáculo, ejeta pela face mais próxima
+              const pen = actorRadius + 0.004;
+              resolved.x = info.closestPoint.x + info.normal.x * pen;
+              resolved.z = info.closestPoint.z + info.normal.z * pen;
             }
-
-            resolved.x = clampedX + (dirX / len) * (actorRadius + 0.003);
-            resolved.z = clampedZ + (dirZ / len) * (actorRadius + 0.003);
           } else {
-            // Contato externo: empurra ao longo da normal de contato (deslizamento suave)
-            const pen = actorRadius - info.distance + 0.002;
+            // Contato externo: empurra ao longo da normal de contato (deslizamento tangencial suave)
+            const pen = actorRadius - info.distance + 0.003;
             resolved.x += info.normal.x * pen;
             resolved.z += info.normal.z * pen;
           }
@@ -207,7 +254,7 @@ export class ObstacleDetector {
     }
 
     // Se após a rotação contínua a posição resolvida estiver livre:
-    if (!this.findCollidingObstacle(resolved, actorRadius * 0.95, actorY)) {
+    if (!this.findCollidingObstacle(resolved, actorRadius, actorY)) {
       return {
         position: resolved,
         collided: true,
@@ -216,9 +263,9 @@ export class ObstacleDetector {
       };
     }
 
-    // Fallback: deslizar no eixo X
+    // Fallback 1: deslizar apenas no eixo X
     const slideX: Vector2D = { x: resolved.x, z: currentPos.z };
-    if (!this.findCollidingObstacle(slideX, actorRadius * 0.95, actorY)) {
+    if (!this.findCollidingObstacle(slideX, actorRadius, actorY)) {
       return {
         position: slideX,
         collided: true,
@@ -227,9 +274,9 @@ export class ObstacleDetector {
       };
     }
 
-    // Fallback: deslizar no eixo Z
+    // Fallback 2: deslizar apenas no eixo Z
     const slideZ: Vector2D = { x: currentPos.x, z: resolved.z };
-    if (!this.findCollidingObstacle(slideZ, actorRadius * 0.95, actorY)) {
+    if (!this.findCollidingObstacle(slideZ, actorRadius, actorY)) {
       return {
         position: slideZ,
         collided: true,
@@ -238,8 +285,18 @@ export class ObstacleDetector {
       };
     }
 
+    // Fallback 3: manter posição atual se ela for segura
+    if (!this.findCollidingObstacle(currentPos, actorRadius, actorY)) {
+      return {
+        position: currentPos,
+        collided: true,
+        obstacleId: primaryObstacleId,
+        obstacleLabel: primaryObstacleLabel,
+      };
+    }
+
     return {
-      position: currentPos,
+      position: resolved,
       collided: true,
       obstacleId: primaryObstacleId,
       obstacleLabel: primaryObstacleLabel,
