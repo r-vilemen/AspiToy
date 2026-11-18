@@ -39,8 +39,11 @@ export function Header() {
   const toggleSound = useSoundStore((s) => s.toggleSound);
   const isSettingsOpen = useSoundStore((s) => s.isSettingsOpen);
   const toggleSettings = useSoundStore((s) => s.toggleSettings);
+  const pushNotification = useCommandStore((s) => s.pushNotification);
   const timeOfDay = useEnvironmentStore((s) => s.timeOfDay);
+  const isTimeOfDayAuto = useEnvironmentStore((s) => s.isTimeOfDayAuto);
   const cycleTimeOfDay = useEnvironmentStore((s) => s.cycleTimeOfDay);
+  const toggleTimeOfDayAuto = useEnvironmentStore((s) => s.toggleTimeOfDayAuto);
 
   const timeLabel =
     timeOfDay === 'day' ? 'Manhã' : timeOfDay === 'sunset' ? 'Tarde' : 'Noite';
@@ -74,25 +77,85 @@ export function Header() {
       {/* Ações da barra superior: Câmeras, Ciclo Dia/Noite, Oficina, Som e Tutorial */}
       <div className="pointer-events-auto inline-flex items-center gap-1 sm:gap-2">
         {/* Controle do Ciclo Circadiano (Dia / Pôr do Sol / Noite) */}
-        <button
-          type="button"
-          onClick={() => {
-            soundManager.playClick();
-            cycleTimeOfDay();
-          }}
-          title={`Período atual: ${timeLabel}. Clique para alternar.`}
-          aria-label={`Mudar período do dia. Atual: ${timeLabel}`}
-          className="inline-flex items-center gap-1.5 rounded-2xl border-2 sm:border-2.5 border-[#2A211B] bg-[#FFFDF8] hover:bg-[#F3ECE0] p-1.5 sm:px-3 sm:py-2 text-xs font-black uppercase tracking-wider text-[#2A211B] shadow-[2.5px_2.5px_0px_#2A211B] sm:shadow-[3px_3px_0px_#2A211B] active:translate-y-0.5 active:shadow-none transition cursor-pointer"
+        <div
+          id="circadian-cycle-control"
+          className="inline-flex items-center rounded-2xl border-2 sm:border-2.5 border-[#2A211B] bg-[#FFFDF8] shadow-[2.5px_2.5px_0px_#2A211B] sm:shadow-[3px_3px_0px_#2A211B] overflow-hidden"
         >
-          {timeOfDay === 'day' ? (
-            <Sun className="h-3.5 w-3.5 sm:h-4 sm:w-4 stroke-[2.4] text-[#EAB308]" />
-          ) : timeOfDay === 'sunset' ? (
-            <Sunset className="h-3.5 w-3.5 sm:h-4 sm:w-4 stroke-[2.4] text-[#E05A36]" />
-          ) : (
-            <Moon className="h-3.5 w-3.5 sm:h-4 sm:w-4 stroke-[2.4] text-[#6366F1]" />
-          )}
-          <span className="hidden lg:inline">{timeLabel}</span>
-        </button>
+          {/* Botão de Período: ao clicar, avança o período e trava em modo MANUAL */}
+          <button
+            type="button"
+            onClick={() => {
+              soundManager.playClick();
+              const nextTime = cycleTimeOfDay(true);
+              const label =
+                nextTime === 'day' ? 'Manhã' : nextTime === 'sunset' ? 'Tarde' : 'Noite';
+              pushNotification(
+                'Período Definido (Manual)',
+                `Fixado em ${label}. O ciclo automático foi pausado e permanecerá neste período.`,
+                'info'
+              );
+            }}
+            title={`Período: ${timeLabel} (${isTimeOfDayAuto ? 'Ciclo Automático' : 'Fixo Manual'}). Clique para alternar.`}
+            aria-label={`Mudar período do dia. Atual: ${timeLabel}. Modo: ${isTimeOfDayAuto ? 'Automático' : 'Manual'}`}
+            className="inline-flex items-center gap-1.5 p-1.5 sm:px-3 sm:py-2 text-xs font-black uppercase tracking-wider text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-0.5 transition cursor-pointer"
+          >
+            {timeOfDay === 'day' ? (
+              <Sun className="h-3.5 w-3.5 sm:h-4 sm:w-4 stroke-[2.4] text-[#EAB308]" />
+            ) : timeOfDay === 'sunset' ? (
+              <Sunset className="h-3.5 w-3.5 sm:h-4 sm:w-4 stroke-[2.4] text-[#E05A36]" />
+            ) : (
+              <Moon className="h-3.5 w-3.5 sm:h-4 sm:w-4 stroke-[2.4] text-[#6366F1]" />
+            )}
+            <span className="hidden sm:inline">{timeLabel}</span>
+          </button>
+
+          {/* Divisor vertical */}
+          <div className="h-4 sm:h-5 w-px bg-[#2A211B]/20" />
+
+          {/* Botão / Indicador de Modo AUTO ou MANUAL */}
+          <button
+            type="button"
+            onClick={() => {
+              soundManager.playClick();
+              const nextAuto = toggleTimeOfDayAuto();
+              if (nextAuto) {
+                pushNotification(
+                  'Ciclo Circadiano Automático',
+                  'O tempo passará naturalmente a cada minuto (Manhã -> Tarde -> Noite).',
+                  'success'
+                );
+              } else {
+                pushNotification(
+                  'Ciclo Circadiano Manual',
+                  `Período travado em ${timeLabel}. Não mudará sozinho.`,
+                  'info'
+                );
+              }
+            }}
+            title={
+              isTimeOfDayAuto
+                ? 'Ciclo Automático Ativo: muda a cada 60s. Clique para fixar no modo Manual.'
+                : `Modo Manual Ativo: travado em ${timeLabel}. Clique para reativar o ciclo Automático.`
+            }
+            aria-label={
+              isTimeOfDayAuto
+                ? 'Travar ciclo no modo manual'
+                : 'Ativar ciclo automático de dia e noite'
+            }
+            className={`inline-flex items-center gap-1 px-1.5 sm:px-2.5 py-1.5 sm:py-2 text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition cursor-pointer ${
+              isTimeOfDayAuto
+                ? 'bg-[#ECFDF5] hover:bg-[#D1FAE5] text-[#065F46]'
+                : 'bg-[#FEF3C7] hover:bg-[#FDE68A] text-[#92400E]'
+            }`}
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                isTimeOfDayAuto ? 'bg-[#10B981] animate-pulse' : 'bg-[#D97706]'
+              }`}
+            />
+            <span>{isTimeOfDayAuto ? 'Auto' : 'Manual'}</span>
+          </button>
+        </div>
 
         {/* Botão da Oficina Toy Box (Customização de Skins) */}
         <button

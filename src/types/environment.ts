@@ -60,6 +60,7 @@ export interface EnvironmentObstacle {
   bounds: BoundingBox2D;
   collidable: boolean;
   height: number;
+  minY?: number;
 }
 
 export interface RoomRegion {
@@ -76,6 +77,8 @@ export interface DustSpot {
   radius: number;
   intensity: number; // 0 (limpo) a 1 (sujo)
   regionId: string;
+  y?: number;
+  surfaceLabel?: string;
 }
 
 export interface RoomDimensions {

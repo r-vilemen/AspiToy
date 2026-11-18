@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import { useRobotStore } from '@/store/robotStore';
+import { useEnvironmentStore } from '@/store/environmentStore';
+import { useCommandStore } from '@/store/commandStore';
 import type { RobotOperationalState } from '@/types/robot';
 
 export interface OperationalStateDescriptor {
@@ -87,5 +89,35 @@ export function useOperationClock(): void {
     }, 1000);
     return () => window.clearInterval(id);
   }, [tickOperationTimer]);
+}
+
+/**
+ * Relógio do ciclo circadiano:
+ * Avança o período do dia automaticamente a cada 60s quando em modo automático.
+ * Quando o usuário seleciona um período manualmente, o relógio não altera o período.
+ */
+export function useCircadianClock(): void {
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const nextTime = useEnvironmentStore.getState().tickCircadianTimer(1);
+      if (nextTime) {
+        const title =
+          nextTime === 'day'
+            ? 'Novo Período: Manhã'
+            : nextTime === 'sunset'
+              ? 'Novo Período: Entardecer'
+              : 'Novo Período: Noite';
+        const msg =
+          nextTime === 'day'
+            ? 'O sol nasceu na casa. Iluminação solar matinal com sombras nítidas.'
+            : nextTime === 'sunset'
+              ? 'O entardecer chegou. Luz dourada acolhedora entrando pelas janelas.'
+              : 'A noite caiu. Luzes internas acesas e motor no modo silencioso.';
+
+        useCommandStore.getState().pushNotification(title, msg, 'info');
+      }
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, []);
 }
 

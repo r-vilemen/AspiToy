@@ -76,6 +76,49 @@ describe('Modo Guarda-Brinquedos (ToyOrganizer) e Ciclo Circadiano', () => {
       env.setTimeOfDay('day');
       expect(useEnvironmentStore.getState().timeOfDay).toBe('day');
     });
+
+    it('opera em modo automático por padrão e avança o período com o passar do tempo', () => {
+      const env = useEnvironmentStore.getState();
+      env.resetEnvironment();
+      expect(env.isTimeOfDayAuto).toBe(true);
+      expect(env.timeOfDay).toBe('sunset');
+
+      // Avança 60 segundos
+      const transitioned = env.tickCircadianTimer(60);
+      expect(transitioned).toBe('night');
+      expect(useEnvironmentStore.getState().timeOfDay).toBe('night');
+
+      // Avança mais 60 segundos
+      const nextTransitioned = env.tickCircadianTimer(60);
+      expect(nextTransitioned).toBe('day');
+      expect(useEnvironmentStore.getState().timeOfDay).toBe('day');
+    });
+
+    it('ao setar manualmente, fixa no período escolhido e não muda de tempos em tempos', () => {
+      const env = useEnvironmentStore.getState();
+      env.setTimeOfDayAuto(true);
+      expect(env.isTimeOfDayAuto).toBe(true);
+
+      // Usuário seta manualmente para Noite
+      env.setTimeOfDay('night', true);
+      expect(useEnvironmentStore.getState().timeOfDay).toBe('night');
+      expect(useEnvironmentStore.getState().isTimeOfDayAuto).toBe(false);
+
+      // O tempo passa (60s, 120s), mas permanece estritamente em Noite
+      const ticked = env.tickCircadianTimer(60);
+      expect(ticked).toBeNull();
+      expect(useEnvironmentStore.getState().timeOfDay).toBe('night');
+
+      // Usuário pode reativar o modo automático quando desejar
+      const reactivated = env.toggleTimeOfDayAuto();
+      expect(reactivated).toBe(true);
+      expect(useEnvironmentStore.getState().isTimeOfDayAuto).toBe(true);
+
+      // Agora volta a mudar com o tempo
+      const autoNext = env.tickCircadianTimer(60);
+      expect(autoNext).toBe('day');
+      expect(useEnvironmentStore.getState().timeOfDay).toBe('day');
+    });
   });
 
   describe('Oficina Toy Box e Customização de Skins', () => {

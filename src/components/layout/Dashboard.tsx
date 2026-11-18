@@ -18,10 +18,11 @@ import { InGameTour } from '@/components/onboarding/InGameTour';
 import { useOnboardingStore } from '@/store/onboardingStore';
 import { useCommandStore } from '@/store/commandStore';
 import { useRobotStore } from '@/store/robotStore';
-import { useOperationClock } from '@/hooks/useRobotState';
+import { useOperationClock, useCircadianClock } from '@/hooks/useRobotState';
 
 export function Dashboard() {
   useOperationClock();
+  useCircadianClock();
   const showIntro = useOnboardingStore((s) => s.showIntro);
   const showTutorial = useOnboardingStore((s) => s.showTutorial);
   const notifications = useCommandStore((s) => s.notifications);
