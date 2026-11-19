@@ -65,21 +65,21 @@ const MAX_SPLATS = 64;
 const BUBBLES_PER_SPLAT = 9;
 const TOTAL_INSTANCES = MAX_PROJECTILES + MAX_SPLATS * BUBBLES_PER_SPLAT;
 
-// Gera bolhas com dimensões proporcionais e delicadas de espuma de sabão (respingo orgânico)
+// Gera bolhas com dimensões proporcionais e volumosas de espuma de sabão (respingo orgânico e nítido)
 function generateSplatBubbles(radius: number): ClumpBubble[] {
   return [
-    // Bolha central principal fofa
-    { u: 0, v: 0, outward: 0.022, r: radius * 0.28, popDelay: 0.95 },
+    // Bolha central principal fofa e volumosa
+    { u: 0, v: 0, outward: 0.038, r: radius * 0.35, popDelay: 0.95 },
     // Bolhas periféricas médias
-    { u: radius * 0.32, v: radius * 0.18, outward: 0.018, r: radius * 0.22, popDelay: 0.85 },
-    { u: -radius * 0.28, v: radius * 0.24, outward: 0.019, r: radius * 0.21, popDelay: 0.78 },
-    { u: radius * 0.16, v: -radius * 0.34, outward: 0.017, r: radius * 0.20, popDelay: 0.70 },
-    { u: -radius * 0.24, v: -radius * 0.26, outward: 0.017, r: radius * 0.19, popDelay: 0.65 },
+    { u: radius * 0.36, v: radius * 0.20, outward: 0.030, r: radius * 0.26, popDelay: 0.85 },
+    { u: -radius * 0.32, v: radius * 0.26, outward: 0.031, r: radius * 0.25, popDelay: 0.78 },
+    { u: radius * 0.20, v: -radius * 0.38, outward: 0.029, r: radius * 0.24, popDelay: 0.70 },
+    { u: -radius * 0.28, v: -radius * 0.30, outward: 0.028, r: radius * 0.23, popDelay: 0.65 },
     // Gotículas externas menores criando respingo natural de espuma
-    { u: radius * 0.52, v: -radius * 0.12, outward: 0.013, r: radius * 0.15, popDelay: 0.52 },
-    { u: -radius * 0.48, v: radius * 0.14, outward: 0.014, r: radius * 0.14, popDelay: 0.46 },
-    { u: radius * 0.12, v: radius * 0.50, outward: 0.014, r: radius * 0.13, popDelay: 0.42 },
-    { u: -radius * 0.10, v: -radius * 0.54, outward: 0.012, r: radius * 0.13, popDelay: 0.36 },
+    { u: radius * 0.58, v: -radius * 0.15, outward: 0.024, r: radius * 0.18, popDelay: 0.52 },
+    { u: -radius * 0.54, v: radius * 0.16, outward: 0.025, r: radius * 0.17, popDelay: 0.46 },
+    { u: radius * 0.15, v: radius * 0.56, outward: 0.025, r: radius * 0.16, popDelay: 0.42 },
+    { u: -radius * 0.12, v: -radius * 0.60, outward: 0.022, r: radius * 0.16, popDelay: 0.36 },
   ];
 }
 
@@ -204,13 +204,17 @@ export const FoamCannonSystem = memo(function FoamCannonSystem() {
     () =>
       new THREE.MeshStandardMaterial({
         color: '#FFFFFF',
-        roughness: 0.16,
-        metalness: 0.04,
+        roughness: 0.12,
+        metalness: 0.02,
         emissive: '#FFFFFF',
-        emissiveIntensity: 0.28,
+        emissiveIntensity: 0.36,
         transparent: true,
-        opacity: 0.96,
-        depthWrite: false,
+        opacity: 0.98,
+        depthWrite: true,
+        depthTest: true,
+        polygonOffset: true,
+        polygonOffsetFactor: -6,
+        polygonOffsetUnits: -6,
       }),
     []
   );
@@ -408,16 +412,35 @@ export const FoamCannonSystem = memo(function FoamCannonSystem() {
               targetSplat.y = p.targetY;
               targetSplat.z = p.targetZ;
 
-              // Invariante de piso: superfícies horizontais no nível do solo ficam rente ao piso
-              if (targetSplat.y <= 0.03 && Math.abs(p.normalY) > 0.7) {
+              // Garante que a normal da mancha aponte para fora da superfície (no sentido contrário ao voo)
+              const flightDirX = p.targetX - p.startX;
+              const flightDirY = p.targetY - p.startY;
+              const flightDirZ = p.targetZ - p.startZ;
+              let finalNormX = p.normalX;
+              let finalNormY = p.normalY;
+              let finalNormZ = p.normalZ;
+
+              if (finalNormX * flightDirX + finalNormY * flightDirY + finalNormZ * flightDirZ > 0) {
+                finalNormX = -finalNormX;
+                finalNormY = -finalNormY;
+                finalNormZ = -finalNormZ;
+              }
+
+              const normLen = Math.hypot(finalNormX, finalNormY, finalNormZ) || 1;
+              finalNormX /= normLen;
+              finalNormY /= normLen;
+              finalNormZ /= normLen;
+
+              // Invariante de piso: apenas se estiver rente ao solo E com normal perfeitamente vertical
+              if (targetSplat.y <= 0.03 && Math.abs(finalNormY) > 0.85) {
                 targetSplat.y = 0.005;
                 targetSplat.normalX = 0;
                 targetSplat.normalY = 1;
                 targetSplat.normalZ = 0;
               } else {
-                targetSplat.normalX = p.normalX;
-                targetSplat.normalY = p.normalY;
-                targetSplat.normalZ = p.normalZ;
+                targetSplat.normalX = finalNormX;
+                targetSplat.normalY = finalNormY;
+                targetSplat.normalZ = finalNormZ;
               }
 
               const basis = computeOrthonormalBasis(
@@ -436,8 +459,8 @@ export const FoamCannonSystem = memo(function FoamCannonSystem() {
               targetSplat.normalZ = basis.nz;
 
               targetSplat.life = 0;
-              targetSplat.maxLife = 8.5 + Math.random() * 2.5;
-              targetSplat.radius = 0.16 + Math.random() * 0.04;
+              targetSplat.maxLife = 9.0 + Math.random() * 3.0;
+              targetSplat.radius = 0.25 + Math.random() * 0.08;
               targetSplat.seed = Math.random() * 100;
               targetSplat.bubbles = generateSplatBubbles(targetSplat.radius);
 
@@ -526,8 +549,9 @@ export const FoamCannonSystem = memo(function FoamCannonSystem() {
               globalScale *
               (isDissolving ? 1.0 - (dissolveProgress / b.popDelay) * 0.65 : 1.0);
 
-            // Projeta a bolhinha suavemente para fora da face para não afundar
-            const outwardDist = Math.max(0.012, b.outward * flattenRatio);
+            // Projeta a bolhinha para fora da face para que nunca afunde na parede ou mobília
+            const r = Math.max(0.012, b.r * bubbleScale);
+            const outwardDist = Math.max(0.026, (b.outward + r * 0.55) * flattenRatio);
             const posX =
               s.x +
               (s.tangentX * b.u + s.bitangentX * b.v) * bubbleScale +
@@ -543,9 +567,8 @@ export const FoamCannonSystem = memo(function FoamCannonSystem() {
 
             dummy.position.set(posX, posY, posZ);
 
-            // Achatamento suave ao longo da normal (formato abobadado/lenticular aderido à superfície)
-            const r = Math.max(0.008, b.r * bubbleScale);
-            dummy.scale.set(r, r, r * 0.48);
+            // Achatamento abobadado/lenticular volumoso e nítido aderido à superfície
+            dummy.scale.set(r, r, r * 0.72);
             dummy.updateMatrix();
             instancedMeshRef.current?.setMatrixAt(instanceIdx, dummy.matrix);
           } else {
@@ -579,9 +602,10 @@ export const FoamCannonSystem = memo(function FoamCannonSystem() {
       args={[undefined, undefined, TOTAL_INSTANCES]}
       material={foamMaterial}
       frustumCulled={false}
+      renderOrder={999}
       name="foam-cannon-system"
     >
-      <sphereGeometry args={[1, 12, 12]} />
+      <sphereGeometry args={[1, 14, 14]} />
     </instancedMesh>
   );
 });

@@ -125,7 +125,7 @@ export const FoamCannonTargeting = memo(function FoamCannonTargeting() {
         const mat = meshObj.material;
         const opacity = Array.isArray(mat) ? mat[0].opacity : mat.opacity;
         const transparent = Array.isArray(mat) ? mat[0].transparent : mat.transparent;
-        if (transparent && opacity < 0.7) {
+        if (transparent && opacity < 0.25) {
           continue;
         }
       }
@@ -138,6 +138,11 @@ export const FoamCannonTargeting = memo(function FoamCannonTargeting() {
         // Converte a normal local da face para coordenadas mundiais
         normalMat.current.getNormalMatrix(obj.matrixWorld);
         worldNormal.current.copy(hit.face.normal).applyMatrix3(normalMat.current).normalize();
+
+        // Garante que a normal mundial sempre aponte para fora da superfície (em direção à câmera de onde partiu o raio)
+        if (worldNormal.current.dot(state.raycaster.ray.direction) > 0) {
+          worldNormal.current.negate();
+        }
 
         robotMotionBridge.foamTargetNormalX = worldNormal.current.x;
         robotMotionBridge.foamTargetNormalY = worldNormal.current.y;

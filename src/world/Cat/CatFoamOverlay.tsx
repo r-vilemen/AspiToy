@@ -21,13 +21,17 @@ export const CatFoamOverlay = memo(function CatFoamOverlay({ bridge }: CatFoamOv
     () =>
       new THREE.MeshStandardMaterial({
         color: '#FFFFFF',
-        roughness: 0.18,
-        metalness: 0.05,
+        roughness: 0.14,
+        metalness: 0.02,
         emissive: '#FFFFFF',
-        emissiveIntensity: 0.35,
+        emissiveIntensity: 0.38,
         transparent: true,
-        opacity: 0.96,
-        depthWrite: false,
+        opacity: 0.98,
+        depthWrite: true,
+        depthTest: true,
+        polygonOffset: true,
+        polygonOffsetFactor: -4,
+        polygonOffsetUnits: -4,
       }),
     []
   );
@@ -63,33 +67,33 @@ export const CatFoamOverlay = memo(function CatFoamOverlay({ bridge }: CatFoamOv
   });
 
   return (
-    <group ref={groupRef} visible={false} name="cat-foam-bubbles">
+    <group ref={groupRef} visible={false} name="cat-foam-bubbles" renderOrder={999}>
       {/* Montinho proporcional de espuma no dorso central das costas */}
-      <mesh position={[0, 0.11, 0.02]} material={foamMaterial}>
-        <sphereGeometry args={[0.048, 10, 10]} />
+      <mesh position={[0, 0.12, 0.02]} material={foamMaterial}>
+        <sphereGeometry args={[0.056, 12, 12]} />
       </mesh>
-      <mesh position={[0.028, 0.10, 0.06]} material={foamMaterial}>
-        <sphereGeometry args={[0.036, 8, 8]} />
+      <mesh position={[0.032, 0.11, 0.06]} material={foamMaterial}>
+        <sphereGeometry args={[0.044, 10, 10]} />
       </mesh>
-      <mesh position={[-0.028, 0.09, -0.04]} material={foamMaterial}>
+      <mesh position={[-0.032, 0.10, -0.04]} material={foamMaterial}>
+        <sphereGeometry args={[0.046, 10, 10]} />
+      </mesh>
+      <mesh position={[0.024, 0.09, -0.08]} material={foamMaterial}>
         <sphereGeometry args={[0.038, 8, 8]} />
       </mesh>
-      <mesh position={[0.02, 0.08, -0.08]} material={foamMaterial}>
-        <sphereGeometry args={[0.032, 8, 8]} />
-      </mesh>
-      <mesh position={[-0.024, 0.08, 0.08]} material={foamMaterial}>
-        <sphereGeometry args={[0.028, 8, 8]} />
+      <mesh position={[-0.028, 0.09, 0.08]} material={foamMaterial}>
+        <sphereGeometry args={[0.034, 8, 8]} />
       </mesh>
 
       {/* Bolinhas de espuma no topo da cabeça */}
-      <mesh position={[0.02, 0.145, 0.18]} material={foamMaterial}>
+      <mesh position={[0.02, 0.155, 0.18]} material={foamMaterial}>
+        <sphereGeometry args={[0.038, 8, 8]} />
+      </mesh>
+      <mesh position={[-0.018, 0.16, 0.16]} material={foamMaterial}>
         <sphereGeometry args={[0.032, 8, 8]} />
       </mesh>
-      <mesh position={[-0.018, 0.15, 0.16]} material={foamMaterial}>
-        <sphereGeometry args={[0.026, 8, 8]} />
-      </mesh>
-      <mesh position={[0.004, 0.155, 0.20]} material={foamMaterial}>
-        <sphereGeometry args={[0.024, 8, 8]} />
+      <mesh position={[0.004, 0.165, 0.20]} material={foamMaterial}>
+        <sphereGeometry args={[0.028, 8, 8]} />
       </mesh>
     </group>
   );
