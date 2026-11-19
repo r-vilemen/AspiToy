@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ArrowDown,
   ArrowLeft,
@@ -71,8 +71,17 @@ export function ControlPanel() {
   const isPaused = state === 'PAUSED';
   const isReturning = state === 'RETURNING';
 
-  const startManualMove = (forward: number, turn: number) => {
+  const [pointerActiveDir, setPointerActiveDir] = useState<
+    'forward' | 'backward' | 'left' | 'right' | null
+  >(null);
+
+  const startManualMove = (
+    dir: 'forward' | 'backward' | 'left' | 'right',
+    forward: number,
+    turn: number
+  ) => {
     soundManager.ensureAudioRunning();
+    setPointerActiveDir(dir);
     manualControlBridge.forward = forward;
     manualControlBridge.turn = turn;
     manualControlBridge.active = true;
@@ -89,10 +98,20 @@ export function ControlPanel() {
   };
 
   const stopManualMove = () => {
-    manualControlBridge.forward = 0;
-    manualControlBridge.turn = 0;
-    manualControlBridge.active = false;
+    setPointerActiveDir(null);
+    if (!keys.forward && !keys.backward && !keys.left && !keys.right) {
+      manualControlBridge.forward = 0;
+      manualControlBridge.turn = 0;
+      manualControlBridge.active = false;
+    }
   };
+
+  const isUpActive = keys.forward || pointerActiveDir === 'forward';
+  const isDownActive = keys.backward || pointerActiveDir === 'backward';
+  const isLeftActive = keys.left || pointerActiveDir === 'left';
+  const isRightActive = keys.right || pointerActiveDir === 'right';
+  const isAnyManualActive =
+    isUpActive || isDownActive || isLeftActive || isRightActive;
 
   return (
     <section aria-label="Controles do agente" className="space-y-3">
@@ -257,7 +276,7 @@ export function ControlPanel() {
             Pilotagem Manual
           </span>
           <span className="font-mono text-[10px] font-bold text-[#6E5D4F]">
-            {keys.forward || keys.backward || keys.left || keys.right ? (
+            {isAnyManualActive ? (
               <span className="inline-flex items-center gap-1 rounded bg-[#E05A36] px-1.5 py-0.2 text-[10px] font-black uppercase text-white shadow-xs">
                 ● ATIVO
               </span>
@@ -274,12 +293,12 @@ export function ControlPanel() {
             <button
               type="button"
               aria-label="Mover para frente"
-              onPointerDown={() => startManualMove(1, 0)}
+              onPointerDown={() => startManualMove('forward', 1, 0)}
               onPointerUp={stopManualMove}
               onPointerLeave={stopManualMove}
               onPointerCancel={stopManualMove}
               className={`flex h-9 w-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_2.5px_0px_#2A211B] transition cursor-pointer select-none touch-none ${
-                keys.forward
+                isUpActive
                   ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
                   : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
               }`}
@@ -290,12 +309,12 @@ export function ControlPanel() {
             <button
               type="button"
               aria-label="Girar para a esquerda"
-              onPointerDown={() => startManualMove(0.35, 1)}
+              onPointerDown={() => startManualMove('left', 0.35, 1)}
               onPointerUp={stopManualMove}
               onPointerLeave={stopManualMove}
               onPointerCancel={stopManualMove}
               className={`flex h-9 w-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_2.5px_0px_#2A211B] transition cursor-pointer select-none touch-none ${
-                keys.left
+                isLeftActive
                   ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
                   : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
               }`}
@@ -305,12 +324,12 @@ export function ControlPanel() {
             <button
               type="button"
               aria-label="Mover para trás"
-              onPointerDown={() => startManualMove(-1, 0)}
+              onPointerDown={() => startManualMove('backward', -1, 0)}
               onPointerUp={stopManualMove}
               onPointerLeave={stopManualMove}
               onPointerCancel={stopManualMove}
               className={`flex h-9 w-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_2.5px_0px_#2A211B] transition cursor-pointer select-none touch-none ${
-                keys.backward
+                isDownActive
                   ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
                   : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
               }`}
@@ -320,12 +339,12 @@ export function ControlPanel() {
             <button
               type="button"
               aria-label="Girar para a direita"
-              onPointerDown={() => startManualMove(0.35, -1)}
+              onPointerDown={() => startManualMove('right', 0.35, -1)}
               onPointerUp={stopManualMove}
               onPointerLeave={stopManualMove}
               onPointerCancel={stopManualMove}
               className={`flex h-9 w-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_2.5px_0px_#2A211B] transition cursor-pointer select-none touch-none ${
-                keys.right
+                isRightActive
                   ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
                   : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
               }`}

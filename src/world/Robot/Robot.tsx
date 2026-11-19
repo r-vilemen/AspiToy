@@ -237,14 +237,18 @@ export function Robot() {
       notifyCooldownRef.current -= delta;
     }
 
-    // Sincroniza posição caso o robô tenha sido resetado
+    // Sincroniza posição caso o robô tenha sido resetado externamente (apenas se NÃO estiver em pilotagem manual ativa)
     if (
+      !manualControlBridge.active &&
       robotState.state === 'IDLE' &&
       distance2D({ x: loc.x, z: loc.z }, robotState.position) > 0.5
     ) {
-      loc.x = robotMotionBridge.x;
-      loc.z = robotMotionBridge.z;
-      loc.rotationY = robotMotionBridge.rotationY;
+      loc.x = robotState.position.x;
+      loc.z = robotState.position.z;
+      loc.rotationY = robotState.rotationY ?? loc.rotationY;
+      robotMotionBridge.x = loc.x;
+      robotMotionBridge.z = loc.z;
+      robotMotionBridge.rotationY = loc.rotationY;
     }
 
     const selectedId = envState.selectedRegionId;
@@ -595,17 +599,17 @@ export function Robot() {
     agent.setDynamicObstacles(dynamicCats);
 
     if (manualControlBridge.active) {
-      // Controle manual direto (WASD / Setas / D-Pad)
-      const manualTurn = manualControlBridge.turn * 3.2 * delta;
+      // Controle manual direto (WASD / Setas / D-Pad) com resposta tátil ágil
+      const manualTurn = manualControlBridge.turn * 3.8 * delta;
       loc.rotationY += manualTurn;
       loc.targetRotationY = loc.rotationY;
 
-      // Velocidade do controle manual: frente positiva, ré negativa suave
+      // Velocidade do controle manual: resposta imediata e desaceleração suave
       const targetManualSpeed = manualControlBridge.forward * robotState.speed;
       loc.speed = damp(
         loc.speed,
         targetManualSpeed,
-        Math.abs(targetManualSpeed) > 0.05 ? 8.0 : 12.0,
+        Math.abs(targetManualSpeed) > 0.05 ? 18.0 : 20.0,
         delta
       );
 
