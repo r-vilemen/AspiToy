@@ -55,5 +55,17 @@ describe('Reconhecimento Universal de Teclado e Controle Manual (WASD / Setas)',
     manualControlBridge.active = false;
     expect(useRobotStore.getState().state).toBe('IDLE');
   });
+
+  it('alterna o modo de helicóptero ao disparar evento de tecla H', () => {
+    // Garante que o robô tenha bateria suficiente para decolar
+    useRobotStore.setState({ battery: 80 });
+
+    const initialFlying = useRobotStore.getState().state === 'FLYING';
+    useRobotStore.getState().toggleHelicopterMode();
+    expect(useRobotStore.getState().state === 'FLYING').toBe(!initialFlying);
+
+    useRobotStore.getState().toggleHelicopterMode();
+    expect(useRobotStore.getState().state === 'FLYING').toBe(initialFlying);
+  });
 });
 

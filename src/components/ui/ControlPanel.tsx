@@ -185,12 +185,14 @@ export function ControlPanel() {
             title={
               battery <= 20 && state !== 'FLYING'
                 ? 'Bateria fraca (requer mais de 20% para decolar)'
-                : undefined
+                : state === 'FLYING'
+                ? 'Pousar helicóptero com segurança (Atalho: H)'
+                : 'Decolar em modo Helicóptero (Atalho: H)'
             }
           >
             <span className="text-base">{battery <= 20 && state !== 'FLYING' ? '🪫' : '🚁'}</span>
             <span className="text-xs truncate">
-              {state === 'FLYING' ? 'Pousar' : battery <= 20 ? 'Helicóptero (Fraca)' : 'Helicóptero'}
+              {state === 'FLYING' ? 'Pousar (H)' : battery <= 20 ? 'Helicóptero (Fraca)' : 'Helicóptero (H)'}
             </span>
           </button>
 
@@ -208,12 +210,12 @@ export function ControlPanel() {
                 ? 'bg-linear-to-b from-[#FB923C] to-[#EA580C] text-white shadow-[0_3px_0px_#9A3412]'
                 : 'bg-[#FFFDF8] hover:bg-[#FFF7ED] text-[#2A211B]'
             }`}
-            title="Canhão de Espuma Lateral: Mire e clique em paredes, móveis ou no chão para disparar!"
+            title="Canhão de Espuma Lateral (Atalho: C): Mire com o mouse em paredes, móveis ou no chão e clique para disparar!"
             aria-label={isCannonAiming ? 'Atirar Espuma (Canhão Ativo)' : 'Canhão de Espuma'}
           >
             <Crosshair className="h-4 w-4 stroke-[2.4]" aria-hidden="true" />
             <span className="text-xs truncate">
-              {isCannonAiming ? 'Atirar' : 'Canhão'}
+              {isCannonAiming ? 'Atirar' : 'Canhão (C)'}
             </span>
           </button>
         </div>

@@ -116,8 +116,17 @@ export function useKeyboardControls() {
         return;
       }
 
-      // Atalho rápido de teclado para o Canhão de Espuma Lateral: 'C' para armar/recolher, 'Espaço' para disparar
       const keyLower = e.key ? e.key.toLowerCase() : '';
+
+      // Atalho rápido de teclado para o Modo Helicóptero: 'H' para ativar/desativar
+      if (e.code === 'KeyH' || keyLower === 'h') {
+        soundManager.ensureAudioRunning();
+        e.preventDefault();
+        useRobotStore.getState().toggleHelicopterMode();
+        return;
+      }
+
+      // Atalho rápido de teclado para o Canhão de Espuma Lateral: 'C' para armar/recolher, 'Espaço' para disparar
       if (e.code === 'KeyC' || keyLower === 'c') {
         soundManager.ensureAudioRunning();
         e.preventDefault();
