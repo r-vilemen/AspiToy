@@ -97,14 +97,37 @@ export const FoamCannonTargeting = memo(function FoamCannonTargeting() {
       const hit = intersects[i];
       const obj = hit.object;
 
-      // Ignora o robô, retículos e sistemas de partículas
+      // 1. Ignora robô, retículos e sistemas de partículas de espuma
       if (
         obj.name === 'aspitoy-actor' ||
         isDescendantOf(obj, 'aspitoy-actor') ||
         obj.name.startsWith('foam-') ||
+        obj.name.includes('cat-foam') ||
         obj.type === 'LineSegments'
       ) {
         continue;
+      }
+
+      // 2. Ignora planos de piso invisíveis interativos, poeira e sombras decal
+      if (
+        obj.name.includes('interactive-floor') ||
+        obj.name.includes('floor-dust') ||
+        isDescendantOf(obj, 'house-floor-dust-system') ||
+        obj.name.includes('sunlight') ||
+        obj.name.includes('shadow')
+      ) {
+        continue;
+      }
+
+      // 3. Ignora paredes ocluídas translúcidas pelas quais a câmera está enxergando através
+      const meshObj = obj as THREE.Mesh;
+      if (meshObj.material) {
+        const mat = meshObj.material;
+        const opacity = Array.isArray(mat) ? mat[0].opacity : mat.opacity;
+        const transparent = Array.isArray(mat) ? mat[0].transparent : mat.transparent;
+        if (transparent && opacity < 0.7) {
+          continue;
+        }
       }
 
       robotMotionBridge.foamTargetX = hit.point.x;

@@ -12,6 +12,7 @@ import { soundManager } from '@/services/soundManager';
 
 interface FoamProjectile {
   active: boolean;
+  shotId: number;
   startX: number;
   startY: number;
   startZ: number;
@@ -31,11 +32,11 @@ interface FoamProjectile {
 }
 
 interface ClumpBubble {
-  u: number; // deslocamento no plano tangente 1
-  v: number; // deslocamento no plano tangente 2
-  outward: number; // projeção para fora da superfície ao longo da normal
+  u: number; // deslocamento tangente U
+  v: number; // deslocamento tangente V
+  outward: number; // projeção suave para fora da face
   r: number;
-  popDelay: number; // tempo de estouro individual durante a dissolução
+  popDelay: number;
 }
 
 interface FoamSplatInstance {
@@ -61,65 +62,80 @@ interface FoamSplatInstance {
 
 const MAX_PROJECTILES = 48;
 const MAX_SPLATS = 64;
-const BUBBLES_PER_SPLAT = 10;
+const BUBBLES_PER_SPLAT = 9;
 const TOTAL_INSTANCES = MAX_PROJECTILES + MAX_SPLATS * BUBBLES_PER_SPLAT;
 
-// Gera os deslocamentos relativos das bolhinhas em um montinho de espuma alinhado à superfície
+// Gera bolhas com dimensões proporcionais e delicadas de espuma de sabão (respingo orgânico)
 function generateSplatBubbles(radius: number): ClumpBubble[] {
-  const bubbles: ClumpBubble[] = [
-    // Bolha central dominante e volumosa
-    { u: 0, v: 0, outward: radius * 0.48, r: radius * 0.54, popDelay: 0.95 },
+  return [
+    // Bolha central principal fofa
+    { u: 0, v: 0, outward: 0.022, r: radius * 0.28, popDelay: 0.95 },
+    // Bolhas periféricas médias
+    { u: radius * 0.32, v: radius * 0.18, outward: 0.018, r: radius * 0.22, popDelay: 0.85 },
+    { u: -radius * 0.28, v: radius * 0.24, outward: 0.019, r: radius * 0.21, popDelay: 0.78 },
+    { u: radius * 0.16, v: -radius * 0.34, outward: 0.017, r: radius * 0.20, popDelay: 0.70 },
+    { u: -radius * 0.24, v: -radius * 0.26, outward: 0.017, r: radius * 0.19, popDelay: 0.65 },
+    // Gotículas externas menores criando respingo natural de espuma
+    { u: radius * 0.52, v: -radius * 0.12, outward: 0.013, r: radius * 0.15, popDelay: 0.52 },
+    { u: -radius * 0.48, v: radius * 0.14, outward: 0.014, r: radius * 0.14, popDelay: 0.46 },
+    { u: radius * 0.12, v: radius * 0.50, outward: 0.014, r: radius * 0.13, popDelay: 0.42 },
+    { u: -radius * 0.10, v: -radius * 0.54, outward: 0.012, r: radius * 0.13, popDelay: 0.36 },
   ];
-  // 9 bolhas periféricas irregulares criando aspecto orgânico de espuma de sabão
-  for (let i = 0; i < 9; i++) {
-    const ang = (i / 9) * Math.PI * 2 + (Math.random() - 0.5) * 0.35;
-    const dist = radius * (0.34 + Math.random() * 0.44);
-    bubbles.push({
-      u: Math.cos(ang) * dist,
-      v: Math.sin(ang) * dist,
-      outward: radius * (0.24 + Math.random() * 0.28),
-      r: radius * (0.28 + Math.random() * 0.2),
-      popDelay: 0.35 + Math.random() * 0.55,
-    });
-  }
-  return bubbles;
 }
 
-// Calcula vetores tangentes ortogonais a uma normal arbitrária
+// Calcula vetores tangentes ortogonais robustos a uma normal arbitrária
 function computeOrthonormalBasis(nx: number, ny: number, nz: number) {
-  let tx = 0;
-  let ty = 1;
-  let tz = 0;
-  if (Math.abs(ny) > 0.92) {
-    tx = 1;
-    ty = 0;
-    tz = 0;
+  let len = Math.hypot(nx, ny, nz);
+  let normX = len > 0.001 ? nx / len : 0;
+  let normY = len > 0.001 ? ny / len : 1;
+  let normZ = len > 0.001 ? nz / len : 0;
+
+  // Vetor de referência não paralelo à normal
+  let rx = 0;
+  let ry = 1;
+  let rz = 0;
+  if (Math.abs(normY) > 0.92) {
+    rx = 1;
+    ry = 0;
+    rz = 0;
   }
-  // Bitangent = N x T_approx
-  let bx = ny * tz - nz * ty;
-  let by = nz * tx - nx * tz;
-  let bz = nx * ty - ny * tx;
+
+  // Bitangent = Normal x Reference
+  let bx = normY * rz - normZ * ry;
+  let by = normZ * rx - normX * rz;
+  let bz = normX * ry - normY * rx;
   const bLen = Math.hypot(bx, by, bz) || 1;
   bx /= bLen;
   by /= bLen;
   bz /= bLen;
 
-  // Tangent = B x N
-  tx = by * nz - bz * ny;
-  ty = bz * nx - bx * nz;
-  tz = bx * ny - by * nx;
+  // Tangent = Bitangent x Normal
+  let tx = by * normZ - bz * normY;
+  let ty = bz * normX - bx * normZ;
+  let tz = bx * normY - by * normX;
   const tLen = Math.hypot(tx, ty, tz) || 1;
   tx /= tLen;
   ty /= tLen;
   tz /= tLen;
 
-  return { tx, ty, tz, bx, by, bz };
+  return {
+    tx,
+    ty,
+    tz,
+    bx,
+    by,
+    bz,
+    nx: normX,
+    ny: normY,
+    nz: normZ,
+  };
 }
 
 /**
  * Sistema Físico e Visual de Canhão de Espuma Lateral:
  * - Dispara jatos pneumáticos de bolhas volumosas em arco balístico
- * - Ao colidir em paredes, móveis ou chão, fixa montinhos tridimensionais densos de espuma
+ * - Ao colidir em paredes, móveis ou chão, fixa montinhos tridimensionais achatados contra a face
+ * - Cada disparo gera exatamente 1 mancha no ponto de impacto (sem empilhamentos gigantescos)
  * - Quando atinge qualquer gato, cobre o gato de espuma que se move junto com seu corpo
  * - Pool circular que recicla manchas antigas, garantindo que todo tiro sempre solte espuma
  * - frustumCulled={false} para visibilidade contínua em qualquer ângulo ou cômodo da casa
@@ -127,13 +143,19 @@ function computeOrthonormalBasis(nx: number, ny: number, nz: number) {
 export const FoamCannonSystem = memo(function FoamCannonSystem() {
   const instancedMeshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
+  const matrixBasis = useMemo(() => new THREE.Matrix4(), []);
+  const vecT = useMemo(() => new THREE.Vector3(), []);
+  const vecB = useMemo(() => new THREE.Vector3(), []);
+  const vecN = useMemo(() => new THREE.Vector3(), []);
+
   const lastTriggerRef = useRef(robotMotionBridge.foamCannonTrigger);
-  const lastSplatTimeRef = useRef(0);
+  const lastShotSplatIdRef = useRef(-1);
 
   // Pool de projéteis em trânsito
   const projectilesPool = useRef<FoamProjectile[]>(
     Array.from({ length: MAX_PROJECTILES }, () => ({
       active: false,
+      shotId: 0,
       startX: 0,
       startY: 0,
       startZ: 0,
@@ -148,7 +170,7 @@ export const FoamCannonSystem = memo(function FoamCannonSystem() {
       currentZ: 0,
       elapsed: 0,
       duration: 0.32,
-      radius: 0.08,
+      radius: 0.045,
       spreadOffset: { x: 0, y: 0, z: 0 },
     }))
   );
@@ -170,22 +192,22 @@ export const FoamCannonSystem = memo(function FoamCannonSystem() {
       bitangentY: 0,
       bitangentZ: 1,
       life: 0,
-      maxLife: 10.0,
-      radius: 0.34,
+      maxLife: 9.0,
+      radius: 0.18,
       seed: Math.random() * 100,
-      bubbles: generateSplatBubbles(0.34),
+      bubbles: generateSplatBubbles(0.18),
     }))
   );
 
-  // Material de espuma cremosa de sabão, perolada e ultra-visível (sem depthWrite para evitar artefatos de oclusão)
+  // Material de espuma cremosa de sabão, perolada e brilhante (com leve emissivo para máxima nitidez)
   const foamMaterial = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
         color: '#FFFFFF',
-        roughness: 0.15,
-        metalness: 0.05,
+        roughness: 0.16,
+        metalness: 0.04,
         emissive: '#FFFFFF',
-        emissiveIntensity: 0.32,
+        emissiveIntensity: 0.28,
         transparent: true,
         opacity: 0.96,
         depthWrite: false,
@@ -213,7 +235,8 @@ export const FoamCannonSystem = memo(function FoamCannonSystem() {
 
     // 1. Detecção de novos disparos do Canhão de Espuma
     if (robotMotionBridge.foamCannonTrigger > lastTriggerRef.current) {
-      lastTriggerRef.current = robotMotionBridge.foamCannonTrigger;
+      const currentShotId = robotMotionBridge.foamCannonTrigger;
+      lastTriggerRef.current = currentShotId;
 
       // Calcula a posição mundial da ponta do bocal em corneta do canhão lateral
       const heading = robotMotionBridge.rotationY;
@@ -252,11 +275,12 @@ export const FoamCannonSystem = memo(function FoamCannonSystem() {
       const dist = Math.hypot(targetX - worldNozzleX, targetY - worldNozzleY, targetZ - worldNozzleZ);
       const flightDuration = Math.max(0.2, Math.min(0.48, dist / 8.5));
 
-      // Dispara rajada contínua de 10 projéteis volumosos em jato sob pressão
+      // Dispara rajada contínua de 8 projéteis em jato pressurizado
       let spawned = 0;
       for (const p of projectilesPool.current) {
-        if (!p.active && spawned < 10) {
+        if (!p.active && spawned < 8) {
           p.active = true;
+          p.shotId = currentShotId;
           p.startX = worldNozzleX;
           p.startY = worldNozzleY;
           p.startZ = worldNozzleZ;
@@ -269,13 +293,13 @@ export const FoamCannonSystem = memo(function FoamCannonSystem() {
           p.currentX = worldNozzleX;
           p.currentY = worldNozzleY;
           p.currentZ = worldNozzleZ;
-          p.elapsed = -(spawned * 0.022); // Espaçamento contínuo em jato pressurizado
+          p.elapsed = -(spawned * 0.022); // Espaçamento contínuo em fluxo sob pressão
           p.duration = flightDuration;
-          p.radius = 0.065 + Math.random() * 0.045;
+          p.radius = 0.042 + Math.random() * 0.022;
           p.spreadOffset = {
-            x: (Math.random() - 0.5) * 0.18,
-            y: (Math.random() - 0.5) * 0.18,
-            z: (Math.random() - 0.5) * 0.18,
+            x: (Math.random() - 0.5) * 0.08,
+            y: (Math.random() - 0.5) * 0.08,
+            z: (Math.random() - 0.5) * 0.08,
           };
           spawned++;
         }
@@ -295,7 +319,6 @@ export const FoamCannonSystem = memo(function FoamCannonSystem() {
         p.elapsed += delta;
 
         if (p.elapsed < 0) {
-          // Em espera na fila de dispersão do jato
           dummy.position.set(0, -999, 0);
           dummy.scale.set(0, 0, 0);
           dummy.updateMatrix();
@@ -307,21 +330,21 @@ export const FoamCannonSystem = memo(function FoamCannonSystem() {
         const alpha = Math.min(1.0, p.elapsed / p.duration);
 
         // Trajetória balística com arco aerodinâmico visível
-        const arcY = Math.sin(alpha * Math.PI) * 0.22;
+        const arcY = Math.sin(alpha * Math.PI) * 0.18;
         p.currentX = THREE.MathUtils.lerp(p.startX, p.targetX, alpha) + p.spreadOffset.x * alpha;
         p.currentY = THREE.MathUtils.lerp(p.startY, p.targetY, alpha) + arcY + p.spreadOffset.y * alpha;
         p.currentZ = THREE.MathUtils.lerp(p.startZ, p.targetZ, alpha) + p.spreadOffset.z * alpha;
 
-        // Detecção contínua de colisão de projétil contra os gatos da casa
+        // Detecção contínua de colisão com gatos em voo
         for (const cat of allCats) {
           const catDist = Math.hypot(
             p.currentX - cat.x,
             p.currentY - (cat.y || 0) - 0.15,
             p.currentZ - cat.z
           );
-          if (catDist < 0.5) {
+          if (catDist < 0.48) {
             cat.foamAmount = 1.0;
-            cat.foamTimer = 8.5; // Fica ensaboado por 8.5 segundos
+            cat.foamTimer = 8.5;
             if (cat.state !== 'STARTLED' && cat.state !== 'JUMPING' && cat.state !== 'RUNNING') {
               cat.state = 'STARTLED';
               cat.stateTimer = 0.5;
@@ -330,7 +353,7 @@ export const FoamCannonSystem = memo(function FoamCannonSystem() {
           }
         }
 
-        // Se o projétil atingiu o alvo: cria o montinho de espuma na superfície
+        // Se o projétil atingiu o alvo: cria a mancha de espuma na superfície
         if (alpha >= 1.0) {
           p.active = false;
 
@@ -341,7 +364,7 @@ export const FoamCannonSystem = memo(function FoamCannonSystem() {
               p.targetY - (cat.y || 0) - 0.15,
               p.targetZ - cat.z
             );
-            if (catDist < 0.6) {
+            if (catDist < 0.55) {
               cat.foamAmount = 1.0;
               cat.foamTimer = 8.5;
               if (cat.state !== 'STARTLED' && cat.state !== 'JUMPING') {
@@ -352,12 +375,9 @@ export const FoamCannonSystem = memo(function FoamCannonSystem() {
             }
           }
 
-          // Controle de frequência de manchas para não duplicar exatamente no mesmo milésimo
-          const nowSec = state.clock.elapsedTime;
-          const canSpawnSplat = nowSec - lastSplatTimeRef.current > 0.045;
-
-          if (canSpawnSplat) {
-            lastSplatTimeRef.current = nowSec;
+          // REGRA DE OURO: Apenas 1 mancha por tiro! O primeiro projétil da rajada cria a mancha
+          if (lastShotSplatIdRef.current !== p.shotId) {
+            lastShotSplatIdRef.current = p.shotId;
 
             // Busca vaga livre ou recicla a mancha mais antiga (FIFO ring buffer)
             let targetSplat = splatsPool.current.find((s) => !s.active);
@@ -369,13 +389,13 @@ export const FoamCannonSystem = memo(function FoamCannonSystem() {
 
             if (targetSplat) {
               targetSplat.active = true;
-              targetSplat.x = p.targetX + p.spreadOffset.x * 0.35;
-              targetSplat.y = p.targetY + p.spreadOffset.y * 0.35;
-              targetSplat.z = p.targetZ + p.spreadOffset.z * 0.35;
+              targetSplat.x = p.targetX;
+              targetSplat.y = p.targetY;
+              targetSplat.z = p.targetZ;
 
-              // Invariante de piso: nunca deixa a espuma afundar abaixo do chão
-              if (targetSplat.y <= 0.02) {
-                targetSplat.y = 0.01;
+              // Invariante de piso: superfícies horizontais no nível do solo ficam rente ao piso
+              if (targetSplat.y <= 0.03 && Math.abs(p.normalY) > 0.7) {
+                targetSplat.y = 0.005;
                 targetSplat.normalX = 0;
                 targetSplat.normalY = 1;
                 targetSplat.normalZ = 0;
@@ -396,19 +416,22 @@ export const FoamCannonSystem = memo(function FoamCannonSystem() {
               targetSplat.bitangentX = basis.bx;
               targetSplat.bitangentY = basis.by;
               targetSplat.bitangentZ = basis.bz;
+              targetSplat.normalX = basis.nx;
+              targetSplat.normalY = basis.ny;
+              targetSplat.normalZ = basis.nz;
 
               targetSplat.life = 0;
-              targetSplat.maxLife = 9.0 + Math.random() * 3.5;
-              targetSplat.radius = 0.34 + Math.random() * 0.1;
+              targetSplat.maxLife = 8.5 + Math.random() * 2.5;
+              targetSplat.radius = 0.16 + Math.random() * 0.04;
               targetSplat.seed = Math.random() * 100;
               targetSplat.bubbles = generateSplatBubbles(targetSplat.radius);
 
-              // Higienização de poeira/sujeira no ponto de impacto
+              // Higienização de poeira no ponto de impacto
               useEnvironmentStore
                 .getState()
                 .cleanDustNearPoint(
                   { x: targetSplat.x, z: targetSplat.z },
-                  1.2,
+                  1.0,
                   0.5,
                   targetSplat.y
                 );
@@ -423,9 +446,9 @@ export const FoamCannonSystem = memo(function FoamCannonSystem() {
           instancedMeshRef.current?.setMatrixAt(instanceIndex, dummy.matrix);
         } else {
           dummy.position.set(p.currentX, p.currentY, p.currentZ);
-          // Expansão e ondulação volumétrica da bolha em voo
-          const grow = 0.7 + alpha * 0.6;
-          const wobble = 1 + Math.sin(t * 18.0 + idx) * 0.14;
+          // Bolha aerodinâmica em voo
+          const grow = 0.8 + alpha * 0.4;
+          const wobble = 1 + Math.sin(t * 18.0 + idx) * 0.12;
           const currentR = p.radius * grow * wobble;
           dummy.scale.set(currentR, currentR, currentR);
           dummy.updateMatrix();
@@ -452,23 +475,31 @@ export const FoamCannonSystem = memo(function FoamCannonSystem() {
         let isDissolving = false;
         let dissolveProgress = 0;
 
-        if (s.life < 0.25) {
-          globalScale = (s.life / 0.25) * 1.1;
+        if (s.life < 0.22) {
+          globalScale = (s.life / 0.22) * 1.08;
           flattenRatio = 1.0;
-        } else if (s.life < s.maxLife - 3.0) {
+        } else if (s.life < s.maxLife - 2.5) {
           // Espuma fresca e borbulhante: ondula suavemente como espuma de verdade
-          globalScale = 1.0 + Math.sin(t * 3.5 + s.seed) * 0.035;
-          flattenRatio = 1.0 + Math.sin(t * 2.8 + s.seed) * 0.04;
+          globalScale = 1.0 + Math.sin(t * 3.5 + s.seed) * 0.03;
+          flattenRatio = 1.0 + Math.sin(t * 2.8 + s.seed) * 0.035;
         } else {
           isDissolving = true;
-          dissolveProgress = Math.min(1.0, (s.life - (s.maxLife - 3.0)) / 3.0);
+          dissolveProgress = Math.min(1.0, (s.life - (s.maxLife - 2.5)) / 2.5);
           globalScale = Math.max(0, 1.0 - dissolveProgress);
-          flattenRatio = Math.max(0.2, 1.0 - dissolveProgress * 0.6);
+          flattenRatio = Math.max(0.25, 1.0 - dissolveProgress * 0.65);
 
           if (dissolveProgress >= 1.0) {
             s.active = false;
           }
         }
+
+        // Matriz de rotação local alinhada com a superfície:
+        // Eixo X local = Tangente, Eixo Y local = Bitangente, Eixo Z local = Normal (para fora da face)
+        vecT.set(s.tangentX, s.tangentY, s.tangentZ);
+        vecB.set(s.bitangentX, s.bitangentY, s.bitangentZ);
+        vecN.set(s.normalX, s.normalY, s.normalZ);
+        matrixBasis.makeBasis(vecT, vecB, vecN);
+        dummy.quaternion.setFromRotationMatrix(matrixBasis);
 
         s.bubbles.forEach((b, bIdx) => {
           const instanceIdx = splatBaseIndex + bIdx;
@@ -480,9 +511,8 @@ export const FoamCannonSystem = memo(function FoamCannonSystem() {
               globalScale *
               (isDissolving ? 1.0 - (dissolveProgress / b.popDelay) * 0.65 : 1.0);
 
-            // Projeta a bolhinha para FORA da superfície ao longo da normal
-            // Isso garante que NUNCA afunde na parede ou móvel!
-            const outwardDist = Math.max(0.045, b.outward * flattenRatio);
+            // Projeta a bolhinha suavemente para fora da face para não afundar
+            const outwardDist = Math.max(0.012, b.outward * flattenRatio);
             const posX =
               s.x +
               (s.tangentX * b.u + s.bitangentX * b.v) * bubbleScale +
@@ -498,8 +528,9 @@ export const FoamCannonSystem = memo(function FoamCannonSystem() {
 
             dummy.position.set(posX, posY, posZ);
 
-            const r = Math.max(0.012, b.r * bubbleScale);
-            dummy.scale.set(r, r, r);
+            // Achatamento suave ao longo da normal (formato abobadado/lenticular aderido à superfície)
+            const r = Math.max(0.008, b.r * bubbleScale);
+            dummy.scale.set(r, r, r * 0.48);
             dummy.updateMatrix();
             instancedMeshRef.current?.setMatrixAt(instanceIdx, dummy.matrix);
           } else {
@@ -535,7 +566,7 @@ export const FoamCannonSystem = memo(function FoamCannonSystem() {
       frustumCulled={false}
       name="foam-cannon-system"
     >
-      <sphereGeometry args={[1, 14, 14]} />
+      <sphereGeometry args={[1, 12, 12]} />
     </instancedMesh>
   );
 });
