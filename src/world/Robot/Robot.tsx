@@ -336,7 +336,16 @@ export function Robot() {
         }
       }
 
-      targetPoint = { x: targetCat.bridge.x, z: targetCat.bridge.z };
+      // Mantém uma distância tática de tiro (~1.85m) para nunca colidir ou sobrepor o gato
+      const dxToCat = loc.x - targetCat.bridge.x;
+      const dzToCat = loc.z - targetCat.bridge.z;
+      const distFromCat = Math.hypot(dxToCat, dzToCat) || 1;
+      const standoffDistance = 1.85;
+
+      targetPoint = {
+        x: targetCat.bridge.x + (dxToCat / distFromCat) * standoffDistance,
+        z: targetCat.bridge.z + (dzToCat / distFromCat) * standoffDistance,
+      };
 
       // Mira e dispara o canhão de espuma lateral ao se aproximar do gato
       if (minCatDist <= 3.8) {
@@ -1060,7 +1069,7 @@ export function Robot() {
           targetAltitude = 1.35;
         }
       } else if (surfaceUnderRobot) {
-        targetAltitude = surfaceUnderRobot.surfaceY + 0.18;
+        targetAltitude = surfaceUnderRobot.surfaceY + 0.45;
       } else {
         targetAltitude = 1.30;
       }

@@ -197,9 +197,28 @@ export function WhiteCat() {
         if (!landedOnPerch) {
           whiteCatMotionBridge.perchSurfaceId = null;
           climbingTargetPerchRef.current = null;
+          const isChased = useRobotStore.getState().state === 'CHASING_CATS';
+          if (isChased) {
+            const escapeAngle = Math.atan2(
+              whiteCatMotionBridge.x - robotMotionBridge.x,
+              whiteCatMotionBridge.z - robotMotionBridge.z
+            );
+            whiteCatMotionBridge.state = 'RUNNING';
+            whiteCatMotionBridge.rotationY = escapeAngle;
+            whiteCatMotionBridge.targetRotationY = escapeAngle;
+            whiteCatMotionBridge.speed = 2.25;
+            const escapePoint = pickFreeFloorTarget();
+            whiteCatMotionBridge.targetX = escapePoint.x;
+            whiteCatMotionBridge.targetZ = escapePoint.z;
+            whiteCatMotionBridge.stateTimer = 4.0;
+          } else {
+            whiteCatMotionBridge.state = 'STANDING';
+            whiteCatMotionBridge.stateTimer = 4.0 + Math.random() * 2.5;
+          }
+        } else {
+          whiteCatMotionBridge.state = 'SITTING';
+          whiteCatMotionBridge.stateTimer = 4.0 + Math.random() * 2.5;
         }
-        whiteCatMotionBridge.state = landedOnPerch ? 'SITTING' : 'STANDING';
-        whiteCatMotionBridge.stateTimer = 4.0 + Math.random() * 2.5;
         whiteCatMotionBridge.jumpProgress = 0;
       }
 
@@ -222,6 +241,33 @@ export function WhiteCat() {
     // Invariante de piso: quando o gato não está empoleirado, seu Y no chão é ESTRITAMENTE 0
     if (!whiteCatMotionBridge.isPerched && whiteCatMotionBridge.state !== 'STARTLED') {
       whiteCatMotionBridge.y = 0;
+    }
+
+    // CASO EMPLEIRADO: Se o gato estiver no alto de um móvel e o robô se aproximar (< 3.0m ou em perseguição)
+    if (whiteCatMotionBridge.isPerched || (whiteCatMotionBridge.y ?? 0) > 0.25) {
+      const dist3D = Math.hypot(
+        robotMotionBridge.x - whiteCatMotionBridge.x,
+        (robotMotionBridge.y || 0) - (whiteCatMotionBridge.y || 0),
+        robotMotionBridge.z - whiteCatMotionBridge.z
+      );
+      const isChased = useRobotStore.getState().state === 'CHASING_CATS';
+
+      if ((isChased && dist3D < 3.2) || dist3D < 1.8) {
+        if (startleCooldownRef.current <= 0) {
+          startleCooldownRef.current = 2.5;
+          soundManager.playCatMeow();
+          const perch = ALL_HOUSE_CAT_PERCHES.find(
+            (p) => p.id === whiteCatMotionBridge.perchSurfaceId
+          ) ?? ALL_HOUSE_CAT_PERCHES[0];
+
+          startJump(
+            { x: whiteCatMotionBridge.x, y: whiteCatMotionBridge.y, z: whiteCatMotionBridge.z },
+            { x: perch.stagingPoint.x, y: 0, z: perch.stagingPoint.z },
+            0.55,
+            0.32
+          );
+        }
+      }
     }
 
     // Interação reativa com o robô

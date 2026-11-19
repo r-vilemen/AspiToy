@@ -189,6 +189,36 @@ export function Cat() {
     // ================================================================
     // INTERAÇÃO REATIVA COM O ROBÔ (SUSTO, DESVIO E ACORDAR DESNORTEADO)
     // ================================================================
+    // CASO EMPLEIRADO: Se o gato estiver no alto de um móvel e o robô se aproximar (< 3.0m ou em perseguição)
+    if (
+      (catMotionBridge.isPerched || (catMotionBridge.y ?? 0) > 0.25) &&
+      catMotionBridge.state !== 'JUMPING'
+    ) {
+      const dist3D = Math.hypot(
+        robotMotionBridge.x - catMotionBridge.x,
+        (robotMotionBridge.y || 0) - (catMotionBridge.y || 0),
+        robotMotionBridge.z - catMotionBridge.z
+      );
+      const isChased = useRobotStore.getState().state === 'CHASING_CATS';
+
+      if ((isChased && dist3D < 3.2) || dist3D < 1.8) {
+        if (startleCooldownRef.current <= 0) {
+          startleCooldownRef.current = 2.5;
+          soundManager.playCatMeow();
+          const perch = ALL_HOUSE_CAT_PERCHES.find(
+            (p) => p.id === catMotionBridge.perchSurfaceId
+          ) ?? ALL_HOUSE_CAT_PERCHES[0];
+
+          startJump(
+            { x: catMotionBridge.x, y: catMotionBridge.y, z: catMotionBridge.z },
+            { x: perch.stagingPoint.x, y: 0, z: perch.stagingPoint.z },
+            0.55,
+            0.32
+          );
+        }
+      }
+    }
+
     if (!catMotionBridge.isPerched && (catMotionBridge.y ?? 0) < 0.25) {
       const distToRobot = Math.hypot(
         robotMotionBridge.x - catMotionBridge.x,
@@ -344,8 +374,26 @@ export function Cat() {
           catMotionBridge.perchSurfaceId = null;
           climbingTargetPerchRef.current = null;
           catMotionBridge.y = 0;
-          catMotionBridge.state = 'STANDING';
-          catMotionBridge.stateTimer = 3.5 + Math.random() * 3.0;
+
+          const isChased = useRobotStore.getState().state === 'CHASING_CATS';
+          if (isChased) {
+            const escapeAngle = Math.atan2(
+              catMotionBridge.x - robotMotionBridge.x,
+              catMotionBridge.z - robotMotionBridge.z
+            );
+            catMotionBridge.state = 'RUNNING';
+            catMotionBridge.rotationY = escapeAngle;
+            catMotionBridge.targetRotationY = escapeAngle;
+            catMotionBridge.speed = 2.25;
+
+            const escapeTarget = pickFreeFloorTarget();
+            catMotionBridge.targetX = escapeTarget.x;
+            catMotionBridge.targetZ = escapeTarget.z;
+            catMotionBridge.stateTimer = 4.0;
+          } else {
+            catMotionBridge.state = 'STANDING';
+            catMotionBridge.stateTimer = 3.5 + Math.random() * 3.0;
+          }
         }
 
         useEnvironmentStore

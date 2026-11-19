@@ -333,9 +333,9 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
       const surfaceLandingY = isLowBatteryOrReturning
         ? 0
         : getSurfaceLandingY(
-            { x: robotMotionBridge.x, z: robotMotionBridge.z },
-            robotMotionBridge.y
-          );
+          { x: robotMotionBridge.x, z: robotMotionBridge.z },
+          robotMotionBridge.y
+        );
       robotMotionBridge.targetY = surfaceLandingY;
       const fallbackState = current.previousActiveState ?? 'EXPLORING';
       set({
