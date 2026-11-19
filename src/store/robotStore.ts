@@ -182,7 +182,7 @@ const INITIAL_TELEMETRY: RobotTelemetry = {
   totalToysToOrganize: 16,
   position: { ...INITIAL_DOCK_POSITION },
   rotationY: Math.PI / 2,
-  battery: 96,
+  battery: 100,
   speed: 1.35,
   cleaningProgress: 0,
   roomCleaningProgress: 0,
