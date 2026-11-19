@@ -24,14 +24,15 @@ export function useHouseFloorClick() {
     const rawX = e.point.x;
     const rawZ = e.point.z;
 
-    // Se o modo de mira do Canhão de Espuma estiver ativo, dispara contra o ponto mirado no piso
+    // Se o modo de mira do Canhão de Espuma estiver ativo, impede navegação pelo chão
     if (robotMotionBridge.isCannonAiming || useRobotStore.getState().isCannonAiming) {
       e.stopPropagation();
-      useRobotStore.getState().fireFoamCannon({
-        x: rawX,
-        y: e.point.y,
-        z: rawZ,
-      });
+      return;
+    }
+
+    // Se estiver no modo de perseguição aos gatos, cliques no piso não cancelam o modo
+    if (useRobotStore.getState().state === 'CHASING_CATS') {
+      e.stopPropagation();
       return;
     }
 

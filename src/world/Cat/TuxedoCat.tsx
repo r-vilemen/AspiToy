@@ -6,9 +6,11 @@ import {
   tuxedoCatMotionBridge,
   useEnvironmentStore,
 } from '@/store/environmentStore';
-import { robotMotionBridge } from '@/store/robotStore';
+import { robotMotionBridge, useRobotStore } from '@/store/robotStore';
 import { useCommandStore } from '@/store/commandStore';
+import { soundManager } from '@/services/soundManager';
 import { ObstacleDetector } from '@/agent/navigation/ObstacleDetector';
+import { CatFoamOverlay } from './CatFoamOverlay';
 import type { CatBehaviorState } from '@/types/environment';
 import type { Vector2D } from '@/types/robot';
 import { clamp, damp, dampAngle, distance2D, lerp } from '@/utils/math';
@@ -196,9 +198,28 @@ export function TuxedoCat() {
         if (!landedOnPerch) {
           tuxedoCatMotionBridge.perchSurfaceId = null;
           climbingTargetPerchRef.current = null;
+          const isChased = useRobotStore.getState().state === 'CHASING_CATS';
+          if (isChased) {
+            const escapeAngle = Math.atan2(
+              tuxedoCatMotionBridge.x - robotMotionBridge.x,
+              tuxedoCatMotionBridge.z - robotMotionBridge.z
+            );
+            tuxedoCatMotionBridge.state = 'RUNNING';
+            tuxedoCatMotionBridge.rotationY = escapeAngle;
+            tuxedoCatMotionBridge.targetRotationY = escapeAngle;
+            tuxedoCatMotionBridge.speed = 2.25;
+            const escapePoint = pickFreeFloorTarget();
+            tuxedoCatMotionBridge.targetX = escapePoint.x;
+            tuxedoCatMotionBridge.targetZ = escapePoint.z;
+            tuxedoCatMotionBridge.stateTimer = 4.0;
+          } else {
+            tuxedoCatMotionBridge.state = 'STANDING';
+            tuxedoCatMotionBridge.stateTimer = 4.0 + Math.random() * 2.5;
+          }
+        } else {
+          tuxedoCatMotionBridge.state = 'SITTING';
+          tuxedoCatMotionBridge.stateTimer = 4.0 + Math.random() * 2.5;
         }
-        tuxedoCatMotionBridge.state = landedOnPerch ? 'SITTING' : 'STANDING';
-        tuxedoCatMotionBridge.stateTimer = 4.0 + Math.random() * 2.5;
         tuxedoCatMotionBridge.jumpProgress = 0;
       }
 
@@ -223,6 +244,33 @@ export function TuxedoCat() {
       tuxedoCatMotionBridge.y = 0;
     }
 
+    // CASO EMPLEIRADO: Se o gato estiver no alto de um móvel e o robô se aproximar (< 3.0m ou em perseguição)
+    if (tuxedoCatMotionBridge.isPerched || (tuxedoCatMotionBridge.y ?? 0) > 0.25) {
+      const dist3D = Math.hypot(
+        robotMotionBridge.x - tuxedoCatMotionBridge.x,
+        (robotMotionBridge.y || 0) - (tuxedoCatMotionBridge.y || 0),
+        robotMotionBridge.z - tuxedoCatMotionBridge.z
+      );
+      const isChased = useRobotStore.getState().state === 'CHASING_CATS';
+
+      if ((isChased && dist3D < 3.2) || dist3D < 1.8) {
+        if (startleCooldownRef.current <= 0) {
+          startleCooldownRef.current = 2.5;
+          soundManager.playCatMeow();
+          const perch = ALL_HOUSE_CAT_PERCHES.find(
+            (p) => p.id === tuxedoCatMotionBridge.perchSurfaceId
+          ) ?? ALL_HOUSE_CAT_PERCHES[0];
+
+          startJump(
+            { x: tuxedoCatMotionBridge.x, y: tuxedoCatMotionBridge.y, z: tuxedoCatMotionBridge.z },
+            { x: perch.stagingPoint.x, y: 0, z: perch.stagingPoint.z },
+            0.55,
+            0.32
+          );
+        }
+      }
+    }
+
     // Interação reativa com o robô
     if (!tuxedoCatMotionBridge.isPerched && (tuxedoCatMotionBridge.y ?? 0) < 0.25) {
       const distToRobot = Math.hypot(
@@ -230,8 +278,30 @@ export function TuxedoCat() {
         robotMotionBridge.z - tuxedoCatMotionBridge.z
       );
 
-      // Robô bate no gato mesclado dormindo -> acorda desnorteado
-      if (
+      const isChased = useRobotStore.getState().state === 'CHASING_CATS';
+
+      // CASO 0: Robô arretando os gatos (CHASING_CATS) com aproximação ou canhão de espuma
+      if (isChased && distToRobot < 3.0) {
+        if (
+          tuxedoCatMotionBridge.state !== 'STARTLED' &&
+          tuxedoCatMotionBridge.state !== 'RUNNING' &&
+          startleCooldownRef.current <= 0
+        ) {
+          startleCooldownRef.current = 1.8;
+          tuxedoCatMotionBridge.state = 'STARTLED';
+          tuxedoCatMotionBridge.stateTimer = 0.45;
+          tuxedoCatMotionBridge.speed = 0;
+          soundManager.playCatMeow();
+        } else if (tuxedoCatMotionBridge.state === 'RUNNING') {
+          const escapeHeading = Math.atan2(
+            tuxedoCatMotionBridge.x - robotMotionBridge.x,
+            tuxedoCatMotionBridge.z - robotMotionBridge.z
+          );
+          tuxedoCatMotionBridge.targetRotationY = escapeHeading;
+        }
+      }
+      // CASO 1: Robô bate no gato mesclado dormindo -> acorda desnorteado
+      else if (
         tuxedoCatMotionBridge.state === 'SLEEPING' &&
         distToRobot < 0.58 &&
         startleCooldownRef.current <= 0
@@ -295,8 +365,15 @@ export function TuxedoCat() {
     // Transições autônomas da máquina de estados
     if (tuxedoCatMotionBridge.stateTimer <= 0) {
       if (tuxedoCatMotionBridge.state === 'STARTLED') {
+        const escapeAngle = Math.atan2(
+          tuxedoCatMotionBridge.x - robotMotionBridge.x,
+          tuxedoCatMotionBridge.z - robotMotionBridge.z
+        );
         tuxedoCatMotionBridge.state = 'RUNNING';
-        tuxedoCatMotionBridge.speed = 1.8;
+        tuxedoCatMotionBridge.rotationY = escapeAngle;
+        tuxedoCatMotionBridge.targetRotationY = escapeAngle;
+        tuxedoCatMotionBridge.speed =
+          useRobotStore.getState().state === 'CHASING_CATS' ? 2.25 : 1.85;
         tuxedoCatMotionBridge.stateTimer = 3.5;
         const escapePoint = pickFreeFloorTarget();
         tuxedoCatMotionBridge.targetX = escapePoint.x;
@@ -381,9 +458,12 @@ export function TuxedoCat() {
 
     // Movimentação cinemática e navegação contínua
     const state = tuxedoCatMotionBridge.state;
+    const isChasedNow = useRobotStore.getState().state === 'CHASING_CATS';
     const targetSpeed =
       state === 'RUNNING'
-        ? 1.85
+        ? isChasedNow
+          ? 2.25
+          : 1.85
         : state === 'WALKING'
         ? 0.72
         : 0;
@@ -679,6 +759,9 @@ export function TuxedoCat() {
 
       {/* Corpo articulado do Gato Mesclado (Frajola) */}
       <group ref={bodyRef} position={[0, 0.22, 0]}>
+        {/* Espuma dinâmica no pelo quando atingido pelo canhão */}
+        <CatFoamOverlay bridge={tuxedoCatMotionBridge} />
+
         {/* Dorso e laterais pretas */}
         <RoundedBox
           castShadow

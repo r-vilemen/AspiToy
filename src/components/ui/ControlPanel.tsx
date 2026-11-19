@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ArrowDown,
   ArrowLeft,
@@ -7,6 +7,7 @@ import {
   Bath,
   Bed,
   Boxes,
+  Cat,
   Compass,
   Crosshair,
   Home,
@@ -45,8 +46,6 @@ export function ControlPanel() {
   const state = useRobotStore((s) => s.state);
   const battery = useRobotStore((s) => s.battery);
   const isCannonAiming = useRobotStore((s) => s.isCannonAiming);
-  const organizedToysCount = useRobotStore((s) => s.organizedToysCount);
-  const totalToysToOrganize = useRobotStore((s) => s.totalToysToOrganize);
   const regions = useEnvironmentStore((s) => s.regions);
   const selectedRegionId = useEnvironmentStore((s) => s.selectedRegionId);
   const dispatchCommand = useCommandStore((s) => s.dispatchCommand);
@@ -72,8 +71,17 @@ export function ControlPanel() {
   const isPaused = state === 'PAUSED';
   const isReturning = state === 'RETURNING';
 
-  const startManualMove = (forward: number, turn: number) => {
+  const [pointerActiveDir, setPointerActiveDir] = useState<
+    'forward' | 'backward' | 'left' | 'right' | null
+  >(null);
+
+  const startManualMove = (
+    dir: 'forward' | 'backward' | 'left' | 'right',
+    forward: number,
+    turn: number
+  ) => {
     soundManager.ensureAudioRunning();
+    setPointerActiveDir(dir);
     manualControlBridge.forward = forward;
     manualControlBridge.turn = turn;
     manualControlBridge.active = true;
@@ -90,10 +98,20 @@ export function ControlPanel() {
   };
 
   const stopManualMove = () => {
-    manualControlBridge.forward = 0;
-    manualControlBridge.turn = 0;
-    manualControlBridge.active = false;
+    setPointerActiveDir(null);
+    if (!keys.forward && !keys.backward && !keys.left && !keys.right) {
+      manualControlBridge.forward = 0;
+      manualControlBridge.turn = 0;
+      manualControlBridge.active = false;
+    }
   };
+
+  const isUpActive = keys.forward || pointerActiveDir === 'forward';
+  const isDownActive = keys.backward || pointerActiveDir === 'backward';
+  const isLeftActive = keys.left || pointerActiveDir === 'left';
+  const isRightActive = keys.right || pointerActiveDir === 'right';
+  const isAnyManualActive =
+    isUpActive || isDownActive || isLeftActive || isRightActive;
 
   return (
     <section aria-label="Controles do agente" className="space-y-3">
@@ -129,23 +147,30 @@ export function ControlPanel() {
           )}
         </div>
 
-        {/* Botão de Missão Especial: Guardar Brinquedos no Tapete */}
+        {/* Botão de Modo Especial: Arretar os Gatos com o Canhão de Espuma */}
         <div className="col-span-2">
           <button
             type="button"
-            onClick={() => dispatchCommand('START_ORGANIZING')}
+            onClick={() => dispatchCommand('START_CHASING_CATS')}
             className={`w-full inline-flex items-center justify-between rounded-xl border-2 border-[#2A211B] px-3.5 py-2.5 text-xs font-black uppercase tracking-wider transition cursor-pointer shadow-[0_3px_0px_#2A211B] hover:shadow-[0_1px_0px_#2A211B] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px] ${
-              state === 'ORGANIZING'
-                ? 'bg-[#FBBF24] text-[#2A211B]'
-                : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0]'
+              state === 'CHASING_CATS'
+                ? 'bg-linear-to-b from-[#F59E0B] to-[#D97706] text-white shadow-[0_3px_0px_#92400E]'
+                : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#FFFBEB]'
             }`}
+            title="Arretar os Gatos: O robô vai atrás dos gatos pela casa e atira espuma com o canhão! Os gatos correm em disparada!"
           >
             <div className="flex items-center gap-2">
-              <Boxes className="h-4 w-4 stroke-[2.4] text-[#E05A36]" />
-              <span>Guardar Brinquedos</span>
+              <Cat className={`h-4 w-4 stroke-[2.4] ${state === 'CHASING_CATS' ? 'text-white' : 'text-[#D97706]'}`} />
+              <span>{state === 'CHASING_CATS' ? 'Parar de Arretar' : 'Arretar os Gatos'}</span>
             </div>
-            <span className="font-mono text-[10px] font-black rounded-lg border border-[#2A211B]/20 bg-[#F5ECE0] px-2 py-0.5 text-[#2A211B]">
-              {organizedToysCount}/{totalToysToOrganize} NO TAPETE
+            <span
+              className={`font-mono text-[10px] font-black rounded-lg border px-2 py-0.5 ${
+                state === 'CHASING_CATS'
+                  ? 'border-white/40 bg-black/20 text-white animate-pulse'
+                  : 'border-[#2A211B]/20 bg-[#FEF3C7] text-[#92400E]'
+              }`}
+            >
+              {state === 'CHASING_CATS' ? 'ATIVO (CLIQUE P/ PARAR) 🛑' : '3 GATOS 😼'}
             </span>
           </button>
         </div>
@@ -185,35 +210,31 @@ export function ControlPanel() {
             title={
               battery <= 20 && state !== 'FLYING'
                 ? 'Bateria fraca (requer mais de 20% para decolar)'
-                : undefined
+                : state === 'FLYING'
+                ? 'Pousar helicóptero com segurança (Atalho: H)'
+                : 'Decolar em modo Helicóptero (Atalho: H)'
             }
           >
             <span className="text-base">{battery <= 20 && state !== 'FLYING' ? '🪫' : '🚁'}</span>
             <span className="text-xs truncate">
-              {state === 'FLYING' ? 'Pousar' : battery <= 20 ? 'Helicóptero (Fraca)' : 'Helicóptero'}
+              {state === 'FLYING' ? 'Pousar (H)' : battery <= 20 ? 'Helicóptero (Fraca)' : 'Helicóptero (H)'}
             </span>
           </button>
 
           <button
             type="button"
-            onClick={() => {
-              if (!isCannonAiming) {
-                dispatchCommand('TOGGLE_FOAM_CANNON_AIM');
-              } else {
-                dispatchCommand('FIRE_FOAM_CANNON');
-              }
-            }}
+            onClick={() => dispatchCommand('TOGGLE_FOAM_CANNON_AIM')}
             className={`inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-[#2A211B] px-3 py-2 text-xs font-black uppercase tracking-wider transition cursor-pointer shadow-[0_3px_0px_#2A211B] hover:shadow-[0_1px_0px_#2A211B] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px] ${
               isCannonAiming
                 ? 'bg-linear-to-b from-[#FB923C] to-[#EA580C] text-white shadow-[0_3px_0px_#9A3412]'
                 : 'bg-[#FFFDF8] hover:bg-[#FFF7ED] text-[#2A211B]'
             }`}
-            title="Canhão de Espuma Lateral: Mire e clique em paredes, móveis ou no chão para disparar!"
-            aria-label={isCannonAiming ? 'Atirar Espuma (Canhão Ativo)' : 'Canhão de Espuma'}
+            title="Canhão de Espuma Lateral: Tecla 'C' ativa e desativa o canhão. Clique na tela para disparar."
+            aria-label={isCannonAiming ? 'Desativar Canhão de Espuma' : 'Ativar Canhão de Espuma'}
           >
             <Crosshair className="h-4 w-4 stroke-[2.4]" aria-hidden="true" />
             <span className="text-xs truncate">
-              {isCannonAiming ? 'Atirar' : 'Canhão'}
+              {isCannonAiming ? 'Recolher (C)' : 'Canhão (C)'}
             </span>
           </button>
         </div>
@@ -223,15 +244,24 @@ export function ControlPanel() {
           <div className="col-span-2 flex items-center justify-between rounded-xl border-2 border-[#EA580C] bg-[#FFF7ED] p-2 text-xs font-black text-[#9A3412] shadow-[0_2px_0px_#EA580C]">
             <span className="flex items-center gap-1.5 truncate">
               <Crosshair className="h-3.5 w-3.5 stroke-[2.4] animate-pulse shrink-0" />
-              <span className="truncate">Clique em qualquer lugar para atirar!</span>
+              <span className="truncate">Clique ou Espaço para atirar!</span>
             </span>
-            <button
-              type="button"
-              onClick={() => dispatchCommand('TOGGLE_FOAM_CANNON_AIM')}
-              className="ml-1 rounded-md bg-[#EA580C] px-1.5 py-0.5 text-[10px] font-black uppercase text-white hover:bg-[#C2410C] transition cursor-pointer shrink-0"
-            >
-              Guardar
-            </button>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => dispatchCommand('FIRE_FOAM_CANNON')}
+                className="rounded-md bg-[#EA580C] px-1.5 py-0.5 text-[10px] font-black uppercase text-white hover:bg-[#C2410C] transition cursor-pointer"
+              >
+                Tiro
+              </button>
+              <button
+                type="button"
+                onClick={() => dispatchCommand('TOGGLE_FOAM_CANNON_AIM')}
+                className="rounded-md border border-[#2A211B]/20 bg-white px-1.5 py-0.5 text-[10px] font-black uppercase text-[#2A211B] hover:bg-[#F3ECE0] transition cursor-pointer"
+              >
+                C
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -246,7 +276,7 @@ export function ControlPanel() {
             Pilotagem Manual
           </span>
           <span className="font-mono text-[10px] font-bold text-[#6E5D4F]">
-            {keys.forward || keys.backward || keys.left || keys.right ? (
+            {isAnyManualActive ? (
               <span className="inline-flex items-center gap-1 rounded bg-[#E05A36] px-1.5 py-0.2 text-[10px] font-black uppercase text-white shadow-xs">
                 ● ATIVO
               </span>
@@ -263,12 +293,12 @@ export function ControlPanel() {
             <button
               type="button"
               aria-label="Mover para frente"
-              onPointerDown={() => startManualMove(1, 0)}
+              onPointerDown={() => startManualMove('forward', 1, 0)}
               onPointerUp={stopManualMove}
               onPointerLeave={stopManualMove}
               onPointerCancel={stopManualMove}
               className={`flex h-9 w-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_2.5px_0px_#2A211B] transition cursor-pointer select-none touch-none ${
-                keys.forward
+                isUpActive
                   ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
                   : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
               }`}
@@ -279,12 +309,12 @@ export function ControlPanel() {
             <button
               type="button"
               aria-label="Girar para a esquerda"
-              onPointerDown={() => startManualMove(0.35, 1)}
+              onPointerDown={() => startManualMove('left', 0.35, 1)}
               onPointerUp={stopManualMove}
               onPointerLeave={stopManualMove}
               onPointerCancel={stopManualMove}
               className={`flex h-9 w-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_2.5px_0px_#2A211B] transition cursor-pointer select-none touch-none ${
-                keys.left
+                isLeftActive
                   ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
                   : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
               }`}
@@ -294,12 +324,12 @@ export function ControlPanel() {
             <button
               type="button"
               aria-label="Mover para trás"
-              onPointerDown={() => startManualMove(-1, 0)}
+              onPointerDown={() => startManualMove('backward', -1, 0)}
               onPointerUp={stopManualMove}
               onPointerLeave={stopManualMove}
               onPointerCancel={stopManualMove}
               className={`flex h-9 w-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_2.5px_0px_#2A211B] transition cursor-pointer select-none touch-none ${
-                keys.backward
+                isDownActive
                   ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
                   : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
               }`}
@@ -309,12 +339,12 @@ export function ControlPanel() {
             <button
               type="button"
               aria-label="Girar para a direita"
-              onPointerDown={() => startManualMove(0.35, -1)}
+              onPointerDown={() => startManualMove('right', 0.35, -1)}
               onPointerUp={stopManualMove}
               onPointerLeave={stopManualMove}
               onPointerCancel={stopManualMove}
               className={`flex h-9 w-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[0_2.5px_0px_#2A211B] transition cursor-pointer select-none touch-none ${
-                keys.right
+                isRightActive
                   ? 'bg-[#E05A36] text-white translate-y-[2px] shadow-none'
                   : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0] active:translate-y-[2px] active:shadow-none'
               }`}

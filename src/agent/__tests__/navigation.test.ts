@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { GridMap } from '../navigation/GridMap';
 import { PathPlanner } from '../navigation/PathPlanner';
 import { ObstacleDetector } from '../navigation/ObstacleDetector';
+import { AgentController } from '../AgentController';
 import { INITIAL_DOCK_POSITION, INITIAL_OBSTACLES, INITIAL_ROOM_DIMENSIONS } from '@/store/environmentStore';
 import { ALL_HOUSE_OBSTACLES } from '@/world/House/HouseObstacles';
 
@@ -384,6 +385,24 @@ describe('Inteligência e Navegação com Grade e Algoritmo A* (Sprint 2)', () =
     // Não pode penetrar nem na geladeira nem nas paredes perimétricas
     expect(cornerFlight.position.x).toBeGreaterThanOrEqual(8.0);
     expect(cornerFlight.position.z).toBeLessThanOrEqual(8.2);
+  });
+
+  it('planeja rota multicômodo via portas ao navegar entre quarto e sala de estar usando AgentController.findPath', () => {
+    const controller = new AgentController(ALL_HOUSE_OBSTACLES, 22.6, 17.5);
+    // Quarto para Sala de Estar
+    const start = { x: 2.0, z: 2.0 }; // Quarto
+    const target = { x: 12.0, z: 0.0 }; // Sala de Estar
+
+    const path = controller.findPath(start, target);
+    expect(path.length).toBeGreaterThan(0);
+
+    // O caminho deve passar pelo corredor de transição entre as portas
+    const hasHallwayTransition = path.some((pt) => pt.x >= 4.5 && pt.x <= 8.5);
+    expect(hasHallwayTransition).toBe(true);
+
+    const destinationPoint = path[path.length - 1];
+    expect(destinationPoint.x).toBeCloseTo(12.0, 0);
+    expect(destinationPoint.z).toBeCloseTo(0.0, 0);
   });
 });
 

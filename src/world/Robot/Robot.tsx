@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { RobotModel } from './RobotModel';
 import { RobotEffects } from './RobotEffects';
 import { FoamCannonSystem } from './FoamCannonSystem';
+import { FoamCannonTargeting } from './FoamCannonTargeting';
 import {
   updateRobotLocomotion,
   type RobotLocomotionState,
@@ -14,10 +15,13 @@ import {
   useRobotStore,
 } from '@/store/robotStore';
 import {
+  catMotionBridge,
   getDynamicAllCatsObstacles,
   pushableToysBridge,
   stepPushableToysPhysics,
+  tuxedoCatMotionBridge,
   useEnvironmentStore,
+  whiteCatMotionBridge,
 } from '@/store/environmentStore';
 import { useCommandStore } from '@/store/commandStore';
 import { AgentController } from '@/agent/AgentController';
@@ -28,8 +32,13 @@ import { isPointInsideBounds } from '@/utils/coordinates';
 import type { Vector2D } from '@/types/robot';
 import { soundManager } from '@/services/soundManager';
 import {
+  HOUSE_FLOOR_PLAN,
+  getRoomAtPosition,
+} from '@/world/House/FloorPlan';
+import {
   HOUSE_ELEVATED_SURFACES,
   getSurfaceLandingY,
+  getNearestFloorEscapePoint,
   getOverheadObstacleAt,
 } from '@/world/House/HouseObstacles';
 
@@ -219,6 +228,10 @@ export function Robot() {
   const autoAerialCooldownRef = useRef(18.0); // Alterna para voo após ~18s a 22s de chão
   const autoFlightDurationRef = useRef(0); // Tempo no ar
   const autoFurnitureVisitCountRef = useRef(0); // Quantos móveis higienizados na surtida aérea atual
+  const catChaseShootCooldownRef = useRef(0.6); // Intervalo de disparo de espuma ao arretar os gatos
+  const catChaseTargetIndexRef = useRef(0); // Índice do gato perseguido atualmente (gira entre Laranja, Branco e Frajola)
+  const catChaseTimerRef = useRef(0); // Duração da perseguição ao gato atual antes de rotacionar para outro cômodo
+  const catChaseFoamHitCountRef = useRef(0); // Contagem de jatos de espuma disparados no gato atual
 
   useFrame((_, rawDelta) => {
     const delta = Math.min(rawDelta, 0.05);
@@ -231,14 +244,18 @@ export function Robot() {
       notifyCooldownRef.current -= delta;
     }
 
-    // Sincroniza posição caso o robô tenha sido resetado
+    // Sincroniza posição caso o robô tenha sido resetado externamente (apenas se NÃO estiver em pilotagem manual ativa)
     if (
+      !manualControlBridge.active &&
       robotState.state === 'IDLE' &&
       distance2D({ x: loc.x, z: loc.z }, robotState.position) > 0.5
     ) {
-      loc.x = robotMotionBridge.x;
-      loc.z = robotMotionBridge.z;
-      loc.rotationY = robotMotionBridge.rotationY;
+      loc.x = robotState.position.x;
+      loc.z = robotState.position.z;
+      loc.rotationY = robotState.rotationY ?? loc.rotationY;
+      robotMotionBridge.x = loc.x;
+      robotMotionBridge.z = loc.z;
+      robotMotionBridge.rotationY = loc.rotationY;
     }
 
     const selectedId = envState.selectedRegionId;
@@ -250,6 +267,29 @@ export function Robot() {
     let targetPoint: { x: number; z: number } | null = null;
     const isManualPointToPoint =
       robotState.state === 'PAUSED' && robotState.targetPosition !== null;
+
+    // Se o robô estiver em cima de um móvel elevado e precisar voltar para a base (ou bateria <= 20%),
+    // decola automaticamente para descer ao chão e nunca ficar preso no móvel sem bateria!
+    const surfaceUnderCurrent = HOUSE_ELEVATED_SURFACES.find((s) =>
+      isPointInsideBounds({ x: loc.x, z: loc.z }, s.bounds, 0.12)
+    );
+    const isPerchedOnFurniture =
+      !robotMotionBridge.isFlying &&
+      ((robotMotionBridge.y ?? 0) > 0.15 || surfaceUnderCurrent !== undefined);
+
+    if (
+      (robotState.state === 'RETURNING' || robotState.battery <= 20) &&
+      isPerchedOnFurniture
+    ) {
+      robotMotionBridge.isFlying = true;
+      const baseSurfY = surfaceUnderCurrent ? surfaceUnderCurrent.surfaceY : (robotMotionBridge.y || 0.6);
+      robotMotionBridge.targetY = Math.max(0.85, baseSurfY + 0.35);
+      cmdState.pushNotification(
+        'Voo Automático para o Solo 🚁',
+        'AspiToy decolou automaticamente para sair do móvel e pousar no solo.',
+        'info'
+      );
+    }
 
     if (robotState.state === 'ORGANIZING') {
       const orgPlan = toyOrganizer.planStep({ x: loc.x, z: loc.z }, pushableToysBridge);
@@ -280,8 +320,167 @@ export function Robot() {
           'success'
         );
       }
+    } else if (robotState.state === 'CHASING_CATS') {
+      // Persegue ativamente os gatos por toda a casa (via aérea e terrestre) e dispara espuma neles
+      const candidateCats = [
+        { bridge: catMotionBridge, name: 'Gato Laranja' },
+        { bridge: whiteCatMotionBridge, name: 'Gato Branco' },
+        { bridge: tuxedoCatMotionBridge, name: 'Gato Frajola' },
+      ];
+
+      catChaseTimerRef.current += delta;
+
+      // Troca periódica de alvo entre os 3 gatos (a cada ~12s ou após 2 disparos) para cobrir a residência inteira
+      if (
+        catChaseTimerRef.current > 12.0 ||
+        catChaseFoamHitCountRef.current >= 2
+      ) {
+        catChaseTargetIndexRef.current =
+          (catChaseTargetIndexRef.current + 1) % candidateCats.length;
+        catChaseTimerRef.current = 0;
+        catChaseFoamHitCountRef.current = 0;
+        flightPathRef.current = [];
+        flightTargetRef.current = null;
+        agent.notifyStuck({ x: loc.x, z: loc.z }, loc.rotationY);
+
+        const nextCat = candidateCats[catChaseTargetIndexRef.current];
+        cmdState.pushNotification(
+          'Novo Alvo de Perseguição',
+          `AspiToy mudou de rota e agora está indo atrás do ${nextCat.name}!`,
+          'info'
+        );
+      }
+
+      const targetCat = candidateCats[catChaseTargetIndexRef.current % candidateCats.length];
+      const targetDist = Math.hypot(targetCat.bridge.x - loc.x, targetCat.bridge.z - loc.z);
+      const catY = targetCat.bridge.y ?? 0;
+
+      // Lógica Híbrida: Voo (Aéreo) vs Condução (Terrestre)
+      // 1. Decolagem para voo se:
+      //    a) Gato empoleirado em móvel elevado (catY > 0.38)
+      //    b) Gato em outro cômodo / longe (targetDist > 4.0m) e bateria suficiente (> 28%)
+      if (!robotMotionBridge.isFlying && robotState.battery > 20) {
+        const overhead = getOverheadObstacleAt({ x: loc.x, z: loc.z }, robotMotionBridge.y);
+        const shouldTakeOffElevated = catY > 0.38;
+        const shouldTakeOffLongDistance = targetDist > 4.0 && robotState.battery > 28;
+
+        if (!overhead && (shouldTakeOffElevated || shouldTakeOffLongDistance)) {
+          robotState.toggleHelicopterMode();
+          robotMotionBridge.targetY = shouldTakeOffElevated
+            ? Math.min(1.25, Math.max(0.75, catY + 0.25))
+            : 0.85;
+        }
+      }
+
+      // 2. Pouso suave para perseguição terrestre se:
+      //    Robô em voo, gato no solo (catY < 0.25), aproximação próxima (targetDist < 2.6m)
+      //    e piso livre embaixo (sem móvel elevado abaixo)
+      if (robotMotionBridge.isFlying && catY < 0.25 && targetDist < 2.6) {
+        const surfaceUnder = HOUSE_ELEVATED_SURFACES.find((s) =>
+          isPointInsideBounds({ x: loc.x, z: loc.z }, s.bounds, 0.14)
+        );
+        if (!surfaceUnder) {
+          robotMotionBridge.targetY = 0.0;
+          if (robotMotionBridge.y <= 0.08) {
+            robotMotionBridge.isFlying = false;
+            robotMotionBridge.y = 0.0;
+            loc.pitch = 0;
+            loc.roll = 0;
+            flightPathRef.current = [];
+            flightTargetRef.current = null;
+          }
+        }
+      } else if (robotMotionBridge.isFlying) {
+        if (catY > 0.38) {
+          robotMotionBridge.targetY = Math.min(1.25, Math.max(0.75, catY + 0.25));
+        } else {
+          robotMotionBridge.targetY = 0.85;
+        }
+      }
+
+      // Mantém uma distância tática de tiro (~1.85m) para nunca colidir ou sobrepor o gato
+      const dxToCat = loc.x - targetCat.bridge.x;
+      const dzToCat = loc.z - targetCat.bridge.z;
+      const distFromCat = Math.hypot(dxToCat, dzToCat) || 1;
+      const standoffDistance = 1.85;
+
+      const rawTargetX = targetCat.bridge.x + (dxToCat / distFromCat) * standoffDistance;
+      const rawTargetZ = targetCat.bridge.z + (dzToCat / distFromCat) * standoffDistance;
+
+      // Garante que o ponto tático permaneça dentro dos limites do cômodo onde o gato está
+      const catRoomId = getRoomAtPosition({ x: targetCat.bridge.x, z: targetCat.bridge.z });
+      const roomBounds = HOUSE_FLOOR_PLAN.rooms[catRoomId]?.bounds;
+
+      targetPoint = {
+        x: roomBounds
+          ? Math.max(roomBounds.minX + 0.45, Math.min(roomBounds.maxX - 0.45, rawTargetX))
+          : rawTargetX,
+        z: roomBounds
+          ? Math.max(roomBounds.minZ + 0.45, Math.min(roomBounds.maxZ - 0.45, rawTargetZ))
+          : rawTargetZ,
+      };
+
+      // Mira e dispara o canhão de espuma lateral ao se aproximar do gato
+      if (targetDist <= 3.8) {
+        robotMotionBridge.isCannonAiming = true;
+        robotMotionBridge.cannonExtension = 0.8;
+        robotMotionBridge.foamTargetX = targetCat.bridge.x;
+        robotMotionBridge.foamTargetY = Math.max(0.06, (targetCat.bridge.y ?? 0) + 0.12);
+        robotMotionBridge.foamTargetZ = targetCat.bridge.z;
+        robotMotionBridge.foamTargetNormalX = 0;
+        robotMotionBridge.foamTargetNormalY = 1;
+        robotMotionBridge.foamTargetNormalZ = 0;
+
+        catChaseShootCooldownRef.current -= delta;
+        if (catChaseShootCooldownRef.current <= 0) {
+          catChaseShootCooldownRef.current = 1.4 + Math.random() * 0.8;
+          catChaseFoamHitCountRef.current += 1;
+          robotState.fireFoamCannon({
+            x: targetCat.bridge.x,
+            y: Math.max(0.06, (targetCat.bridge.y ?? 0) + 0.12),
+            z: targetCat.bridge.z,
+          });
+          soundManager.playCatMeow();
+
+          // Assusta o gato alvo imediatamente
+          if (targetCat.bridge.state !== 'JUMPING') {
+            targetCat.bridge.state = 'STARTLED';
+            targetCat.bridge.stateTimer = 0.55;
+            targetCat.bridge.speed = 0;
+          }
+        }
+      } else {
+        robotMotionBridge.isCannonAiming = false;
+      }
     } else if (robotMotionBridge.isFlying) {
-      if (robotState.targetPosition) {
+      if (robotState.state === 'RETURNING') {
+        const surfaceUnder = HOUSE_ELEVATED_SURFACES.find((s) =>
+          isPointInsideBounds({ x: loc.x, z: loc.z }, s.bounds, 0.14)
+        );
+
+        if (surfaceUnder) {
+          // O robô está sobre um móvel elevado: voa até a borda mais próxima no piso livre
+          targetPoint = getNearestFloorEscapePoint({ x: loc.x, z: loc.z }, surfaceUnder);
+          robotMotionBridge.targetY = Math.max(0.85, surfaceUnder.surfaceY + 0.35);
+        } else {
+          // Céu aberto sobre o piso livre: inicia descida e pouso automático suave no solo
+          targetPoint = envState.dockPosition;
+          robotMotionBridge.targetY = 0.0;
+          if (robotMotionBridge.y <= 0.08) {
+            robotMotionBridge.isFlying = false;
+            robotMotionBridge.y = 0.0;
+            loc.pitch = 0;
+            loc.roll = 0;
+            flightPathRef.current = [];
+            flightTargetRef.current = null;
+            cmdState.pushNotification(
+              'Pouso no Solo Concluído',
+              'AspiToy desceu do móvel com segurança e segue pelo piso até a base.',
+              'info'
+            );
+          }
+        }
+      } else if (robotState.targetPosition) {
         // Alvo manual específico selecionado pelo usuário no chão/móvel
         targetPoint = robotState.targetPosition;
       } else if (robotState.state === 'CLEANING') {
@@ -471,17 +670,17 @@ export function Robot() {
     agent.setDynamicObstacles(dynamicCats);
 
     if (manualControlBridge.active) {
-      // Controle manual direto (WASD / Setas / D-Pad)
-      const manualTurn = manualControlBridge.turn * 3.2 * delta;
+      // Controle manual direto (WASD / Setas / D-Pad) com resposta tátil ágil
+      const manualTurn = manualControlBridge.turn * 3.8 * delta;
       loc.rotationY += manualTurn;
       loc.targetRotationY = loc.rotationY;
 
-      // Velocidade do controle manual: frente positiva, ré negativa suave
+      // Velocidade do controle manual: resposta imediata e desaceleração suave
       const targetManualSpeed = manualControlBridge.forward * robotState.speed;
       loc.speed = damp(
         loc.speed,
         targetManualSpeed,
-        Math.abs(targetManualSpeed) > 0.05 ? 8.0 : 12.0,
+        Math.abs(targetManualSpeed) > 0.05 ? 18.0 : 20.0,
         delta
       );
 
@@ -533,9 +732,10 @@ export function Robot() {
       // Voo autônomo com navegação por portas e prevenção absoluta de colisão
       if (targetPoint) {
         // Se o alvo mudou ou a rota terminou, recalcula rota A* segura que contorna paredes e usa as portas
+        const flightGoalThreshold = robotState.state === 'CHASING_CATS' ? 1.2 : 0.4;
         const targetChanged =
           !flightTargetRef.current ||
-          distance2D(flightTargetRef.current, targetPoint) > 0.4;
+          distance2D(flightTargetRef.current, targetPoint) > flightGoalThreshold;
 
         if (targetChanged) {
           flightTargetRef.current = { ...targetPoint };
@@ -552,7 +752,7 @@ export function Robot() {
         // Segue o próximo waypoint da rota aérea
         while (
           flightPathRef.current.length > 1 &&
-          distance2D({ x: loc.x, z: loc.z }, flightPathRef.current[0]) < 0.35
+          distance2D({ x: loc.x, z: loc.z }, flightPathRef.current[0]) < 0.45
         ) {
           flightPathRef.current.shift();
         }
@@ -590,8 +790,35 @@ export function Robot() {
           const turnDiff = Math.sin(loc.targetRotationY - loc.rotationY);
           loc.roll = damp(loc.roll, -turnDiff * 0.14, 6.0, delta);
         } else {
-          // Chegou ao destino do ponto manual
-          if (robotState.targetPosition) {
+          // Chegou ao destino do ponto manual ou da base
+          if (robotState.state === 'RETURNING') {
+            loc.speed = 0;
+            loc.x = envState.dockPosition.x;
+            loc.z = envState.dockPosition.z;
+            loc.rotationY = Math.PI / 2;
+            loc.targetRotationY = Math.PI / 2;
+            robotMotionBridge.x = envState.dockPosition.x;
+            robotMotionBridge.z = envState.dockPosition.z;
+            robotMotionBridge.rotationY = Math.PI / 2;
+            robotMotionBridge.isFlying = false;
+            robotMotionBridge.y = 0.0;
+            robotMotionBridge.targetY = 0.0;
+            robotMotionBridge.propellerSpeed = 0.0;
+            robotMotionBridge.propellerExtension = 0.0;
+            soundManager.stopPropellerSound();
+            flightPathRef.current = [];
+            flightTargetRef.current = null;
+            robotState.setTargetPosition(null);
+            robotState.setOperationalState(
+              'RECHARGING',
+              'Acoplado na estação de carregamento'
+            );
+            cmdState.pushNotification(
+              'Acoplamento concluído',
+              'AspiToy conectado à base e recarregando bateria.',
+              'success'
+            );
+          } else if (robotState.targetPosition) {
             loc.speed = 0;
             robotState.setTargetPosition(null);
             flightPathRef.current = [];
@@ -670,7 +897,7 @@ export function Robot() {
             loc.rotationY,
             targetPoint,
             robotState.speed,
-            envState.selectedRegionId,
+            robotState.state === 'CHASING_CATS' ? 'all' : envState.selectedRegionId,
             delta,
             dynamicCats
           );
@@ -694,6 +921,8 @@ export function Robot() {
               const resumeState =
                 robotState.previousActiveState === 'PAUSED' || isManualPointToPoint
                   ? 'PAUSED'
+                  : robotState.previousActiveState === 'CHASING_CATS'
+                  ? 'CHASING_CATS'
                   : decision.nextState;
               robotState.setOperationalState(
                 resumeState,
@@ -721,6 +950,15 @@ export function Robot() {
                 loc.z = envState.dockPosition.z;
                 loc.rotationY = Math.PI / 2;
                 loc.targetRotationY = Math.PI / 2;
+                robotMotionBridge.x = envState.dockPosition.x;
+                robotMotionBridge.z = envState.dockPosition.z;
+                robotMotionBridge.rotationY = Math.PI / 2;
+                robotMotionBridge.isFlying = false;
+                robotMotionBridge.y = 0.0;
+                robotMotionBridge.targetY = 0.0;
+                robotMotionBridge.propellerSpeed = 0.0;
+                robotMotionBridge.propellerExtension = 0.0;
+                soundManager.stopPropellerSound();
                 robotState.setTargetPosition(null);
                 robotState.setOperationalState(
                   'RECHARGING',
@@ -748,6 +986,8 @@ export function Robot() {
                   'IDLE',
                   'Chegou ao ponto selecionado no chão'
                 );
+              } else if (robotState.state === 'CHASING_CATS') {
+                // Modo perseguição aos gatos: permanece ativo continuamente rastreando o alvo
               } else {
                 if (robotState.targetPosition) {
                   robotState.setTargetPosition(null);
@@ -766,9 +1006,14 @@ export function Robot() {
           }
 
           // Atualiza locomoção física com base nas diretrizes do AgentController
+          const chaseSpeed =
+            robotState.state === 'CHASING_CATS'
+              ? Math.max(decision.desiredSpeed, 1.85)
+              : decision.desiredSpeed;
+
           updateRobotLocomotion(
             loc,
-            decision.desiredSpeed,
+            chaseSpeed,
             decision.desiredHeading,
             delta
           );
@@ -936,7 +1181,9 @@ export function Robot() {
         isPointInsideBounds({ x: loc.x, z: loc.z }, s.bounds, 0.05)
       );
 
-      if (activeTarget && targetDesiredHoverY !== null) {
+      if (robotState.state === 'RETURNING') {
+        targetAltitude = surfaceUnderRobot ? Math.max(0.85, surfaceUnderRobot.surfaceY + 0.35) : 0.0;
+      } else if (activeTarget && targetDesiredHoverY !== null) {
         const distToTarget = distance2D({ x: loc.x, z: loc.z }, activeTarget);
         if (surfaceUnderRobot || distToTarget < 0.40) {
           targetAltitude = targetDesiredHoverY;
@@ -944,7 +1191,7 @@ export function Robot() {
           targetAltitude = 1.35;
         }
       } else if (surfaceUnderRobot) {
-        targetAltitude = surfaceUnderRobot.surfaceY + 0.18;
+        targetAltitude = surfaceUnderRobot.surfaceY + 0.45;
       } else {
         targetAltitude = 1.30;
       }
@@ -953,9 +1200,10 @@ export function Robot() {
 
       // Decolagem cadenciada e realista: a elevação vertical é governada pelo lift aerodinâmico
       const baseSurfaceY = surfaceUnderRobot ? surfaceUnderRobot.surfaceY : 0.0;
-      const effectiveTargetY = baseSurfaceY + (targetAltitude - baseSurfaceY) * lift;
+      const effectiveTargetY =
+        targetAltitude === 0.0 ? 0.0 : baseSurfaceY + (targetAltitude - baseSurfaceY) * lift;
 
-      const climbSpeed = 1.6 * (0.2 + 0.8 * lift);
+      const climbSpeed = targetAltitude === 0.0 ? 2.4 : 1.6 * (0.2 + 0.8 * lift);
       robotMotionBridge.y = damp(
         robotMotionBridge.y,
         effectiveTargetY,
@@ -978,10 +1226,14 @@ export function Robot() {
       // ETAPA 1: DESCIDA CONTROLADA COM HÉLICE GIRANDO E SUSTENTAÇÃO ATIVA
       // ETAPA 2: TOQUE SUAVE NA SUPERFÍCIE, CORTE DO MOTOR, INÉRCIA E RECOLHIMENTO
       // ========================================================
-      const landingSurfaceY = getSurfaceLandingY(
+      // REGRA DE OURO: Nunca pousar nos móveis sem bateria (<= 20%) ou em retorno à base!
+      const isLowBatteryOrReturning =
+        robotState.battery <= 20 || robotState.state === 'RETURNING';
+      const rawLandingSurfaceY = getSurfaceLandingY(
         { x: loc.x, z: loc.z },
         robotMotionBridge.y
       );
+      const landingSurfaceY = isLowBatteryOrReturning ? 0.0 : rawLandingSurfaceY;
       robotMotionBridge.targetY = landingSurfaceY;
 
       const isStillInAir = robotMotionBridge.y > landingSurfaceY + 0.015;
@@ -1048,6 +1300,7 @@ export function Robot() {
     const isAutonomousMoving =
       (robotState.state === 'CLEANING' ||
         robotState.state === 'ORGANIZING' ||
+        robotState.state === 'CHASING_CATS' ||
         robotState.state === 'EXPLORING' ||
         robotState.state === 'AVOIDING' ||
         robotState.state === 'RETURNING' ||
@@ -1128,20 +1381,33 @@ export function Robot() {
             'warning'
           );
         }
+      } else if (robotState.state === 'CHASING_CATS') {
+        robotState.updateBattery(-0.07);
+
+        if (robotState.battery <= 18) {
+          robotState.setTargetPosition(envState.dockPosition);
+          robotState.setOperationalState(
+            'RETURNING',
+            'Bateria baixa (18%). Retornando à base de recarga.'
+          );
+          cmdState.pushNotification(
+            'Bateria baixa',
+            'Retornando à base para recarregar após arretar os gatos.',
+            'warning'
+          );
+        }
       } else if (robotState.state === 'FLYING' || robotMotionBridge.isFlying) {
         robotState.updateBattery(-0.09);
 
         if (robotState.battery <= 18) {
-          robotMotionBridge.isFlying = false;
-          robotMotionBridge.targetY = 0;
           robotState.setTargetPosition(envState.dockPosition);
           robotState.setOperationalState(
             'RETURNING',
-            'Bateria baixa em voo (18%). Pouso de emergência e retorno à base de recarga.'
+            'Bateria baixa em voo (18%). Navegando para fora dos móveis, pousando no solo e retornando à base.'
           );
           cmdState.pushNotification(
             'Bateria baixa',
-            'Pousando e retornando à base de recarga.',
+            'Iniciando voo para o solo e retorno à base de recarga.',
             'warning'
           );
         }
@@ -1184,13 +1450,15 @@ export function Robot() {
           expression={expression}
         />
         <RobotEffects
-          isCleaning={state === 'CLEANING' || state === 'ORGANIZING'}
+          isCleaning={state === 'CLEANING' || state === 'ORGANIZING' || state === 'CHASING_CATS'}
           isRecharging={state === 'RECHARGING'}
         />
       </group>
 
       {/* Sistema de Espuma Tridimensional em Coordenadas Mundiais (Paredes, Móveis e Chão) */}
       <FoamCannonSystem />
+      {/* Controlador Contínuo de Rastreamento de Mouse a 60 FPS */}
+      <FoamCannonTargeting />
     </>
   );
 }

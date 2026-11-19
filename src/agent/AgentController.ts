@@ -41,6 +41,7 @@ export class AgentController {
   private replanCooldown: number = 0;
   private waypointStallTimer: number = 0;
   private lastWaypointIdx: number = -1;
+  private stateBeforeAvoidance: RobotOperationalState = 'CLEANING';
 
   constructor(
     obstacles: EnvironmentObstacle[],
@@ -85,7 +86,46 @@ export class AgentController {
   }
 
   public findPath(start: Vector2D, target: Vector2D): Vector2D[] {
-    return this.planner.findPath(start, target);
+    let plan: Vector2D[] = [];
+
+    // Se estamos na residência multicômodo, utiliza o grafo topológico de portas
+    if (this.detector.isMultiRoom) {
+      const multiPlan = globalRoomGraph.planMultiRoomNavigation(start, target);
+      if (multiPlan && multiPlan.doorwayWaypoints.length > 0) {
+        const waypoints: Vector2D[] = [];
+        for (let i = 0; i < multiPlan.doorwayWaypoints.length; i++) {
+          const doorCenter = multiPlan.doorwayWaypoints[i];
+          const fromRoom = multiPlan.roomSequence[i];
+          const toRoom = multiPlan.roomSequence[i + 1];
+          const transitionWps = globalRoomGraph.getPerpendicularDoorWaypoints(
+            doorCenter,
+            fromRoom,
+            toRoom
+          );
+          waypoints.push(...transitionWps);
+        }
+        waypoints.push(target);
+
+        let currentStart = start;
+        for (const wp of waypoints) {
+          const segment = this.planner.findPath(currentStart, wp);
+          if (segment.length > 0) {
+            plan.push(...segment);
+            currentStart = segment[segment.length - 1];
+          } else {
+            plan.push(wp);
+            currentStart = wp;
+          }
+        }
+      }
+    }
+
+    // Se a rota direta pelo A* for necessária (dentro do mesmo cômodo ou fallback)
+    if (plan.length === 0) {
+      plan = this.planner.findPath(start, target);
+    }
+
+    return plan;
   }
 
   /**
@@ -162,6 +202,10 @@ export class AgentController {
       };
     }
 
+    if (currentState !== 'AVOIDING') {
+      this.stateBeforeAvoidance = currentState;
+    }
+
     if (this.replanCooldown > 0) {
       this.replanCooldown -= delta;
     }
@@ -185,9 +229,12 @@ export class AgentController {
       ...scan.rays.slice(centerIdx + 1).map((r) => r.distance)
     );
 
-    const isCatInFront = frontRays.some(
-      (r) => r.hit && r.distance < 0.55 && r.obstacleLabel?.includes('Gato')
-    );
+    // No modo de perseguição aos gatos (CHASING_CATS), o gato não é obstáculo de fuga
+    const isCatInFront =
+      currentState !== 'CHASING_CATS' &&
+      frontRays.some(
+        (r) => r.hit && r.distance < 0.55 && r.obstacleLabel?.includes('Gato')
+      );
 
     // Se estiver em aproximação ou passagem de vão de porta, os batentes laterais são esperados
     const isNearDoorway =
@@ -215,7 +262,7 @@ export class AgentController {
       const resumedState: RobotOperationalState =
         this.avoidanceTimer <= 0
           ? currentState === 'AVOIDING'
-            ? 'CLEANING'
+            ? this.stateBeforeAvoidance
             : currentState
           : 'AVOIDING';
       return {
@@ -252,11 +299,12 @@ export class AgentController {
       goal = this.grid.findBestCoverageTarget(position, currentRegionId);
     }
 
-    // Verifica se o alvo mudou (ex: usuário clicou em um novo ponto no chão)
+    // Verifica se o alvo mudou (ex: usuário clicou em um novo ponto no chão ou gato em movimento)
+    const goalThreshold = currentState === 'CHASING_CATS' ? 1.2 : 0.12;
     const goalChanged =
       goal !== null &&
       (this.lastGoal === null ||
-        Math.hypot(goal.x - this.lastGoal.x, goal.z - this.lastGoal.z) > 0.12);
+        Math.hypot(goal.x - this.lastGoal.x, goal.z - this.lastGoal.z) > goalThreshold);
 
     if (goalChanged && goal) {
       this.lastGoal = { x: goal.x, z: goal.z };
@@ -265,6 +313,7 @@ export class AgentController {
 
     // Verifica se o próximo waypoint da rota atual foi bloqueado pelo gato em movimento
     const nextWaypointBlocked =
+      currentState !== 'CHASING_CATS' &&
       this.currentPath.length > 0 &&
       this.currentPathIdx < this.currentPath.length &&
       this.detector.isColliding(this.currentPath[this.currentPathIdx], 0.32);
@@ -278,44 +327,7 @@ export class AgentController {
         (this.replanCooldown <= 0 && isImminentCollision));
 
     if (needsNewPlan && goal) {
-      let plan: Vector2D[] = [];
-
-      // Se estamos na residência multicômodo, utiliza o grafo topológico de portas
-      if (this.detector.isMultiRoom) {
-        const multiPlan = globalRoomGraph.planMultiRoomNavigation(position, goal);
-        if (multiPlan && multiPlan.doorwayWaypoints.length > 0) {
-          const waypoints: Vector2D[] = [];
-          for (let i = 0; i < multiPlan.doorwayWaypoints.length; i++) {
-            const doorCenter = multiPlan.doorwayWaypoints[i];
-            const fromRoom = multiPlan.roomSequence[i];
-            const toRoom = multiPlan.roomSequence[i + 1];
-            const transitionWps = globalRoomGraph.getPerpendicularDoorWaypoints(
-              doorCenter,
-              fromRoom,
-              toRoom
-            );
-            waypoints.push(...transitionWps);
-          }
-          waypoints.push(goal);
-
-          let currentStart = position;
-          for (const wp of waypoints) {
-            const segment = this.planner.findPath(currentStart, wp);
-            if (segment.length > 0) {
-              plan.push(...segment);
-              currentStart = segment[segment.length - 1];
-            } else {
-              plan.push(wp);
-              currentStart = wp;
-            }
-          }
-        }
-      }
-
-      // Se a rota direta pelo A* for necessária (dentro do mesmo cômodo ou fallback)
-      if (plan.length === 0) {
-        plan = this.planner.findPath(position, goal);
-      }
+      const plan = this.findPath(position, goal);
 
       if (plan.length > 0) {
         this.currentPath = plan;
@@ -364,7 +376,7 @@ export class AgentController {
           );
 
           return {
-            nextState: currentState === 'AVOIDING' ? 'CLEANING' : currentState,
+            nextState: currentState === 'AVOIDING' ? (this.stateBeforeAvoidance || 'CLEANING') : currentState,
             desiredSpeed: baseSpeed,
             desiredHeading: heading,
             logAction: `Navegando via A* (Passo ${this.currentPathIdx + 1}/${this.currentPath.length})`,
@@ -375,7 +387,7 @@ export class AgentController {
     }
 
     return {
-      nextState: currentState === 'AVOIDING' ? 'CLEANING' : currentState,
+      nextState: currentState === 'AVOIDING' ? (this.stateBeforeAvoidance || 'CLEANING') : currentState,
       desiredSpeed: baseSpeed * 0.8,
       desiredHeading: rotationY,
       logAction: 'Varredura exploratória',

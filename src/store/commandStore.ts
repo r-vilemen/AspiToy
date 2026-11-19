@@ -9,7 +9,7 @@ import type { Vector2D } from '@/types/robot';
 import { useRobotStore, manualControlBridge, robotMotionBridge } from './robotStore';
 import { useEnvironmentStore } from './environmentStore';
 import { soundManager } from '@/services/soundManager';
-import { getOverheadObstacleAt } from '@/world/House/HouseObstacles';
+import { getOverheadObstacleAt, getSurfaceLandingY } from '@/world/House/HouseObstacles';
 
 export type CameraPreset = 'follow' | 'overview' | 'closeup';
 
@@ -157,6 +157,34 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
         break;
       }
 
+      case 'START_CHASING_CATS': {
+        manualControlBridge.active = false;
+        manualControlBridge.forward = 0;
+        manualControlBridge.turn = 0;
+
+        if (robot.state === 'CHASING_CATS') {
+          // Desativa o modo de perseguição aos gatos e para o robô
+          robot.setOperationalState('IDLE', 'Modo arretar gatos desativado');
+          label = 'Parar arretar gatos';
+          break;
+        }
+
+        // Se estiver acoplado na base recarregando, desacopla para frente da estação
+        if (robot.state === 'RECHARGING') {
+          robotMotionBridge.x = -3.8;
+          robotMotionBridge.z = 2.6;
+          robotMotionBridge.rotationY = 0;
+        }
+
+        robot.setTargetPosition(null);
+        label = 'Arretar os gatos';
+        robot.setOperationalState(
+          'CHASING_CATS',
+          'Arretando os gatos com jatos de espuma! 😼🫧'
+        );
+        break;
+      }
+
       case 'PAUSE_CLEANING': {
         manualControlBridge.active = false;
         manualControlBridge.forward = 0;
@@ -165,6 +193,7 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
         if (
           robot.state !== 'CLEANING' &&
           robot.state !== 'ORGANIZING' &&
+          robot.state !== 'CHASING_CATS' &&
           robot.state !== 'EXPLORING' &&
           robot.state !== 'RETURNING' &&
           robot.state !== 'AVOIDING' &&
@@ -221,6 +250,24 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
           reason = 'O AspiToy já está acoplado na base.';
           break;
         }
+
+        // Se o robô estiver sobre um móvel elevado, aciona voo para sair do móvel e pousar no solo a caminho da base.
+        // Se já estiver sobre o piso livre, deve retornar à base andando pelo chão!
+        const currentSurf = getSurfaceLandingY(
+          { x: robotMotionBridge.x, z: robotMotionBridge.z },
+          robotMotionBridge.y
+        );
+        if (currentSurf > 0) {
+          robotMotionBridge.isFlying = true;
+          robotMotionBridge.targetY = Math.max(0.85, currentSurf + 0.35);
+        } else {
+          robotMotionBridge.targetY = 0.0;
+          if ((robotMotionBridge.y ?? 0) <= 0.15) {
+            robotMotionBridge.isFlying = false;
+            robotMotionBridge.y = 0.0;
+          }
+        }
+
         label = 'Retornar à base de recarga';
         robot.setTargetPosition(env.dockPosition);
         robot.setOperationalState(

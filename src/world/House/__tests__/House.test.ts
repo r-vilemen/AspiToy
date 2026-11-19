@@ -3,6 +3,8 @@ import { INITIAL_ROOM_DIMENSIONS, INITIAL_OBSTACLES, INITIAL_REGIONS } from '@/s
 import { sharedMaterials, WORLD_PALETTE } from '@/world/Environment/Materials';
 import {
   ALL_HOUSE_OBSTACLES,
+  HOUSE_ELEVATED_SURFACES,
+  getNearestFloorEscapePoint,
   getOverheadObstacleAt,
   getSurfaceLandingY,
 } from '@/world/House/HouseObstacles';
@@ -206,5 +208,115 @@ describe('Construção da Casa 3D e Coerência Espacial (Dia 2)', () => {
     expect(armrestHit.collided).toBe(true);
     expect(armrestHit.obstacleId).toBe('armchair-olive-armrest-left');
     expect(armrestHit.position.x).toBeLessThanOrEqual(0.06);
+  });
+
+  it('permite decolagem de emergência mesmo com bateria <= 20% quando preso em cima de um móvel e nunca pousa em móveis sem bateria', () => {
+    const { toggleHelicopterMode } = useRobotStore.getState();
+
+    // 1. Robô no chão com bateria fraca: decolagem normal é bloqueada
+    robotMotionBridge.x = 0.0;
+    robotMotionBridge.z = 0.0;
+    robotMotionBridge.y = 0.0;
+    robotMotionBridge.isFlying = false;
+    useRobotStore.setState({ battery: 15 });
+
+    const groundTakeoff = toggleHelicopterMode();
+    expect(groundTakeoff).toBe(false);
+    expect(robotMotionBridge.isFlying).toBe(false);
+
+    // 2. Robô preso em cima da mesa (y = 0.69m) com bateria fraca: decolagem de emergência é autorizada
+    robotMotionBridge.x = -1.45;
+    robotMotionBridge.z = -1.15;
+    robotMotionBridge.y = 0.69;
+    robotMotionBridge.isFlying = false;
+
+    const emergencyTakeoff = toggleHelicopterMode();
+    expect(emergencyTakeoff).toBe(true);
+    expect(robotMotionBridge.isFlying).toBe(true);
+
+    // 3. Ao pousar sem bateria (bateria <= 20%), a cota de pouso nunca é o móvel, mas sim o solo (0.0)
+    const emergencyLanding = toggleHelicopterMode();
+    expect(emergencyLanding).toBe(false);
+    expect(robotMotionBridge.targetY).toBe(0.0);
+  });
+
+  it('calcula o ponto de escape no piso livre e bloqueia voo manual durante retorno à base no solo', () => {
+    const tableSurface = HOUSE_ELEVATED_SURFACES.find((s) => s.id === 'surface-bedroom-coffee-table')!;
+    expect(tableSurface).toBeDefined();
+
+    // Calcula escape da mesa a partir do centro
+    const escapePoint = getNearestFloorEscapePoint(
+      { x: -1.45, z: -1.15 },
+      tableSurface
+    );
+
+    // O ponto de escape deve estar a pelo menos 0.45m fora do perímetro do móvel
+    const isOutsideX =
+      escapePoint.x < tableSurface.bounds.minX || escapePoint.x > tableSurface.bounds.maxX;
+    const isOutsideZ =
+      escapePoint.z < tableSurface.bounds.minZ || escapePoint.z > tableSurface.bounds.maxZ;
+    expect(isOutsideX || isOutsideZ).toBe(true);
+
+    // Em RETURNING no solo com bateria boa: decolagem manual não é permitida (deve andar pelo chão)
+    robotMotionBridge.x = 0.0;
+    robotMotionBridge.z = 0.0;
+    robotMotionBridge.y = 0.0;
+    robotMotionBridge.isFlying = false;
+    useRobotStore.setState({ state: 'RETURNING', battery: 80 });
+
+    const returningTakeoff = useRobotStore.getState().toggleHelicopterMode();
+    expect(returningTakeoff).toBe(false);
+    expect(robotMotionBridge.isFlying).toBe(false);
+  });
+
+  it('valida colisão completa do sofá em L da sala (pés, vão livre inferior, superfícies de assento e sobrevoo)', () => {
+    const detector = new ObstacleDetector(ALL_HOUSE_OBSTACLES, 22.6, 17.5);
+
+    // 1. Pés do sofá bloqueiam o robô de chão (Y = 0)
+    const legHit = detector.resolveSafeMovement(
+      { x: 12.55, z: 0.20 },
+      { x: 12.55, z: 0.65 },
+      0.15,
+      0.0
+    );
+    expect(legHit.collided).toBe(true);
+    expect(legHit.obstacleId).toBe('sofa-leg-f2');
+
+    // 2. Vão livre debaixo do sofá permite passagem pelo chão (Y = 0) entre os pés
+    const underSofaMove = detector.resolveSafeMovement(
+      { x: 13.2, z: 0.20 },
+      { x: 13.2, z: 1.00 },
+      0.15,
+      0.0
+    );
+    expect(underSofaMove.collided).toBe(false);
+    expect(underSofaMove.position.z).toBeCloseTo(1.00, 2);
+
+    // 3. Em voo ou sobre a superfície (Y >= 0.585), os pés inferiores NÃO causam colisão
+    const flyingAboveLegs = detector.resolveSafeMovement(
+      { x: 12.55, z: 0.50 },
+      { x: 12.55, z: 1.00 },
+      0.15,
+      0.585
+    );
+    // Deve atravessar a cota dos pés livremente
+    expect(flyingAboveLegs.collided).toBe(false);
+
+    // 4. Cotas de pouso das superfícies do sofá e da chaise
+    const sofaSeatLandingY = getSurfaceLandingY({ x: 13.2, z: 0.90 }, 0.65);
+    expect(sofaSeatLandingY).toBeCloseTo(0.585, 2);
+
+    const chaiseLandingY = getSurfaceLandingY({ x: 15.6, z: 0.10 }, 0.65);
+    expect(chaiseLandingY).toBeCloseTo(0.585, 2);
+
+    // 5. Voo alto (Y = 1.60m) sobrevoa o encosto sem bater (espaço aéreo livre)
+    const highFlight = detector.resolveSafeMovement(
+      { x: 13.2, z: 0.88 },
+      { x: 13.2, z: 2.10 },
+      0.29,
+      1.60
+    );
+    expect(highFlight.collided).toBe(false);
+    expect(highFlight.position.z).toBeCloseTo(2.10, 2);
   });
 });

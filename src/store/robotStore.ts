@@ -97,6 +97,9 @@ export const robotMotionBridge: RobotMotionBridge = {
   foamTargetX: 0,
   foamTargetY: 0,
   foamTargetZ: 0,
+  foamTargetNormalX: 0,
+  foamTargetNormalY: 1,
+  foamTargetNormalZ: 0,
 };
 
 /**
@@ -131,6 +134,8 @@ function mapStateToExpression(state: RobotOperationalState): RobotExpression {
       return 'happy';
     case 'FLYING':
       return 'curious';
+    case 'CHASING_CATS':
+      return 'happy';
   }
 }
 
@@ -154,7 +159,14 @@ export interface RobotStoreState extends RobotTelemetry {
   toggleHelicopterMode: () => boolean;
   isCannonAiming: boolean;
   toggleFoamCannonAim: (active?: boolean) => boolean;
-  fireFoamCannon: (target?: { x: number; y: number; z: number }) => void;
+  fireFoamCannon: (target?: {
+    x: number;
+    y: number;
+    z: number;
+    nx?: number;
+    ny?: number;
+    nz?: number;
+  }) => void;
   fireBubbleCannon: () => void;
   resetRobot: () => void;
 }
@@ -170,7 +182,7 @@ const INITIAL_TELEMETRY: RobotTelemetry = {
   totalToysToOrganize: 16,
   position: { ...INITIAL_DOCK_POSITION },
   rotationY: Math.PI / 2,
-  battery: 96,
+  battery: 100,
   speed: 1.35,
   cleaningProgress: 0,
   roomCleaningProgress: 0,
@@ -244,6 +256,7 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
       state === 'ORGANIZING' ||
       state === 'AVOIDING' ||
       state === 'FLYING' ||
+      state === 'CHASING_CATS' ||
       state === 'RETURNING'
     ) {
       set({ operationSeconds: operationSeconds + 1 });
@@ -268,11 +281,34 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
 
     // Se estiver tentando levantar voo, valida condições de segurança
     if (isNowFlying) {
-      // Bloqueia decolagem com bateria fraca (<= 20%)
-      if (current.battery <= 20) {
+      const surfaceLandingY = getSurfaceLandingY(
+        { x: robotMotionBridge.x, z: robotMotionBridge.z },
+        robotMotionBridge.y
+      );
+      const isPerchedOnFurniture = surfaceLandingY > 0 || (robotMotionBridge.y ?? 0) > 0.15;
+
+      // Bloqueia decolagem com bateria fraca (<= 20%), EXCETO se o robô estiver preso em cima de um móvel
+      // e precisar voar de emergência para descer e pousar no solo com segurança!
+      if (current.battery <= 20 && !isPerchedOnFurniture) {
         set({
           lastAction: 'Decolagem bloqueada: Bateria fraca (requer mais de 20%)',
           expression: 'worried',
+        });
+        return false;
+      }
+
+      // Bloqueia voo durante retorno à base se já estiver no solo
+      if (current.state === 'RETURNING' && !isPerchedOnFurniture) {
+        set({
+          lastAction: 'Retorno à base deve ser realizado pelo piso',
+        });
+        return false;
+      }
+
+      // Bloqueia voo durante retorno à base se já estiver no solo
+      if (current.state === 'RETURNING' && !isPerchedOnFurniture) {
+        set({
+          lastAction: 'Retorno à base deve ser realizado pelo piso',
         });
         return false;
       }
@@ -291,19 +327,31 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
     robotMotionBridge.isFlying = isNowFlying;
 
     if (isNowFlying) {
-      robotMotionBridge.targetY = 0.85;
-      set({
-        state: 'FLYING',
-        previousActiveState: current.state !== 'PAUSED' ? current.state : current.previousActiveState,
-        expression: 'curious',
-        lastAction: 'Decolando em Modo Aspi-Helicóptero',
-      });
-    } else {
-      // Pouso seguro: se estiver sobre uma mobília (mesa, sofá, baú), pousa sobre ela sem afundar
       const surfaceLandingY = getSurfaceLandingY(
         { x: robotMotionBridge.x, z: robotMotionBridge.z },
         robotMotionBridge.y
       );
+      const isPerchedOnFurniture = surfaceLandingY > 0 || (robotMotionBridge.y ?? 0) > 0.15;
+      const baseSurfaceY = surfaceLandingY > 0 ? surfaceLandingY : (robotMotionBridge.y > 0.15 ? robotMotionBridge.y : 0);
+      robotMotionBridge.targetY = Math.max(0.85, baseSurfaceY + 0.35);
+      set({
+        state: 'FLYING',
+        previousActiveState: current.state !== 'PAUSED' ? current.state : current.previousActiveState,
+        expression: current.battery <= 20 ? 'worried' : 'curious',
+        lastAction: isPerchedOnFurniture && current.battery <= 20
+          ? 'Decolagem automática de emergência para sair do móvel e pousar no solo'
+          : 'Decolando em Modo Aspi-Helicóptero',
+      });
+    } else {
+      // Pouso seguro:
+      // REGRA DE OURO: Nunca pousar nos móveis sem bateria (<= 20%) ou em retorno à base!
+      const isLowBatteryOrReturning = current.battery <= 20 || current.state === 'RETURNING';
+      const surfaceLandingY = isLowBatteryOrReturning
+        ? 0
+        : getSurfaceLandingY(
+          { x: robotMotionBridge.x, z: robotMotionBridge.z },
+          robotMotionBridge.y
+        );
       robotMotionBridge.targetY = surfaceLandingY;
       const fallbackState = current.previousActiveState ?? 'EXPLORING';
       set({
@@ -326,6 +374,7 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
         expression: 'focused',
       });
     } else {
+      soundManager.playFoamCannonRetract();
       set({
         isCannonAiming: false,
         lastAction: 'Canhão de Espuma recolhido para a lateral.',
@@ -337,20 +386,34 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
   fireFoamCannon: (targetPoint) => {
     // Garante que o canhão esteja estendido para disparar
     robotMotionBridge.isCannonAiming = true;
-    if (robotMotionBridge.cannonExtension < 0.3) {
-      robotMotionBridge.cannonExtension = 0.5;
+    if (robotMotionBridge.cannonExtension < 0.4) {
+      robotMotionBridge.cannonExtension = 0.6;
     }
 
     if (targetPoint) {
       robotMotionBridge.foamTargetX = targetPoint.x;
       robotMotionBridge.foamTargetY = targetPoint.y;
       robotMotionBridge.foamTargetZ = targetPoint.z;
+      robotMotionBridge.foamTargetNormalX = targetPoint.nx ?? 0;
+      robotMotionBridge.foamTargetNormalY = targetPoint.ny ?? 1;
+      robotMotionBridge.foamTargetNormalZ = targetPoint.nz ?? 0;
     } else {
-      // Disparo frontal padrão na direção do robô
-      const heading = robotMotionBridge.rotationY;
-      robotMotionBridge.foamTargetX = robotMotionBridge.x + Math.sin(heading) * 2.5;
-      robotMotionBridge.foamTargetY = robotMotionBridge.y + 0.15;
-      robotMotionBridge.foamTargetZ = robotMotionBridge.z + Math.cos(heading) * 2.5;
+      // Se não foi passado targetPoint explícito, verifica se já existe uma mira válida do mouse no bridge
+      const hasValidMouseTarget =
+        Number.isFinite(robotMotionBridge.foamTargetX) &&
+        Number.isFinite(robotMotionBridge.foamTargetZ) &&
+        (robotMotionBridge.foamTargetX !== 0 || robotMotionBridge.foamTargetZ !== 0);
+
+      if (!hasValidMouseTarget) {
+        // Disparo frontal padrão na direção do robô somente se não houver mira do mouse
+        const heading = robotMotionBridge.rotationY;
+        robotMotionBridge.foamTargetX = robotMotionBridge.x + Math.sin(heading) * 2.5;
+        robotMotionBridge.foamTargetY = robotMotionBridge.y + 0.15;
+        robotMotionBridge.foamTargetZ = robotMotionBridge.z + Math.cos(heading) * 2.5;
+        robotMotionBridge.foamTargetNormalX = 0;
+        robotMotionBridge.foamTargetNormalY = 1;
+        robotMotionBridge.foamTargetNormalZ = 0;
+      }
     }
 
     // Gatilho de disparo e recuo mecânico
@@ -398,6 +461,9 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
     robotMotionBridge.foamTargetX = 0;
     robotMotionBridge.foamTargetY = 0;
     robotMotionBridge.foamTargetZ = 0;
+    robotMotionBridge.foamTargetNormalX = 0;
+    robotMotionBridge.foamTargetNormalY = 1;
+    robotMotionBridge.foamTargetNormalZ = 0;
 
     set({
       ...INITIAL_TELEMETRY,

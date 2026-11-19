@@ -66,6 +66,12 @@ export const STATE_DESCRIPTORS: Record<RobotOperationalState, OperationalStateDe
     dotColorClass: 'bg-[#F59E0B]',
     badgeClass: 'bg-[#F59E0B]/16 text-[#B45309] border-[#F59E0B]/40',
   },
+  CHASING_CATS: {
+    label: 'Arretando os gatos',
+    shortNote: 'Perseguição lúdica e jatos de espuma',
+    dotColorClass: 'bg-[#EA580C]',
+    badgeClass: 'bg-[#EA580C]/18 text-[#C2410C] border-[#EA580C]/40',
+  },
   FLYING: {
     label: 'Modo Aspi-Helicóptero',
     shortNote: 'Higienização aérea de mesas e sofás',

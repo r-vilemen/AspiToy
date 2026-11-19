@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   ChevronDown,
+  Crosshair,
   Home,
   Pause,
   Play,
@@ -26,6 +27,7 @@ export function Dashboard() {
   const dispatchCommand = useCommandStore((s) => s.dispatchCommand);
   const robotState = useRobotStore((s) => s.state);
   const battery = useRobotStore((s) => s.battery);
+  const isCannonAiming = useRobotStore((s) => s.isCannonAiming);
 
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
@@ -40,6 +42,7 @@ export function Dashboard() {
   const isRunning =
     robotState === 'CLEANING' ||
     robotState === 'ORGANIZING' ||
+    robotState === 'CHASING_CATS' ||
     robotState === 'EXPLORING' ||
     robotState === 'AVOIDING' ||
     robotState === 'RETURNING';
@@ -93,6 +96,21 @@ export function Dashboard() {
                   className="flex h-9 w-9 items-center justify-center rounded-xl border-2 border-[#2A211B] bg-[#FBBF24] hover:bg-[#F59E0B] text-[#2A211B] shadow-[2px_2px_0px_#2A211B] active:translate-y-0.5 active:shadow-none transition cursor-pointer"
                 >
                   <SlidersHorizontal className="h-4 w-4 stroke-[2.4]" />
+                </button>
+
+                {/* Botão do Canhão de Espuma Lateral no Mobile */}
+                <button
+                  type="button"
+                  onClick={() => dispatchCommand('TOGGLE_FOAM_CANNON_AIM')}
+                  aria-label={isCannonAiming ? 'Recolher Canhão de Espuma (C)' : 'Ativar Canhão de Espuma (C)'}
+                  title={isCannonAiming ? 'Desativar Canhão de Espuma (C)' : 'Ativar Canhão de Espuma (C)'}
+                  className={`flex h-9 w-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[2px_2px_0px_#2A211B] active:translate-y-0.5 active:shadow-none transition cursor-pointer ${
+                    isCannonAiming
+                      ? 'bg-[#EA580C] text-white shadow-[2px_2px_0px_#9A3412]'
+                      : 'bg-[#FFFDF8] text-[#EA580C]'
+                  }`}
+                >
+                  <Crosshair className="h-4 w-4 stroke-[2.4]" />
                 </button>
               </div>
 

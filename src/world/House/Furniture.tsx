@@ -585,6 +585,20 @@ function ChargingDockInteractive() {
   const pushNotification = useCommandStore((s) => s.pushNotification);
 
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
+    if (useRobotStore.getState().isCannonAiming) {
+      e.stopPropagation();
+      const norm = e.face?.normal;
+      useRobotStore.getState().fireFoamCannon({
+        x: e.point.x,
+        y: e.point.y,
+        z: e.point.z,
+        nx: norm?.x ?? 0,
+        ny: norm?.y ?? 1,
+        nz: norm?.z ?? 0,
+      });
+      return;
+    }
+
     e.stopPropagation();
 
     if (robotState === 'RECHARGING') {
