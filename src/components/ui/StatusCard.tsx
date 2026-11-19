@@ -10,7 +10,6 @@ export function StatusCard() {
   const currentRegionLabel = useRobotStore((s) => s.currentRegionLabel);
   const roomCleaningProgress = useRobotStore((s) => s.roomCleaningProgress);
   const operationSeconds = useRobotStore((s) => s.operationSeconds);
-  const lastAction = useRobotStore((s) => s.lastAction);
 
   const descriptor = STATE_DESCRIPTORS[state];
 
@@ -60,11 +59,6 @@ export function StatusCard() {
           </dd>
         </div>
       </dl>
-
-      <div className="rounded-xl border-2 border-[#2A211B] bg-[#FEF3C7] px-3 py-2 text-xs text-[#54463B] shadow-[2px_2px_0px_#2A211B]">
-        <span className="font-black text-[#2A211B]">Última ação: </span>
-        <span className="font-medium">{lastAction}</span>
-      </div>
     </section>
   );
 }
