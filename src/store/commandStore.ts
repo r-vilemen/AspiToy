@@ -251,15 +251,21 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
           break;
         }
 
-        // Se o robô estiver sobre um móvel elevado, aciona decolagem automática de emergência
-        // para sair do móvel e pousar no solo a caminho da base
+        // Se o robô estiver sobre um móvel elevado, aciona voo para sair do móvel e pousar no solo a caminho da base.
+        // Se já estiver sobre o piso livre, deve retornar à base andando pelo chão!
         const currentSurf = getSurfaceLandingY(
           { x: robotMotionBridge.x, z: robotMotionBridge.z },
           robotMotionBridge.y
         );
-        if (currentSurf > 0 || (robotMotionBridge.y ?? 0) > 0.15) {
+        if (currentSurf > 0) {
           robotMotionBridge.isFlying = true;
-          robotMotionBridge.targetY = Math.max(0.85, (robotMotionBridge.y || currentSurf) + 0.35);
+          robotMotionBridge.targetY = Math.max(0.85, currentSurf + 0.35);
+        } else {
+          robotMotionBridge.targetY = 0.0;
+          if ((robotMotionBridge.y ?? 0) <= 0.15) {
+            robotMotionBridge.isFlying = false;
+            robotMotionBridge.y = 0.0;
+          }
         }
 
         label = 'Retornar à base de recarga';

@@ -34,6 +34,7 @@ import { soundManager } from '@/services/soundManager';
 import {
   HOUSE_ELEVATED_SURFACES,
   getSurfaceLandingY,
+  getNearestFloorEscapePoint,
   getOverheadObstacleAt,
 } from '@/world/House/HouseObstacles';
 
@@ -378,22 +379,25 @@ export function Robot() {
       }
     } else if (robotMotionBridge.isFlying) {
       if (robotState.state === 'RETURNING') {
-        // Retorno em voo direto para a base
-        targetPoint = envState.dockPosition;
-
         const surfaceUnder = HOUSE_ELEVATED_SURFACES.find((s) =>
           isPointInsideBounds({ x: loc.x, z: loc.z }, s.bounds, 0.14)
         );
 
         if (surfaceUnder) {
-          // Mantém altitude segura sobre a mobília enquanto sai de seus limites
-          robotMotionBridge.targetY = Math.max(0.85, surfaceUnder.surfaceY + 0.30);
+          // O robô está sobre um móvel elevado: voa até a borda mais próxima no piso livre
+          targetPoint = getNearestFloorEscapePoint({ x: loc.x, z: loc.z }, surfaceUnder);
+          robotMotionBridge.targetY = Math.max(0.85, surfaceUnder.surfaceY + 0.35);
         } else {
           // Céu aberto sobre o piso livre: inicia descida e pouso automático suave no solo
+          targetPoint = envState.dockPosition;
           robotMotionBridge.targetY = 0.0;
-          if (robotMotionBridge.y <= 0.04) {
+          if (robotMotionBridge.y <= 0.08) {
             robotMotionBridge.isFlying = false;
             robotMotionBridge.y = 0.0;
+            loc.pitch = 0;
+            loc.roll = 0;
+            flightPathRef.current = [];
+            flightTargetRef.current = null;
             cmdState.pushNotification(
               'Pouso no Solo Concluído',
               'AspiToy desceu do móvel com segurança e segue pelo piso até a base.',
@@ -710,8 +714,35 @@ export function Robot() {
           const turnDiff = Math.sin(loc.targetRotationY - loc.rotationY);
           loc.roll = damp(loc.roll, -turnDiff * 0.14, 6.0, delta);
         } else {
-          // Chegou ao destino do ponto manual
-          if (robotState.targetPosition) {
+          // Chegou ao destino do ponto manual ou da base
+          if (robotState.state === 'RETURNING') {
+            loc.speed = 0;
+            loc.x = envState.dockPosition.x;
+            loc.z = envState.dockPosition.z;
+            loc.rotationY = Math.PI / 2;
+            loc.targetRotationY = Math.PI / 2;
+            robotMotionBridge.x = envState.dockPosition.x;
+            robotMotionBridge.z = envState.dockPosition.z;
+            robotMotionBridge.rotationY = Math.PI / 2;
+            robotMotionBridge.isFlying = false;
+            robotMotionBridge.y = 0.0;
+            robotMotionBridge.targetY = 0.0;
+            robotMotionBridge.propellerSpeed = 0.0;
+            robotMotionBridge.propellerExtension = 0.0;
+            soundManager.stopPropellerSound();
+            flightPathRef.current = [];
+            flightTargetRef.current = null;
+            robotState.setTargetPosition(null);
+            robotState.setOperationalState(
+              'RECHARGING',
+              'Acoplado na estação de carregamento'
+            );
+            cmdState.pushNotification(
+              'Acoplamento concluído',
+              'AspiToy conectado à base e recarregando bateria.',
+              'success'
+            );
+          } else if (robotState.targetPosition) {
             loc.speed = 0;
             robotState.setTargetPosition(null);
             flightPathRef.current = [];
@@ -843,6 +874,15 @@ export function Robot() {
                 loc.z = envState.dockPosition.z;
                 loc.rotationY = Math.PI / 2;
                 loc.targetRotationY = Math.PI / 2;
+                robotMotionBridge.x = envState.dockPosition.x;
+                robotMotionBridge.z = envState.dockPosition.z;
+                robotMotionBridge.rotationY = Math.PI / 2;
+                robotMotionBridge.isFlying = false;
+                robotMotionBridge.y = 0.0;
+                robotMotionBridge.targetY = 0.0;
+                robotMotionBridge.propellerSpeed = 0.0;
+                robotMotionBridge.propellerExtension = 0.0;
+                soundManager.stopPropellerSound();
                 robotState.setTargetPosition(null);
                 robotState.setOperationalState(
                   'RECHARGING',
@@ -1065,7 +1105,9 @@ export function Robot() {
         isPointInsideBounds({ x: loc.x, z: loc.z }, s.bounds, 0.05)
       );
 
-      if (activeTarget && targetDesiredHoverY !== null) {
+      if (robotState.state === 'RETURNING') {
+        targetAltitude = surfaceUnderRobot ? Math.max(0.85, surfaceUnderRobot.surfaceY + 0.35) : 0.0;
+      } else if (activeTarget && targetDesiredHoverY !== null) {
         const distToTarget = distance2D({ x: loc.x, z: loc.z }, activeTarget);
         if (surfaceUnderRobot || distToTarget < 0.40) {
           targetAltitude = targetDesiredHoverY;
@@ -1082,9 +1124,10 @@ export function Robot() {
 
       // Decolagem cadenciada e realista: a elevação vertical é governada pelo lift aerodinâmico
       const baseSurfaceY = surfaceUnderRobot ? surfaceUnderRobot.surfaceY : 0.0;
-      const effectiveTargetY = baseSurfaceY + (targetAltitude - baseSurfaceY) * lift;
+      const effectiveTargetY =
+        targetAltitude === 0.0 ? 0.0 : baseSurfaceY + (targetAltitude - baseSurfaceY) * lift;
 
-      const climbSpeed = 1.6 * (0.2 + 0.8 * lift);
+      const climbSpeed = targetAltitude === 0.0 ? 2.4 : 1.6 * (0.2 + 0.8 * lift);
       robotMotionBridge.y = damp(
         robotMotionBridge.y,
         effectiveTargetY,

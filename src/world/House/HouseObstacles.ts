@@ -874,3 +874,33 @@ export function getSurfaceLandingY(
   }
   return 0.0;
 }
+
+/**
+ * Calcula o ponto seguro no piso livre mais próximo da borda da mobília elevada.
+ * Usado pelo robô quando em voo sobre um móvel para voar para fora de seus limites
+ * e em seguida pousar suavemente no solo para retornar à base pelo chão.
+ */
+export function getNearestFloorEscapePoint(
+  robotPos: Vector2D,
+  surface: (typeof HOUSE_ELEVATED_SURFACES)[0]
+): Vector2D {
+  const margin = 0.45;
+  const b = surface.bounds;
+  const clampCoord = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val));
+  const candidates: Vector2D[] = [
+    { x: b.minX - margin, z: clampCoord(robotPos.z, b.minZ, b.maxZ) },
+    { x: b.maxX + margin, z: clampCoord(robotPos.z, b.minZ, b.maxZ) },
+    { x: clampCoord(robotPos.x, b.minX, b.maxX), z: b.minZ - margin },
+    { x: clampCoord(robotPos.x, b.minX, b.maxX), z: b.maxZ + margin },
+  ];
+  let best = candidates[0];
+  let minDist = Infinity;
+  for (const c of candidates) {
+    const d = Math.hypot(c.x - robotPos.x, c.z - robotPos.z);
+    if (d < minDist) {
+      minDist = d;
+      best = c;
+    }
+  }
+  return best;
+}

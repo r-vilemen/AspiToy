@@ -3,6 +3,8 @@ import { INITIAL_ROOM_DIMENSIONS, INITIAL_OBSTACLES, INITIAL_REGIONS } from '@/s
 import { sharedMaterials, WORLD_PALETTE } from '@/world/Environment/Materials';
 import {
   ALL_HOUSE_OBSTACLES,
+  HOUSE_ELEVATED_SURFACES,
+  getNearestFloorEscapePoint,
   getOverheadObstacleAt,
   getSurfaceLandingY,
 } from '@/world/House/HouseObstacles';
@@ -236,5 +238,34 @@ describe('Construção da Casa 3D e Coerência Espacial (Dia 2)', () => {
     const emergencyLanding = toggleHelicopterMode();
     expect(emergencyLanding).toBe(false);
     expect(robotMotionBridge.targetY).toBe(0.0);
+  });
+
+  it('calcula o ponto de escape no piso livre e bloqueia voo manual durante retorno à base no solo', () => {
+    const tableSurface = HOUSE_ELEVATED_SURFACES.find((s) => s.id === 'surface-bedroom-coffee-table')!;
+    expect(tableSurface).toBeDefined();
+
+    // Calcula escape da mesa a partir do centro
+    const escapePoint = getNearestFloorEscapePoint(
+      { x: -1.45, z: -1.15 },
+      tableSurface
+    );
+
+    // O ponto de escape deve estar a pelo menos 0.45m fora do perímetro do móvel
+    const isOutsideX =
+      escapePoint.x < tableSurface.bounds.minX || escapePoint.x > tableSurface.bounds.maxX;
+    const isOutsideZ =
+      escapePoint.z < tableSurface.bounds.minZ || escapePoint.z > tableSurface.bounds.maxZ;
+    expect(isOutsideX || isOutsideZ).toBe(true);
+
+    // Em RETURNING no solo com bateria boa: decolagem manual não é permitida (deve andar pelo chão)
+    robotMotionBridge.x = 0.0;
+    robotMotionBridge.z = 0.0;
+    robotMotionBridge.y = 0.0;
+    robotMotionBridge.isFlying = false;
+    useRobotStore.setState({ state: 'RETURNING', battery: 80 });
+
+    const returningTakeoff = useRobotStore.getState().toggleHelicopterMode();
+    expect(returningTakeoff).toBe(false);
+    expect(robotMotionBridge.isFlying).toBe(false);
   });
 });
