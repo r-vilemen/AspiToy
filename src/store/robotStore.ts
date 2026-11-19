@@ -398,14 +398,22 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
       robotMotionBridge.foamTargetNormalY = targetPoint.ny ?? 1;
       robotMotionBridge.foamTargetNormalZ = targetPoint.nz ?? 0;
     } else {
-      // Disparo frontal padrão na direção do robô
-      const heading = robotMotionBridge.rotationY;
-      robotMotionBridge.foamTargetX = robotMotionBridge.x + Math.sin(heading) * 2.5;
-      robotMotionBridge.foamTargetY = robotMotionBridge.y + 0.15;
-      robotMotionBridge.foamTargetZ = robotMotionBridge.z + Math.cos(heading) * 2.5;
-      robotMotionBridge.foamTargetNormalX = 0;
-      robotMotionBridge.foamTargetNormalY = 1;
-      robotMotionBridge.foamTargetNormalZ = 0;
+      // Se não foi passado targetPoint explícito, verifica se já existe uma mira válida do mouse no bridge
+      const hasValidMouseTarget =
+        Number.isFinite(robotMotionBridge.foamTargetX) &&
+        Number.isFinite(robotMotionBridge.foamTargetZ) &&
+        (robotMotionBridge.foamTargetX !== 0 || robotMotionBridge.foamTargetZ !== 0);
+
+      if (!hasValidMouseTarget) {
+        // Disparo frontal padrão na direção do robô somente se não houver mira do mouse
+        const heading = robotMotionBridge.rotationY;
+        robotMotionBridge.foamTargetX = robotMotionBridge.x + Math.sin(heading) * 2.5;
+        robotMotionBridge.foamTargetY = robotMotionBridge.y + 0.15;
+        robotMotionBridge.foamTargetZ = robotMotionBridge.z + Math.cos(heading) * 2.5;
+        robotMotionBridge.foamTargetNormalX = 0;
+        robotMotionBridge.foamTargetNormalY = 1;
+        robotMotionBridge.foamTargetNormalZ = 0;
+      }
     }
 
     // Gatilho de disparo e recuo mecânico

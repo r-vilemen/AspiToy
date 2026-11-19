@@ -82,10 +82,10 @@ export const FoamCannonTargeting = memo(function FoamCannonTargeting() {
   }, [gl]);
 
   useFrame((state) => {
-    const isAiming = robotMotionBridge.isCannonAiming || useRobotStore.getState().isCannonAiming;
-    if (!isAiming) return;
+    // Se o robô estiver no modo de perseguição autônoma aos gatos, a IA controla o canhão
+    if (useRobotStore.getState().state === 'CHASING_CATS') return;
 
-    // Projeta o raio da câmera a partir do ponteiro normalizado (-1 a +1)
+    // Rastreia continuamente o ponteiro do mouse em 3D sobre a cena para que o canhão e a tecla Espaço sempre acompanhem o cursor
     state.raycaster.setFromCamera(state.pointer, state.camera);
 
     // Intersecta todos os objetos da cena

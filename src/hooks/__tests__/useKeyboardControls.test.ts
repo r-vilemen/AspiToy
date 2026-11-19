@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { normalizeDirectionKey, useKeyboardControls } from '../useKeyboardControls';
-import { manualControlBridge, useRobotStore } from '@/store/robotStore';
+import { manualControlBridge, robotMotionBridge, useRobotStore } from '@/store/robotStore';
 
 describe('Reconhecimento Universal de Teclado e Controle Manual (WASD / Setas)', () => {
   beforeEach(() => {
@@ -154,6 +154,37 @@ describe('Reconhecimento Universal de Teclado e Controle Manual (WASD / Setas)',
     // Desativa com C
     useRobotStore.getState().toggleFoamCannonAim();
     expect(useRobotStore.getState().isCannonAiming).toBe(false);
+  });
+
+  it('dispara o canhão de espuma na tecla espaço sempre acompanhando a mira do mouse', () => {
+    const { unmount } = renderHook(() => useKeyboardControls());
+
+    // Configura coordenadas de mira do mouse no bridge
+    robotMotionBridge.foamTargetX = 2.45;
+    robotMotionBridge.foamTargetY = 0.52;
+    robotMotionBridge.foamTargetZ = -1.82;
+    robotMotionBridge.foamTargetNormalX = 0;
+    robotMotionBridge.foamTargetNormalY = 1;
+    robotMotionBridge.foamTargetNormalZ = 0;
+
+    const initialTrigger = robotMotionBridge.foamCannonTrigger;
+    useRobotStore.setState({ isCannonAiming: false });
+
+    // Pressiona a tecla Espaço
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ' }));
+    });
+
+    // O canhão deve ser engatilhado e disparado imediatamente
+    expect(useRobotStore.getState().isCannonAiming).toBe(true);
+    expect(robotMotionBridge.foamCannonTrigger).toBe(initialTrigger + 1);
+
+    // As coordenadas de disparo devem corresponder exatamente à mira do mouse
+    expect(robotMotionBridge.foamTargetX).toBeCloseTo(2.45, 2);
+    expect(robotMotionBridge.foamTargetY).toBeCloseTo(0.52, 2);
+    expect(robotMotionBridge.foamTargetZ).toBeCloseTo(-1.82, 2);
+
+    unmount();
   });
 });
 

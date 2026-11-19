@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { manualControlBridge, useRobotStore } from '@/store/robotStore';
+import { manualControlBridge, robotMotionBridge, useRobotStore } from '@/store/robotStore';
 import { soundManager } from '@/services/soundManager';
 
 export type DirectionKey = 'forward' | 'backward' | 'left' | 'right';
@@ -65,6 +65,7 @@ export function normalizeDirectionKey(e: KeyboardEvent): DirectionKey | null {
  */
 // Evita duplicidade de disparos ou alternância indesejada por repetição do SO
 let lastCannonToggleTimestamp = 0;
+let lastSpaceFireTimestamp = 0;
 let lastHelicopterToggleTimestamp = 0;
 
 export function useKeyboardControls() {
@@ -186,13 +187,31 @@ export function useKeyboardControls() {
       }
 
       if (e.code === 'Space') {
+        if (e.repeat) return;
+        const now = Date.now();
+        if (now - lastSpaceFireTimestamp < 120) return;
+        lastSpaceFireTimestamp = now;
+
+        soundManager.ensureAudioRunning();
+        e.preventDefault();
+
         const store = useRobotStore.getState();
-        if (store.isCannonAiming) {
-          soundManager.ensureAudioRunning();
-          e.preventDefault();
-          store.fireFoamCannon();
-          return;
+
+        // Se o canhão de espuma estiver recolhido, estende e arma o modo de mira imediatamente
+        if (!store.isCannonAiming && !robotMotionBridge.isCannonAiming) {
+          store.toggleFoamCannonAim(true);
         }
+
+        // Garante que o disparo com a tecla espaço sempre acompanhe com precisão a mira 3D do mouse
+        store.fireFoamCannon({
+          x: robotMotionBridge.foamTargetX,
+          y: robotMotionBridge.foamTargetY,
+          z: robotMotionBridge.foamTargetZ,
+          nx: robotMotionBridge.foamTargetNormalX,
+          ny: robotMotionBridge.foamTargetNormalY,
+          nz: robotMotionBridge.foamTargetNormalZ,
+        });
+        return;
       }
 
       const dir = normalizeDirectionKey(e);
