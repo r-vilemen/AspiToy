@@ -305,6 +305,14 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
         return false;
       }
 
+      // Bloqueia voo durante retorno à base se já estiver no solo
+      if (current.state === 'RETURNING' && !isPerchedOnFurniture) {
+        set({
+          lastAction: 'Retorno à base deve ser realizado pelo piso',
+        });
+        return false;
+      }
+
       // Verifica se há obstáculo físico (teto de móvel) diretamente acima
       const overhead = getOverheadObstacleAt(
         { x: robotMotionBridge.x, z: robotMotionBridge.z },
