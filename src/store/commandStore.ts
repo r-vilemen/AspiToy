@@ -157,6 +157,34 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
         break;
       }
 
+      case 'START_CHASING_CATS': {
+        manualControlBridge.active = false;
+        manualControlBridge.forward = 0;
+        manualControlBridge.turn = 0;
+
+        if (robot.state === 'CHASING_CATS') {
+          // Se já está perseguindo, alterna para pausado
+          robot.setOperationalState('PAUSED', 'Pausa na perseguição aos gatos');
+          label = 'Pausar arretar gatos';
+          break;
+        }
+
+        // Se estiver acoplado na base recarregando, desacopla para frente da estação
+        if (robot.state === 'RECHARGING') {
+          robotMotionBridge.x = -3.8;
+          robotMotionBridge.z = 2.6;
+          robotMotionBridge.rotationY = 0;
+        }
+
+        robot.setTargetPosition(null);
+        label = 'Arretar os gatos';
+        robot.setOperationalState(
+          'CHASING_CATS',
+          'Arretando os gatos com jatos de espuma! 😼🫧'
+        );
+        break;
+      }
+
       case 'PAUSE_CLEANING': {
         manualControlBridge.active = false;
         manualControlBridge.forward = 0;
@@ -165,6 +193,7 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
         if (
           robot.state !== 'CLEANING' &&
           robot.state !== 'ORGANIZING' &&
+          robot.state !== 'CHASING_CATS' &&
           robot.state !== 'EXPLORING' &&
           robot.state !== 'RETURNING' &&
           robot.state !== 'AVOIDING' &&

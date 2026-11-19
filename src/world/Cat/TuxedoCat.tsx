@@ -6,8 +6,9 @@ import {
   tuxedoCatMotionBridge,
   useEnvironmentStore,
 } from '@/store/environmentStore';
-import { robotMotionBridge } from '@/store/robotStore';
+import { robotMotionBridge, useRobotStore } from '@/store/robotStore';
 import { useCommandStore } from '@/store/commandStore';
+import { soundManager } from '@/services/soundManager';
 import { ObstacleDetector } from '@/agent/navigation/ObstacleDetector';
 import type { CatBehaviorState } from '@/types/environment';
 import type { Vector2D } from '@/types/robot';
@@ -230,8 +231,30 @@ export function TuxedoCat() {
         robotMotionBridge.z - tuxedoCatMotionBridge.z
       );
 
-      // Robô bate no gato mesclado dormindo -> acorda desnorteado
-      if (
+      const isChased = useRobotStore.getState().state === 'CHASING_CATS';
+
+      // CASO 0: Robô arretando os gatos (CHASING_CATS) com aproximação ou canhão de espuma
+      if (isChased && distToRobot < 3.0) {
+        if (
+          tuxedoCatMotionBridge.state !== 'STARTLED' &&
+          tuxedoCatMotionBridge.state !== 'RUNNING' &&
+          startleCooldownRef.current <= 0
+        ) {
+          startleCooldownRef.current = 1.8;
+          tuxedoCatMotionBridge.state = 'STARTLED';
+          tuxedoCatMotionBridge.stateTimer = 0.45;
+          tuxedoCatMotionBridge.speed = 0;
+          soundManager.playCatMeow();
+        } else if (tuxedoCatMotionBridge.state === 'RUNNING') {
+          const escapeHeading = Math.atan2(
+            tuxedoCatMotionBridge.x - robotMotionBridge.x,
+            tuxedoCatMotionBridge.z - robotMotionBridge.z
+          );
+          tuxedoCatMotionBridge.targetRotationY = escapeHeading;
+        }
+      }
+      // CASO 1: Robô bate no gato mesclado dormindo -> acorda desnorteado
+      else if (
         tuxedoCatMotionBridge.state === 'SLEEPING' &&
         distToRobot < 0.58 &&
         startleCooldownRef.current <= 0
@@ -295,8 +318,15 @@ export function TuxedoCat() {
     // Transições autônomas da máquina de estados
     if (tuxedoCatMotionBridge.stateTimer <= 0) {
       if (tuxedoCatMotionBridge.state === 'STARTLED') {
+        const escapeAngle = Math.atan2(
+          tuxedoCatMotionBridge.x - robotMotionBridge.x,
+          tuxedoCatMotionBridge.z - robotMotionBridge.z
+        );
         tuxedoCatMotionBridge.state = 'RUNNING';
-        tuxedoCatMotionBridge.speed = 1.8;
+        tuxedoCatMotionBridge.rotationY = escapeAngle;
+        tuxedoCatMotionBridge.targetRotationY = escapeAngle;
+        tuxedoCatMotionBridge.speed =
+          useRobotStore.getState().state === 'CHASING_CATS' ? 2.25 : 1.85;
         tuxedoCatMotionBridge.stateTimer = 3.5;
         const escapePoint = pickFreeFloorTarget();
         tuxedoCatMotionBridge.targetX = escapePoint.x;
@@ -381,9 +411,12 @@ export function TuxedoCat() {
 
     // Movimentação cinemática e navegação contínua
     const state = tuxedoCatMotionBridge.state;
+    const isChasedNow = useRobotStore.getState().state === 'CHASING_CATS';
     const targetSpeed =
       state === 'RUNNING'
-        ? 1.85
+        ? isChasedNow
+          ? 2.25
+          : 1.85
         : state === 'WALKING'
         ? 0.72
         : 0;

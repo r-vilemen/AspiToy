@@ -6,8 +6,9 @@ import {
   catMotionBridge,
   useEnvironmentStore,
 } from '@/store/environmentStore';
-import { robotMotionBridge } from '@/store/robotStore';
+import { robotMotionBridge, useRobotStore } from '@/store/robotStore';
 import { useCommandStore } from '@/store/commandStore';
+import { soundManager } from '@/services/soundManager';
 import { ObstacleDetector } from '@/agent/navigation/ObstacleDetector';
 import type { CatBehaviorState } from '@/types/environment';
 import type { Vector2D } from '@/types/robot';
@@ -194,8 +195,31 @@ export function Cat() {
         robotMotionBridge.z - catMotionBridge.z
       );
 
+      const isChased = useRobotStore.getState().state === 'CHASING_CATS';
+
+      // CASO 0: Robô arretando os gatos (CHASING_CATS) com aproximação ou canhão de espuma
+      if (isChased && distToRobot < 3.0 && catMotionBridge.state !== 'JUMPING') {
+        if (
+          catMotionBridge.state !== 'STARTLED' &&
+          catMotionBridge.state !== 'RUNNING' &&
+          startleCooldownRef.current <= 0
+        ) {
+          startleCooldownRef.current = 1.8;
+          catMotionBridge.state = 'STARTLED';
+          catMotionBridge.stateTimer = 0.45;
+          catMotionBridge.speed = 0;
+          soundManager.playCatMeow();
+        } else if (catMotionBridge.state === 'RUNNING') {
+          // Mantém rumo de fuga acelerado na direção oposta ao robô
+          const escapeHeading = Math.atan2(
+            catMotionBridge.x - robotMotionBridge.x,
+            catMotionBridge.z - robotMotionBridge.z
+          );
+          catMotionBridge.targetRotationY = escapeHeading;
+        }
+      }
       // CASO 1: Robô bate no gato enquanto ele está dormindo
-      if (
+      else if (
         catMotionBridge.state === 'SLEEPING' &&
         distToRobot < 0.58 &&
         startleCooldownRef.current <= 0
@@ -341,7 +365,8 @@ export function Cat() {
         catMotionBridge.state = 'RUNNING';
         catMotionBridge.rotationY = escapeAngle;
         catMotionBridge.targetRotationY = escapeAngle;
-        catMotionBridge.speed = 1.85;
+        catMotionBridge.speed =
+          useRobotStore.getState().state === 'CHASING_CATS' ? 2.25 : 1.85;
 
         const escapeTarget = pickFreeFloorTarget();
         catMotionBridge.targetX = escapeTarget.x;
@@ -469,8 +494,15 @@ export function Cat() {
     const isMovingState =
       state === 'WALKING' || state === 'RUNNING';
 
+    const isChasedNow = useRobotStore.getState().state === 'CHASING_CATS';
     const targetSpeed =
-      state === 'RUNNING' ? 1.85 : state === 'WALKING' ? 0.68 : 0;
+      state === 'RUNNING'
+        ? isChasedNow
+          ? 2.25
+          : 1.85
+        : state === 'WALKING'
+        ? 0.68
+        : 0;
     catMotionBridge.speed = damp(catMotionBridge.speed, targetSpeed, 6.0, delta);
 
     if (isMovingState) {

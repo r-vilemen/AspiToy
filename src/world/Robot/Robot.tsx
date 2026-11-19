@@ -16,10 +16,13 @@ import {
   useRobotStore,
 } from '@/store/robotStore';
 import {
+  catMotionBridge,
   getDynamicAllCatsObstacles,
   pushableToysBridge,
   stepPushableToysPhysics,
+  tuxedoCatMotionBridge,
   useEnvironmentStore,
+  whiteCatMotionBridge,
 } from '@/store/environmentStore';
 import { useCommandStore } from '@/store/commandStore';
 import { AgentController } from '@/agent/AgentController';
@@ -221,6 +224,7 @@ export function Robot() {
   const autoAerialCooldownRef = useRef(18.0); // Alterna para voo após ~18s a 22s de chão
   const autoFlightDurationRef = useRef(0); // Tempo no ar
   const autoFurnitureVisitCountRef = useRef(0); // Quantos móveis higienizados na surtida aérea atual
+  const catChaseShootCooldownRef = useRef(0.6); // Intervalo de disparo de espuma ao arretar os gatos
 
   useFrame((_, rawDelta) => {
     const delta = Math.min(rawDelta, 0.05);
@@ -281,6 +285,65 @@ export function Robot() {
           'Sensacional! Todos os 16 brinquedos foram colocados em segurança no tapete.',
           'success'
         );
+      }
+    } else if (robotState.state === 'CHASING_CATS') {
+      // Persegue ativamente os gatos da casa e dispara jatos de espuma neles
+      const candidateCats = [
+        { bridge: catMotionBridge, name: 'Gato Laranja' },
+        { bridge: whiteCatMotionBridge, name: 'Gato Branco' },
+        { bridge: tuxedoCatMotionBridge, name: 'Gato Frajola' },
+      ];
+
+      // Seleciona o gato mais próximo
+      let targetCat = candidateCats[0];
+      let minCatDist = Infinity;
+      for (const c of candidateCats) {
+        const d = Math.hypot(c.bridge.x - loc.x, c.bridge.z - loc.z);
+        if (d < minCatDist) {
+          minCatDist = d;
+          targetCat = c;
+        }
+      }
+
+      // Se o gato estiver empoleirado e o robô estiver no chão com boa bateria, decola para ir atrás
+      const catY = targetCat.bridge.y ?? 0;
+      if (catY > 0.45 && !robotMotionBridge.isFlying && robotState.battery > 22 && minCatDist < 2.5) {
+        const overhead = getOverheadObstacleAt({ x: loc.x, z: loc.z }, robotMotionBridge.y);
+        if (!overhead) {
+          robotState.toggleHelicopterMode();
+        }
+      }
+
+      targetPoint = { x: targetCat.bridge.x, z: targetCat.bridge.z };
+
+      // Mira e dispara o canhão de espuma lateral ao se aproximar do gato
+      if (minCatDist <= 3.8) {
+        robotMotionBridge.isCannonAiming = true;
+        robotMotionBridge.cannonExtension = 0.8;
+        robotMotionBridge.foamTargetX = targetCat.bridge.x;
+        robotMotionBridge.foamTargetY = Math.max(0.06, (targetCat.bridge.y ?? 0) + 0.12);
+        robotMotionBridge.foamTargetZ = targetCat.bridge.z;
+        robotMotionBridge.foamTargetNormalX = 0;
+        robotMotionBridge.foamTargetNormalY = 1;
+        robotMotionBridge.foamTargetNormalZ = 0;
+
+        catChaseShootCooldownRef.current -= delta;
+        if (catChaseShootCooldownRef.current <= 0) {
+          catChaseShootCooldownRef.current = 1.4 + Math.random() * 0.8;
+          robotState.fireFoamCannon({
+            x: targetCat.bridge.x,
+            y: Math.max(0.06, (targetCat.bridge.y ?? 0) + 0.12),
+            z: targetCat.bridge.z,
+          });
+          soundManager.playCatMeow();
+
+          // Assusta o gato alvo imediatamente
+          if (targetCat.bridge.state !== 'JUMPING') {
+            targetCat.bridge.state = 'STARTLED';
+            targetCat.bridge.stateTimer = 0.55;
+            targetCat.bridge.speed = 0;
+          }
+        }
       }
     } else if (robotMotionBridge.isFlying) {
       if (robotState.targetPosition) {
@@ -768,9 +831,14 @@ export function Robot() {
           }
 
           // Atualiza locomoção física com base nas diretrizes do AgentController
+          const chaseSpeed =
+            robotState.state === 'CHASING_CATS'
+              ? Math.max(decision.desiredSpeed, 1.85)
+              : decision.desiredSpeed;
+
           updateRobotLocomotion(
             loc,
-            decision.desiredSpeed,
+            chaseSpeed,
             decision.desiredHeading,
             delta
           );
@@ -1050,6 +1118,7 @@ export function Robot() {
     const isAutonomousMoving =
       (robotState.state === 'CLEANING' ||
         robotState.state === 'ORGANIZING' ||
+        robotState.state === 'CHASING_CATS' ||
         robotState.state === 'EXPLORING' ||
         robotState.state === 'AVOIDING' ||
         robotState.state === 'RETURNING' ||
@@ -1130,6 +1199,21 @@ export function Robot() {
             'warning'
           );
         }
+      } else if (robotState.state === 'CHASING_CATS') {
+        robotState.updateBattery(-0.07);
+
+        if (robotState.battery <= 18) {
+          robotState.setTargetPosition(envState.dockPosition);
+          robotState.setOperationalState(
+            'RETURNING',
+            'Bateria baixa (18%). Retornando à base de recarga.'
+          );
+          cmdState.pushNotification(
+            'Bateria baixa',
+            'Retornando à base para recarregar após arretar os gatos.',
+            'warning'
+          );
+        }
       } else if (robotState.state === 'FLYING' || robotMotionBridge.isFlying) {
         robotState.updateBattery(-0.09);
 
@@ -1186,7 +1270,7 @@ export function Robot() {
           expression={expression}
         />
         <RobotEffects
-          isCleaning={state === 'CLEANING' || state === 'ORGANIZING'}
+          isCleaning={state === 'CLEANING' || state === 'ORGANIZING' || state === 'CHASING_CATS'}
           isRecharging={state === 'RECHARGING'}
         />
       </group>

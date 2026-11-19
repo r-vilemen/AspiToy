@@ -1221,6 +1221,39 @@ export class SoundManager {
     osc.start(t);
     osc.stop(t + 0.15);
   }
+
+  /**
+   * Miado estilizado e expressivo de gato ("Meowww! / Miau!").
+   */
+  public playCatMeow(): void {
+    if (!this.isEnabled) return;
+    const ctx = this.initContext();
+    if (!ctx || !this.sfxGain) return;
+
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(520, t);
+    osc.frequency.exponentialRampToValueAtTime(780, t + 0.12);
+    osc.frequency.exponentialRampToValueAtTime(460, t + 0.32);
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(1400, t);
+    filter.Q.setValueAtTime(2.2, t);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(0.32, t + 0.035);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.34);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.sfxGain);
+
+    osc.start(t);
+    osc.stop(t + 0.36);
+  }
 }
 
 export const soundManager = new SoundManager();

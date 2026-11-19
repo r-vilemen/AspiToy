@@ -7,6 +7,7 @@ import {
   Bath,
   Bed,
   Boxes,
+  Cat,
   Compass,
   Crosshair,
   Home,
@@ -45,8 +46,6 @@ export function ControlPanel() {
   const state = useRobotStore((s) => s.state);
   const battery = useRobotStore((s) => s.battery);
   const isCannonAiming = useRobotStore((s) => s.isCannonAiming);
-  const organizedToysCount = useRobotStore((s) => s.organizedToysCount);
-  const totalToysToOrganize = useRobotStore((s) => s.totalToysToOrganize);
   const regions = useEnvironmentStore((s) => s.regions);
   const selectedRegionId = useEnvironmentStore((s) => s.selectedRegionId);
   const dispatchCommand = useCommandStore((s) => s.dispatchCommand);
@@ -129,23 +128,30 @@ export function ControlPanel() {
           )}
         </div>
 
-        {/* Botão de Missão Especial: Guardar Brinquedos no Tapete */}
+        {/* Botão de Modo Especial: Arretar os Gatos com o Canhão de Espuma */}
         <div className="col-span-2">
           <button
             type="button"
-            onClick={() => dispatchCommand('START_ORGANIZING')}
+            onClick={() => dispatchCommand('START_CHASING_CATS')}
             className={`w-full inline-flex items-center justify-between rounded-xl border-2 border-[#2A211B] px-3.5 py-2.5 text-xs font-black uppercase tracking-wider transition cursor-pointer shadow-[0_3px_0px_#2A211B] hover:shadow-[0_1px_0px_#2A211B] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px] ${
-              state === 'ORGANIZING'
-                ? 'bg-[#FBBF24] text-[#2A211B]'
-                : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#F3ECE0]'
+              state === 'CHASING_CATS'
+                ? 'bg-linear-to-b from-[#F59E0B] to-[#D97706] text-white shadow-[0_3px_0px_#92400E]'
+                : 'bg-[#FFFDF8] text-[#2A211B] hover:bg-[#FFFBEB]'
             }`}
+            title="Arretar os Gatos: O robô vai atrás dos gatos pela casa e atira espuma com o canhão! Os gatos correm em disparada!"
           >
             <div className="flex items-center gap-2">
-              <Boxes className="h-4 w-4 stroke-[2.4] text-[#E05A36]" />
-              <span>Guardar Brinquedos</span>
+              <Cat className={`h-4 w-4 stroke-[2.4] ${state === 'CHASING_CATS' ? 'text-white' : 'text-[#D97706]'}`} />
+              <span>Arretar os Gatos</span>
             </div>
-            <span className="font-mono text-[10px] font-black rounded-lg border border-[#2A211B]/20 bg-[#F5ECE0] px-2 py-0.5 text-[#2A211B]">
-              {organizedToysCount}/{totalToysToOrganize} NO TAPETE
+            <span
+              className={`font-mono text-[10px] font-black rounded-lg border px-2 py-0.5 ${
+                state === 'CHASING_CATS'
+                  ? 'border-white/40 bg-black/20 text-white animate-pulse'
+                  : 'border-[#2A211B]/20 bg-[#FEF3C7] text-[#92400E]'
+              }`}
+            >
+              {state === 'CHASING_CATS' ? 'PERSEGUINDO 💨' : '3 GATOS 😼'}
             </span>
           </button>
         </div>

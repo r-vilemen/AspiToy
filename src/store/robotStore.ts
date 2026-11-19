@@ -134,6 +134,8 @@ function mapStateToExpression(state: RobotOperationalState): RobotExpression {
       return 'happy';
     case 'FLYING':
       return 'curious';
+    case 'CHASING_CATS':
+      return 'happy';
   }
 }
 
@@ -254,6 +256,7 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
       state === 'ORGANIZING' ||
       state === 'AVOIDING' ||
       state === 'FLYING' ||
+      state === 'CHASING_CATS' ||
       state === 'RETURNING'
     ) {
       set({ operationSeconds: operationSeconds + 1 });

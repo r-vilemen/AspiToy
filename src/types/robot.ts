@@ -8,7 +8,8 @@ export type RobotOperationalState =
   | 'PAUSED'
   | 'COMPLETED'
   | 'ORGANIZING'
-  | 'FLYING';
+  | 'FLYING'
+  | 'CHASING_CATS';
 
 export type RobotSkinId = 'classic' | 'space-ranger' | 'sheriff' | 'cyber-translucent';
 

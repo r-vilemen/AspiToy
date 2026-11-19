@@ -42,6 +42,7 @@ export function Dashboard() {
   const isRunning =
     robotState === 'CLEANING' ||
     robotState === 'ORGANIZING' ||
+    robotState === 'CHASING_CATS' ||
     robotState === 'EXPLORING' ||
     robotState === 'AVOIDING' ||
     robotState === 'RETURNING';

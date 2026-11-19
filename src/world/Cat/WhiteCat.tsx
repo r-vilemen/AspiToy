@@ -6,8 +6,9 @@ import {
   useEnvironmentStore,
   whiteCatMotionBridge,
 } from '@/store/environmentStore';
-import { robotMotionBridge } from '@/store/robotStore';
+import { robotMotionBridge, useRobotStore } from '@/store/robotStore';
 import { useCommandStore } from '@/store/commandStore';
+import { soundManager } from '@/services/soundManager';
 import { ObstacleDetector } from '@/agent/navigation/ObstacleDetector';
 import type { CatBehaviorState } from '@/types/environment';
 import type { Vector2D } from '@/types/robot';
@@ -230,8 +231,30 @@ export function WhiteCat() {
         robotMotionBridge.z - whiteCatMotionBridge.z
       );
 
-      // Robô bate no gato branco dormindo -> acorda desnorteado
-      if (
+      const isChased = useRobotStore.getState().state === 'CHASING_CATS';
+
+      // CASO 0: Robô arretando os gatos (CHASING_CATS) com aproximação ou canhão de espuma
+      if (isChased && distToRobot < 3.0) {
+        if (
+          whiteCatMotionBridge.state !== 'STARTLED' &&
+          whiteCatMotionBridge.state !== 'RUNNING' &&
+          startleCooldownRef.current <= 0
+        ) {
+          startleCooldownRef.current = 1.8;
+          whiteCatMotionBridge.state = 'STARTLED';
+          whiteCatMotionBridge.stateTimer = 0.45;
+          whiteCatMotionBridge.speed = 0;
+          soundManager.playCatMeow();
+        } else if (whiteCatMotionBridge.state === 'RUNNING') {
+          const escapeHeading = Math.atan2(
+            whiteCatMotionBridge.x - robotMotionBridge.x,
+            whiteCatMotionBridge.z - robotMotionBridge.z
+          );
+          whiteCatMotionBridge.targetRotationY = escapeHeading;
+        }
+      }
+      // CASO 1: Robô bate no gato branco dormindo -> acorda desnorteado
+      else if (
         whiteCatMotionBridge.state === 'SLEEPING' &&
         distToRobot < 0.58 &&
         startleCooldownRef.current <= 0
@@ -295,8 +318,15 @@ export function WhiteCat() {
     // Transições autônomas da máquina de estados
     if (whiteCatMotionBridge.stateTimer <= 0) {
       if (whiteCatMotionBridge.state === 'STARTLED') {
+        const escapeAngle = Math.atan2(
+          whiteCatMotionBridge.x - robotMotionBridge.x,
+          whiteCatMotionBridge.z - robotMotionBridge.z
+        );
         whiteCatMotionBridge.state = 'RUNNING';
-        whiteCatMotionBridge.speed = 1.8;
+        whiteCatMotionBridge.rotationY = escapeAngle;
+        whiteCatMotionBridge.targetRotationY = escapeAngle;
+        whiteCatMotionBridge.speed =
+          useRobotStore.getState().state === 'CHASING_CATS' ? 2.25 : 1.85;
         whiteCatMotionBridge.stateTimer = 3.5;
         const escapePoint = pickFreeFloorTarget();
         whiteCatMotionBridge.targetX = escapePoint.x;
@@ -381,9 +411,12 @@ export function WhiteCat() {
 
     // Movimentação cinemática e navegação contínua
     const state = whiteCatMotionBridge.state;
+    const isChasedNow = useRobotStore.getState().state === 'CHASING_CATS';
     const targetSpeed =
       state === 'RUNNING'
-        ? 1.85
+        ? isChasedNow
+          ? 2.25
+          : 1.85
         : state === 'WALKING'
         ? 0.72
         : 0;
