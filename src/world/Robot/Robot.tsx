@@ -5,6 +5,7 @@ import { RobotModel } from './RobotModel';
 import { RobotEffects } from './RobotEffects';
 import { FoamCannonSystem } from './FoamCannonSystem';
 import { FoamCannonAimingReticle } from './FoamCannonAimingReticle';
+import { FoamCannonTargeting } from './FoamCannonTargeting';
 import {
   updateRobotLocomotion,
   type RobotLocomotionState,
@@ -1194,6 +1195,8 @@ export function Robot() {
       <FoamCannonSystem />
       {/* Retículo Holográfico 3D de Mira do Canhão sobre Superfícies */}
       <FoamCannonAimingReticle />
+      {/* Controlador Contínuo de Rastreamento de Mouse a 60 FPS */}
+      <FoamCannonTargeting />
     </>
   );
 }
