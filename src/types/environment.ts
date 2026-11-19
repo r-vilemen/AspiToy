@@ -44,6 +44,8 @@ export interface CatMotionBridge {
   jumpDuration?: number;
   jumpStart?: { x: number; y: number; z: number };
   jumpEnd?: { x: number; y: number; z: number };
+  foamTimer?: number;
+  foamAmount?: number;
 }
 
 export interface BoundingBox2D {

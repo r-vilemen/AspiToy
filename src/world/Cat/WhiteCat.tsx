@@ -10,6 +10,7 @@ import { robotMotionBridge, useRobotStore } from '@/store/robotStore';
 import { useCommandStore } from '@/store/commandStore';
 import { soundManager } from '@/services/soundManager';
 import { ObstacleDetector } from '@/agent/navigation/ObstacleDetector';
+import { CatFoamOverlay } from './CatFoamOverlay';
 import type { CatBehaviorState } from '@/types/environment';
 import type { Vector2D } from '@/types/robot';
 import { clamp, damp, dampAngle, distance2D, lerp } from '@/utils/math';
@@ -758,6 +759,9 @@ export function WhiteCat() {
 
       {/* Corpo articulado do Gato Branco (Volumes arredondados) */}
       <group ref={bodyRef} position={[0, 0.22, 0]}>
+        {/* Espuma dinâmica no pelo quando atingido pelo canhão */}
+        <CatFoamOverlay bridge={whiteCatMotionBridge} />
+
         {/* Tronco principal totalmente branco */}
         <RoundedBox
           castShadow

@@ -54,6 +54,8 @@ export const catMotionBridge: CatMotionBridge = {
   isPerched: false,
   perchSurfaceId: null,
   jumpProgress: 0,
+  foamTimer: 0,
+  foamAmount: 0,
 };
 
 /**
@@ -99,6 +101,8 @@ export const whiteCatMotionBridge: CatMotionBridge = {
   isPerched: false,
   perchSurfaceId: null,
   jumpProgress: 0,
+  foamTimer: 0,
+  foamAmount: 0,
 };
 
 /**
@@ -142,6 +146,8 @@ export const tuxedoCatMotionBridge: CatMotionBridge = {
   isPerched: false,
   perchSurfaceId: null,
   jumpProgress: 0,
+  foamTimer: 0,
+  foamAmount: 0,
 };
 
 /**
@@ -837,6 +843,8 @@ export const useEnvironmentStore = create<EnvironmentStoreState>((set, get) => (
     catMotionBridge.isPerched = false;
     catMotionBridge.perchSurfaceId = null;
     catMotionBridge.jumpProgress = 0;
+    catMotionBridge.foamTimer = 0;
+    catMotionBridge.foamAmount = 0;
 
     whiteCatMotionBridge.x = INITIAL_WHITE_CAT_POSITION.x;
     whiteCatMotionBridge.y = 0;
@@ -852,6 +860,8 @@ export const useEnvironmentStore = create<EnvironmentStoreState>((set, get) => (
     whiteCatMotionBridge.isPerched = false;
     whiteCatMotionBridge.perchSurfaceId = null;
     whiteCatMotionBridge.jumpProgress = 0;
+    whiteCatMotionBridge.foamTimer = 0;
+    whiteCatMotionBridge.foamAmount = 0;
 
     tuxedoCatMotionBridge.x = INITIAL_TUXEDO_CAT_POSITION.x;
     tuxedoCatMotionBridge.y = 0;
@@ -867,6 +877,8 @@ export const useEnvironmentStore = create<EnvironmentStoreState>((set, get) => (
     tuxedoCatMotionBridge.isPerched = false;
     tuxedoCatMotionBridge.perchSurfaceId = null;
     tuxedoCatMotionBridge.jumpProgress = 0;
+    tuxedoCatMotionBridge.foamTimer = 0;
+    tuxedoCatMotionBridge.foamAmount = 0;
 
     resetPushableToys();
 

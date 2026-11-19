@@ -40,12 +40,13 @@ export const FoamCannonTargeting = memo(function FoamCannonTargeting() {
 
     // Listener nativo no Canvas para garantir disparo com clique em qualquer ponto
     const handlePointerDown = (e: PointerEvent) => {
+      if (e.button !== 0) return;
       isPointerDownRef.current = true;
       pointerDownPosRef.current = { x: e.clientX, y: e.clientY };
     };
 
     const handlePointerUp = (e: PointerEvent) => {
-      if (!isPointerDownRef.current) return;
+      if (!isPointerDownRef.current || e.button !== 0) return;
       isPointerDownRef.current = false;
 
       // Se o usuário arrastou para orbitar a câmera, ignora o disparo
@@ -53,7 +54,7 @@ export const FoamCannonTargeting = memo(function FoamCannonTargeting() {
         e.clientX - pointerDownPosRef.current.x,
         e.clientY - pointerDownPosRef.current.y
       );
-      if (distMoved > 6) return;
+      if (distMoved > 16) return;
 
       const isAiming = robotMotionBridge.isCannonAiming || useRobotStore.getState().isCannonAiming;
       if (isAiming) {
