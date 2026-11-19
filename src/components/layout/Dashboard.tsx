@@ -101,14 +101,9 @@ export function Dashboard() {
                 {/* Botão do Canhão de Espuma Lateral no Mobile */}
                 <button
                   type="button"
-                  onClick={() => {
-                    if (!isCannonAiming) {
-                      dispatchCommand('TOGGLE_FOAM_CANNON_AIM');
-                    } else {
-                      dispatchCommand('FIRE_FOAM_CANNON');
-                    }
-                  }}
-                  aria-label="Canhão de Espuma Lateral"
+                  onClick={() => dispatchCommand('TOGGLE_FOAM_CANNON_AIM')}
+                  aria-label={isCannonAiming ? 'Recolher Canhão de Espuma (C)' : 'Ativar Canhão de Espuma (C)'}
+                  title={isCannonAiming ? 'Desativar Canhão de Espuma (C)' : 'Ativar Canhão de Espuma (C)'}
                   className={`flex h-9 w-9 items-center justify-center rounded-xl border-2 border-[#2A211B] shadow-[2px_2px_0px_#2A211B] active:translate-y-0.5 active:shadow-none transition cursor-pointer ${
                     isCannonAiming
                       ? 'bg-[#EA580C] text-white shadow-[2px_2px_0px_#9A3412]'

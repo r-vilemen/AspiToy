@@ -57,6 +57,10 @@ export function normalizeDirectionKey(e: KeyboardEvent): DirectionKey | null {
  * - Impede rolagem acidental da página pelo navegador com `e.preventDefault()`.
  * - Sincroniza em tempo real com `manualControlBridge` para movimentação a 60 FPS no `useFrame`.
  */
+// Evita duplicidade de disparos ou alternância indesejada por repetição do SO
+let lastCannonToggleTimestamp = 0;
+let lastHelicopterToggleTimestamp = 0;
+
 export function useKeyboardControls() {
   const [activeDirections, setActiveDirections] = useState<{
     forward: boolean;
@@ -120,14 +124,24 @@ export function useKeyboardControls() {
 
       // Atalho rápido de teclado para o Modo Helicóptero: 'H' para ativar/desativar
       if (e.code === 'KeyH' || keyLower === 'h') {
+        if (e.repeat) return;
+        const now = Date.now();
+        if (now - lastHelicopterToggleTimestamp < 220) return;
+        lastHelicopterToggleTimestamp = now;
+
         soundManager.ensureAudioRunning();
         e.preventDefault();
         useRobotStore.getState().toggleHelicopterMode();
         return;
       }
 
-      // Atalho rápido de teclado para o Canhão de Espuma Lateral: 'C' para armar/recolher, 'Espaço' para disparar
+      // Atalho rápido de teclado para o Canhão de Espuma Lateral: 'C' para ativar e desativar o canhão
       if (e.code === 'KeyC' || keyLower === 'c') {
+        if (e.repeat) return;
+        const now = Date.now();
+        if (now - lastCannonToggleTimestamp < 220) return;
+        lastCannonToggleTimestamp = now;
+
         soundManager.ensureAudioRunning();
         e.preventDefault();
         useRobotStore.getState().toggleFoamCannonAim();

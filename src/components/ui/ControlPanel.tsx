@@ -204,24 +204,18 @@ export function ControlPanel() {
 
           <button
             type="button"
-            onClick={() => {
-              if (!isCannonAiming) {
-                dispatchCommand('TOGGLE_FOAM_CANNON_AIM');
-              } else {
-                dispatchCommand('FIRE_FOAM_CANNON');
-              }
-            }}
+            onClick={() => dispatchCommand('TOGGLE_FOAM_CANNON_AIM')}
             className={`inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-[#2A211B] px-3 py-2 text-xs font-black uppercase tracking-wider transition cursor-pointer shadow-[0_3px_0px_#2A211B] hover:shadow-[0_1px_0px_#2A211B] hover:translate-y-[2px] active:shadow-none active:translate-y-[3px] ${
               isCannonAiming
                 ? 'bg-linear-to-b from-[#FB923C] to-[#EA580C] text-white shadow-[0_3px_0px_#9A3412]'
                 : 'bg-[#FFFDF8] hover:bg-[#FFF7ED] text-[#2A211B]'
             }`}
-            title="Canhão de Espuma Lateral (Atalho: C): Mire com o mouse em paredes, móveis ou no chão e clique para disparar!"
-            aria-label={isCannonAiming ? 'Atirar Espuma (Canhão Ativo)' : 'Canhão de Espuma'}
+            title="Canhão de Espuma Lateral: Tecla 'C' ativa e desativa o canhão. Clique na tela para disparar."
+            aria-label={isCannonAiming ? 'Desativar Canhão de Espuma' : 'Ativar Canhão de Espuma'}
           >
             <Crosshair className="h-4 w-4 stroke-[2.4]" aria-hidden="true" />
             <span className="text-xs truncate">
-              {isCannonAiming ? 'Atirar' : 'Canhão (C)'}
+              {isCannonAiming ? 'Recolher (C)' : 'Canhão (C)'}
             </span>
           </button>
         </div>
@@ -231,15 +225,24 @@ export function ControlPanel() {
           <div className="col-span-2 flex items-center justify-between rounded-xl border-2 border-[#EA580C] bg-[#FFF7ED] p-2 text-xs font-black text-[#9A3412] shadow-[0_2px_0px_#EA580C]">
             <span className="flex items-center gap-1.5 truncate">
               <Crosshair className="h-3.5 w-3.5 stroke-[2.4] animate-pulse shrink-0" />
-              <span className="truncate">Clique em qualquer lugar para atirar!</span>
+              <span className="truncate">Clique ou Espaço para atirar!</span>
             </span>
-            <button
-              type="button"
-              onClick={() => dispatchCommand('TOGGLE_FOAM_CANNON_AIM')}
-              className="ml-1 rounded-md bg-[#EA580C] px-1.5 py-0.5 text-[10px] font-black uppercase text-white hover:bg-[#C2410C] transition cursor-pointer shrink-0"
-            >
-              Guardar
-            </button>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => dispatchCommand('FIRE_FOAM_CANNON')}
+                className="rounded-md bg-[#EA580C] px-1.5 py-0.5 text-[10px] font-black uppercase text-white hover:bg-[#C2410C] transition cursor-pointer"
+              >
+                Tiro
+              </button>
+              <button
+                type="button"
+                onClick={() => dispatchCommand('TOGGLE_FOAM_CANNON_AIM')}
+                className="rounded-md border border-[#2A211B]/20 bg-white px-1.5 py-0.5 text-[10px] font-black uppercase text-[#2A211B] hover:bg-[#F3ECE0] transition cursor-pointer"
+              >
+                C
+              </button>
+            </div>
           </div>
         )}
       </div>

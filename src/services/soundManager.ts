@@ -1154,6 +1154,32 @@ export class SoundManager {
   }
 
   /**
+   * Som mecânico de recolhimento do canhão para o chassi.
+   */
+  public playFoamCannonRetract(): void {
+    if (!this.isEnabled) return;
+    const ctx = this.initContext();
+    if (!ctx || !this.sfxGain) return;
+
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(620, t);
+    osc.frequency.exponentialRampToValueAtTime(240, t + 0.08);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(0.2, t + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.11);
+
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+
+    osc.start(t);
+    osc.stop(t + 0.12);
+  }
+
+  /**
    * Som de tiro de bolha do canhão (plop-blooop aquoso, alegre e saltitante).
    */
   public playFoamCannonShoot(): void {

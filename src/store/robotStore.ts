@@ -339,6 +339,7 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
         expression: 'focused',
       });
     } else {
+      soundManager.playFoamCannonRetract();
       set({
         isCannonAiming: false,
         lastAction: 'Canhão de Espuma recolhido para a lateral.',

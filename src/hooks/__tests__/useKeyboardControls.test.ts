@@ -67,5 +67,18 @@ describe('Reconhecimento Universal de Teclado e Controle Manual (WASD / Setas)',
     useRobotStore.getState().toggleHelicopterMode();
     expect(useRobotStore.getState().state === 'FLYING').toBe(initialFlying);
   });
+
+  it('alterna o modo do canhão de espuma ao disparar a tecla C (ativa e desativa)', () => {
+    useRobotStore.setState({ isCannonAiming: false });
+    expect(useRobotStore.getState().isCannonAiming).toBe(false);
+
+    // Ativa com C
+    useRobotStore.getState().toggleFoamCannonAim();
+    expect(useRobotStore.getState().isCannonAiming).toBe(true);
+
+    // Desativa com C
+    useRobotStore.getState().toggleFoamCannonAim();
+    expect(useRobotStore.getState().isCannonAiming).toBe(false);
+  });
 });
 
