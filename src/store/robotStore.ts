@@ -281,8 +281,15 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
 
     // Se estiver tentando levantar voo, valida condições de segurança
     if (isNowFlying) {
-      // Bloqueia decolagem com bateria fraca (<= 20%)
-      if (current.battery <= 20) {
+      const surfaceLandingY = getSurfaceLandingY(
+        { x: robotMotionBridge.x, z: robotMotionBridge.z },
+        robotMotionBridge.y
+      );
+      const isPerchedOnFurniture = surfaceLandingY > 0 || (robotMotionBridge.y ?? 0) > 0.15;
+
+      // Bloqueia decolagem com bateria fraca (<= 20%), EXCETO se o robô estiver preso em cima de um móvel
+      // e precisar voar de emergência para descer e pousar no solo com segurança!
+      if (current.battery <= 20 && !isPerchedOnFurniture) {
         set({
           lastAction: 'Decolagem bloqueada: Bateria fraca (requer mais de 20%)',
           expression: 'worried',
@@ -304,19 +311,31 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
     robotMotionBridge.isFlying = isNowFlying;
 
     if (isNowFlying) {
-      robotMotionBridge.targetY = 0.85;
-      set({
-        state: 'FLYING',
-        previousActiveState: current.state !== 'PAUSED' ? current.state : current.previousActiveState,
-        expression: 'curious',
-        lastAction: 'Decolando em Modo Aspi-Helicóptero',
-      });
-    } else {
-      // Pouso seguro: se estiver sobre uma mobília (mesa, sofá, baú), pousa sobre ela sem afundar
       const surfaceLandingY = getSurfaceLandingY(
         { x: robotMotionBridge.x, z: robotMotionBridge.z },
         robotMotionBridge.y
       );
+      const isPerchedOnFurniture = surfaceLandingY > 0 || (robotMotionBridge.y ?? 0) > 0.15;
+      const baseSurfaceY = surfaceLandingY > 0 ? surfaceLandingY : (robotMotionBridge.y > 0.15 ? robotMotionBridge.y : 0);
+      robotMotionBridge.targetY = Math.max(0.85, baseSurfaceY + 0.35);
+      set({
+        state: 'FLYING',
+        previousActiveState: current.state !== 'PAUSED' ? current.state : current.previousActiveState,
+        expression: current.battery <= 20 ? 'worried' : 'curious',
+        lastAction: isPerchedOnFurniture && current.battery <= 20
+          ? 'Decolagem automática de emergência para sair do móvel e pousar no solo'
+          : 'Decolando em Modo Aspi-Helicóptero',
+      });
+    } else {
+      // Pouso seguro:
+      // REGRA DE OURO: Nunca pousar nos móveis sem bateria (<= 20%) ou em retorno à base!
+      const isLowBatteryOrReturning = current.battery <= 20 || current.state === 'RETURNING';
+      const surfaceLandingY = isLowBatteryOrReturning
+        ? 0
+        : getSurfaceLandingY(
+            { x: robotMotionBridge.x, z: robotMotionBridge.z },
+            robotMotionBridge.y
+          );
       robotMotionBridge.targetY = surfaceLandingY;
       const fallbackState = current.previousActiveState ?? 'EXPLORING';
       set({

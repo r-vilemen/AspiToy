@@ -257,6 +257,29 @@ export function Robot() {
     const isManualPointToPoint =
       robotState.state === 'PAUSED' && robotState.targetPosition !== null;
 
+    // Se o robô estiver em cima de um móvel elevado e precisar voltar para a base (ou bateria <= 20%),
+    // decola automaticamente para descer ao chão e nunca ficar preso no móvel sem bateria!
+    const surfaceUnderCurrent = HOUSE_ELEVATED_SURFACES.find((s) =>
+      isPointInsideBounds({ x: loc.x, z: loc.z }, s.bounds, 0.12)
+    );
+    const isPerchedOnFurniture =
+      !robotMotionBridge.isFlying &&
+      ((robotMotionBridge.y ?? 0) > 0.15 || surfaceUnderCurrent !== undefined);
+
+    if (
+      (robotState.state === 'RETURNING' || robotState.battery <= 20) &&
+      isPerchedOnFurniture
+    ) {
+      robotMotionBridge.isFlying = true;
+      const baseSurfY = surfaceUnderCurrent ? surfaceUnderCurrent.surfaceY : (robotMotionBridge.y || 0.6);
+      robotMotionBridge.targetY = Math.max(0.85, baseSurfY + 0.35);
+      cmdState.pushNotification(
+        'Voo Automático para o Solo 🚁',
+        'AspiToy decolou automaticamente para sair do móvel e pousar no solo.',
+        'info'
+      );
+    }
+
     if (robotState.state === 'ORGANIZING') {
       const orgPlan = toyOrganizer.planStep({ x: loc.x, z: loc.z }, pushableToysBridge);
       targetPoint = orgPlan.targetPoint;
@@ -346,7 +369,31 @@ export function Robot() {
         }
       }
     } else if (robotMotionBridge.isFlying) {
-      if (robotState.targetPosition) {
+      if (robotState.state === 'RETURNING') {
+        // Retorno em voo direto para a base
+        targetPoint = envState.dockPosition;
+
+        const surfaceUnder = HOUSE_ELEVATED_SURFACES.find((s) =>
+          isPointInsideBounds({ x: loc.x, z: loc.z }, s.bounds, 0.14)
+        );
+
+        if (surfaceUnder) {
+          // Mantém altitude segura sobre a mobília enquanto sai de seus limites
+          robotMotionBridge.targetY = Math.max(0.85, surfaceUnder.surfaceY + 0.30);
+        } else {
+          // Céu aberto sobre o piso livre: inicia descida e pouso automático suave no solo
+          robotMotionBridge.targetY = 0.0;
+          if (robotMotionBridge.y <= 0.04) {
+            robotMotionBridge.isFlying = false;
+            robotMotionBridge.y = 0.0;
+            cmdState.pushNotification(
+              'Pouso no Solo Concluído',
+              'AspiToy desceu do móvel com segurança e segue pelo piso até a base.',
+              'info'
+            );
+          }
+        }
+      } else if (robotState.targetPosition) {
         // Alvo manual específico selecionado pelo usuário no chão/móvel
         targetPoint = robotState.targetPosition;
       } else if (robotState.state === 'CLEANING') {
@@ -1048,10 +1095,14 @@ export function Robot() {
       // ETAPA 1: DESCIDA CONTROLADA COM HÉLICE GIRANDO E SUSTENTAÇÃO ATIVA
       // ETAPA 2: TOQUE SUAVE NA SUPERFÍCIE, CORTE DO MOTOR, INÉRCIA E RECOLHIMENTO
       // ========================================================
-      const landingSurfaceY = getSurfaceLandingY(
+      // REGRA DE OURO: Nunca pousar nos móveis sem bateria (<= 20%) ou em retorno à base!
+      const isLowBatteryOrReturning =
+        robotState.battery <= 20 || robotState.state === 'RETURNING';
+      const rawLandingSurfaceY = getSurfaceLandingY(
         { x: loc.x, z: loc.z },
         robotMotionBridge.y
       );
+      const landingSurfaceY = isLowBatteryOrReturning ? 0.0 : rawLandingSurfaceY;
       robotMotionBridge.targetY = landingSurfaceY;
 
       const isStillInAir = robotMotionBridge.y > landingSurfaceY + 0.015;
@@ -1218,16 +1269,14 @@ export function Robot() {
         robotState.updateBattery(-0.09);
 
         if (robotState.battery <= 18) {
-          robotMotionBridge.isFlying = false;
-          robotMotionBridge.targetY = 0;
           robotState.setTargetPosition(envState.dockPosition);
           robotState.setOperationalState(
             'RETURNING',
-            'Bateria baixa em voo (18%). Pouso de emergência e retorno à base de recarga.'
+            'Bateria baixa em voo (18%). Navegando para fora dos móveis, pousando no solo e retornando à base.'
           );
           cmdState.pushNotification(
             'Bateria baixa',
-            'Pousando e retornando à base de recarga.',
+            'Iniciando voo para o solo e retorno à base de recarga.',
             'warning'
           );
         }

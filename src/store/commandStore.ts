@@ -9,7 +9,7 @@ import type { Vector2D } from '@/types/robot';
 import { useRobotStore, manualControlBridge, robotMotionBridge } from './robotStore';
 import { useEnvironmentStore } from './environmentStore';
 import { soundManager } from '@/services/soundManager';
-import { getOverheadObstacleAt } from '@/world/House/HouseObstacles';
+import { getOverheadObstacleAt, getSurfaceLandingY } from '@/world/House/HouseObstacles';
 
 export type CameraPreset = 'follow' | 'overview' | 'closeup';
 
@@ -250,6 +250,18 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
           reason = 'O AspiToy já está acoplado na base.';
           break;
         }
+
+        // Se o robô estiver sobre um móvel elevado, aciona decolagem automática de emergência
+        // para sair do móvel e pousar no solo a caminho da base
+        const currentSurf = getSurfaceLandingY(
+          { x: robotMotionBridge.x, z: robotMotionBridge.z },
+          robotMotionBridge.y
+        );
+        if (currentSurf > 0 || (robotMotionBridge.y ?? 0) > 0.15) {
+          robotMotionBridge.isFlying = true;
+          robotMotionBridge.targetY = Math.max(0.85, (robotMotionBridge.y || currentSurf) + 0.35);
+        }
+
         label = 'Retornar à base de recarga';
         robot.setTargetPosition(env.dockPosition);
         robot.setOperationalState(

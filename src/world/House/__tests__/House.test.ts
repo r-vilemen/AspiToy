@@ -207,4 +207,34 @@ describe('Construção da Casa 3D e Coerência Espacial (Dia 2)', () => {
     expect(armrestHit.obstacleId).toBe('armchair-olive-armrest-left');
     expect(armrestHit.position.x).toBeLessThanOrEqual(0.06);
   });
+
+  it('permite decolagem de emergência mesmo com bateria <= 20% quando preso em cima de um móvel e nunca pousa em móveis sem bateria', () => {
+    const { toggleHelicopterMode } = useRobotStore.getState();
+
+    // 1. Robô no chão com bateria fraca: decolagem normal é bloqueada
+    robotMotionBridge.x = 0.0;
+    robotMotionBridge.z = 0.0;
+    robotMotionBridge.y = 0.0;
+    robotMotionBridge.isFlying = false;
+    useRobotStore.setState({ battery: 15 });
+
+    const groundTakeoff = toggleHelicopterMode();
+    expect(groundTakeoff).toBe(false);
+    expect(robotMotionBridge.isFlying).toBe(false);
+
+    // 2. Robô preso em cima da mesa (y = 0.69m) com bateria fraca: decolagem de emergência é autorizada
+    robotMotionBridge.x = -1.45;
+    robotMotionBridge.z = -1.15;
+    robotMotionBridge.y = 0.69;
+    robotMotionBridge.isFlying = false;
+
+    const emergencyTakeoff = toggleHelicopterMode();
+    expect(emergencyTakeoff).toBe(true);
+    expect(robotMotionBridge.isFlying).toBe(true);
+
+    // 3. Ao pousar sem bateria (bateria <= 20%), a cota de pouso nunca é o móvel, mas sim o solo (0.0)
+    const emergencyLanding = toggleHelicopterMode();
+    expect(emergencyLanding).toBe(false);
+    expect(robotMotionBridge.targetY).toBe(0.0);
+  });
 });
