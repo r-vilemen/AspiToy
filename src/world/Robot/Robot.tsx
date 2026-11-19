@@ -32,6 +32,10 @@ import { isPointInsideBounds } from '@/utils/coordinates';
 import type { Vector2D } from '@/types/robot';
 import { soundManager } from '@/services/soundManager';
 import {
+  HOUSE_FLOOR_PLAN,
+  getRoomAtPosition,
+} from '@/world/House/FloorPlan';
+import {
   HOUSE_ELEVATED_SURFACES,
   getSurfaceLandingY,
   getNearestFloorEscapePoint,
@@ -225,6 +229,9 @@ export function Robot() {
   const autoFlightDurationRef = useRef(0); // Tempo no ar
   const autoFurnitureVisitCountRef = useRef(0); // Quantos móveis higienizados na surtida aérea atual
   const catChaseShootCooldownRef = useRef(0.6); // Intervalo de disparo de espuma ao arretar os gatos
+  const catChaseTargetIndexRef = useRef(0); // Índice do gato perseguido atualmente (gira entre Laranja, Branco e Frajola)
+  const catChaseTimerRef = useRef(0); // Duração da perseguição ao gato atual antes de rotacionar para outro cômodo
+  const catChaseFoamHitCountRef = useRef(0); // Contagem de jatos de espuma disparados no gato atual
 
   useFrame((_, rawDelta) => {
     const delta = Math.min(rawDelta, 0.05);
@@ -314,30 +321,80 @@ export function Robot() {
         );
       }
     } else if (robotState.state === 'CHASING_CATS') {
-      // Persegue ativamente os gatos da casa e dispara jatos de espuma neles
+      // Persegue ativamente os gatos por toda a casa (via aérea e terrestre) e dispara espuma neles
       const candidateCats = [
         { bridge: catMotionBridge, name: 'Gato Laranja' },
         { bridge: whiteCatMotionBridge, name: 'Gato Branco' },
         { bridge: tuxedoCatMotionBridge, name: 'Gato Frajola' },
       ];
 
-      // Seleciona o gato mais próximo
-      let targetCat = candidateCats[0];
-      let minCatDist = Infinity;
-      for (const c of candidateCats) {
-        const d = Math.hypot(c.bridge.x - loc.x, c.bridge.z - loc.z);
-        if (d < minCatDist) {
-          minCatDist = d;
-          targetCat = c;
+      catChaseTimerRef.current += delta;
+
+      // Troca periódica de alvo entre os 3 gatos (a cada ~12s ou após 2 disparos) para cobrir a residência inteira
+      if (
+        catChaseTimerRef.current > 12.0 ||
+        catChaseFoamHitCountRef.current >= 2
+      ) {
+        catChaseTargetIndexRef.current =
+          (catChaseTargetIndexRef.current + 1) % candidateCats.length;
+        catChaseTimerRef.current = 0;
+        catChaseFoamHitCountRef.current = 0;
+        flightPathRef.current = [];
+        flightTargetRef.current = null;
+        agent.notifyStuck({ x: loc.x, z: loc.z }, loc.rotationY);
+
+        const nextCat = candidateCats[catChaseTargetIndexRef.current];
+        cmdState.pushNotification(
+          'Novo Alvo de Perseguição',
+          `AspiToy mudou de rota e agora está indo atrás do ${nextCat.name}!`,
+          'info'
+        );
+      }
+
+      const targetCat = candidateCats[catChaseTargetIndexRef.current % candidateCats.length];
+      const targetDist = Math.hypot(targetCat.bridge.x - loc.x, targetCat.bridge.z - loc.z);
+      const catY = targetCat.bridge.y ?? 0;
+
+      // Lógica Híbrida: Voo (Aéreo) vs Condução (Terrestre)
+      // 1. Decolagem para voo se:
+      //    a) Gato empoleirado em móvel elevado (catY > 0.38)
+      //    b) Gato em outro cômodo / longe (targetDist > 4.0m) e bateria suficiente (> 28%)
+      if (!robotMotionBridge.isFlying && robotState.battery > 20) {
+        const overhead = getOverheadObstacleAt({ x: loc.x, z: loc.z }, robotMotionBridge.y);
+        const shouldTakeOffElevated = catY > 0.38;
+        const shouldTakeOffLongDistance = targetDist > 4.0 && robotState.battery > 28;
+
+        if (!overhead && (shouldTakeOffElevated || shouldTakeOffLongDistance)) {
+          robotState.toggleHelicopterMode();
+          robotMotionBridge.targetY = shouldTakeOffElevated
+            ? Math.min(1.25, Math.max(0.75, catY + 0.25))
+            : 0.85;
         }
       }
 
-      // Se o gato estiver empoleirado e o robô estiver no chão com boa bateria, decola para ir atrás
-      const catY = targetCat.bridge.y ?? 0;
-      if (catY > 0.45 && !robotMotionBridge.isFlying && robotState.battery > 22 && minCatDist < 2.5) {
-        const overhead = getOverheadObstacleAt({ x: loc.x, z: loc.z }, robotMotionBridge.y);
-        if (!overhead) {
-          robotState.toggleHelicopterMode();
+      // 2. Pouso suave para perseguição terrestre se:
+      //    Robô em voo, gato no solo (catY < 0.25), aproximação próxima (targetDist < 2.6m)
+      //    e piso livre embaixo (sem móvel elevado abaixo)
+      if (robotMotionBridge.isFlying && catY < 0.25 && targetDist < 2.6) {
+        const surfaceUnder = HOUSE_ELEVATED_SURFACES.find((s) =>
+          isPointInsideBounds({ x: loc.x, z: loc.z }, s.bounds, 0.14)
+        );
+        if (!surfaceUnder) {
+          robotMotionBridge.targetY = 0.0;
+          if (robotMotionBridge.y <= 0.08) {
+            robotMotionBridge.isFlying = false;
+            robotMotionBridge.y = 0.0;
+            loc.pitch = 0;
+            loc.roll = 0;
+            flightPathRef.current = [];
+            flightTargetRef.current = null;
+          }
+        }
+      } else if (robotMotionBridge.isFlying) {
+        if (catY > 0.38) {
+          robotMotionBridge.targetY = Math.min(1.25, Math.max(0.75, catY + 0.25));
+        } else {
+          robotMotionBridge.targetY = 0.85;
         }
       }
 
@@ -347,13 +404,24 @@ export function Robot() {
       const distFromCat = Math.hypot(dxToCat, dzToCat) || 1;
       const standoffDistance = 1.85;
 
+      const rawTargetX = targetCat.bridge.x + (dxToCat / distFromCat) * standoffDistance;
+      const rawTargetZ = targetCat.bridge.z + (dzToCat / distFromCat) * standoffDistance;
+
+      // Garante que o ponto tático permaneça dentro dos limites do cômodo onde o gato está
+      const catRoomId = getRoomAtPosition({ x: targetCat.bridge.x, z: targetCat.bridge.z });
+      const roomBounds = HOUSE_FLOOR_PLAN.rooms[catRoomId]?.bounds;
+
       targetPoint = {
-        x: targetCat.bridge.x + (dxToCat / distFromCat) * standoffDistance,
-        z: targetCat.bridge.z + (dzToCat / distFromCat) * standoffDistance,
+        x: roomBounds
+          ? Math.max(roomBounds.minX + 0.45, Math.min(roomBounds.maxX - 0.45, rawTargetX))
+          : rawTargetX,
+        z: roomBounds
+          ? Math.max(roomBounds.minZ + 0.45, Math.min(roomBounds.maxZ - 0.45, rawTargetZ))
+          : rawTargetZ,
       };
 
       // Mira e dispara o canhão de espuma lateral ao se aproximar do gato
-      if (minCatDist <= 3.8) {
+      if (targetDist <= 3.8) {
         robotMotionBridge.isCannonAiming = true;
         robotMotionBridge.cannonExtension = 0.8;
         robotMotionBridge.foamTargetX = targetCat.bridge.x;
@@ -366,6 +434,7 @@ export function Robot() {
         catChaseShootCooldownRef.current -= delta;
         if (catChaseShootCooldownRef.current <= 0) {
           catChaseShootCooldownRef.current = 1.4 + Math.random() * 0.8;
+          catChaseFoamHitCountRef.current += 1;
           robotState.fireFoamCannon({
             x: targetCat.bridge.x,
             y: Math.max(0.06, (targetCat.bridge.y ?? 0) + 0.12),
@@ -380,6 +449,8 @@ export function Robot() {
             targetCat.bridge.speed = 0;
           }
         }
+      } else {
+        robotMotionBridge.isCannonAiming = false;
       }
     } else if (robotMotionBridge.isFlying) {
       if (robotState.state === 'RETURNING') {
@@ -661,9 +732,10 @@ export function Robot() {
       // Voo autônomo com navegação por portas e prevenção absoluta de colisão
       if (targetPoint) {
         // Se o alvo mudou ou a rota terminou, recalcula rota A* segura que contorna paredes e usa as portas
+        const flightGoalThreshold = robotState.state === 'CHASING_CATS' ? 1.2 : 0.4;
         const targetChanged =
           !flightTargetRef.current ||
-          distance2D(flightTargetRef.current, targetPoint) > 0.4;
+          distance2D(flightTargetRef.current, targetPoint) > flightGoalThreshold;
 
         if (targetChanged) {
           flightTargetRef.current = { ...targetPoint };
@@ -680,7 +752,7 @@ export function Robot() {
         // Segue o próximo waypoint da rota aérea
         while (
           flightPathRef.current.length > 1 &&
-          distance2D({ x: loc.x, z: loc.z }, flightPathRef.current[0]) < 0.35
+          distance2D({ x: loc.x, z: loc.z }, flightPathRef.current[0]) < 0.45
         ) {
           flightPathRef.current.shift();
         }
@@ -825,7 +897,7 @@ export function Robot() {
             loc.rotationY,
             targetPoint,
             robotState.speed,
-            envState.selectedRegionId,
+            robotState.state === 'CHASING_CATS' ? 'all' : envState.selectedRegionId,
             delta,
             dynamicCats
           );
