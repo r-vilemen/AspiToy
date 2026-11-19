@@ -59,6 +59,7 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
   const cannonArmGroupRef = useRef<THREE.Group>(null);
   const cannonHatchRef = useRef<THREE.Group>(null);
   const cannonBarrelRef = useRef<THREE.Group>(null);
+  const targetWorldVec = useRef(new THREE.Vector3());
 
   useFrame((_, delta) => {
     const ext = robotMotionBridge.propellerExtension;
@@ -196,54 +197,51 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
       }
     }
 
-    if (cannonBarrelRef.current) {
+    if (cannonBarrelRef.current && cannonArmGroupRef.current) {
+      cannonBarrelRef.current.rotation.order = 'YXZ';
       // Recuo axial mecânico de tiro (kickback visível de desenho animado)
       cannonBarrelRef.current.position.z = -cRecoil * 0.055;
 
-      // Mira angular dinâmica acompanhando em tempo real o mouse na cena 3D
+      // Mira angular dinâmica acompanhando em tempo real e com precisão exata o mouse na cena 3D
       if (
         robotMotionBridge.isCannonAiming &&
         (robotMotionBridge.foamTargetX !== 0 || robotMotionBridge.foamTargetZ !== 0)
       ) {
-        const heading = robotMotionBridge.rotationY;
-        const worldDx = robotMotionBridge.foamTargetX - robotMotionBridge.x;
-        const worldDy = robotMotionBridge.foamTargetY - ((robotMotionBridge.y || 0) + 0.04);
-        const worldDz = robotMotionBridge.foamTargetZ - robotMotionBridge.z;
+        // Atualiza a matriz do braço para considerar a extensão e a pose atual do robô
+        cannonArmGroupRef.current.updateWorldMatrix(true, false);
 
-        // Converte o vetor alvo para o espaço local do robô
-        const cosH = Math.cos(-heading);
-        const sinH = Math.sin(-heading);
-        const localTargetX = worldDx * cosH - worldDz * sinH;
-        const localTargetY = worldDy;
-        const localTargetZ = worldDx * sinH + worldDz * cosH;
+        targetWorldVec.current.set(
+          robotMotionBridge.foamTargetX,
+          robotMotionBridge.foamTargetY,
+          robotMotionBridge.foamTargetZ
+        );
 
-        // Posição local exata do pivô do canhão lateral no chassi
-        const localPivotX = 0.235 + cExt * 0.185 + 0.04;
-        const localPivotY = 0.005;
-        const localPivotZ = 0.09;
+        // Converte as coordenadas mundiais do mouse diretamente para o referencial local do braço do canhão
+        cannonArmGroupRef.current.worldToLocal(targetWorldVec.current);
 
-        const toTargetX = localTargetX - localPivotX;
-        const toTargetY = localTargetY - localPivotY;
-        const toTargetZ = localTargetZ - localPivotZ;
+        // O pivô do cano (cannonBarrelRef) está em local [0.04, 0, 0] dentro de cannonArmGroupRef
+        const toTargetX = targetWorldVec.current.x - 0.04;
+        const toTargetY = targetWorldVec.current.y;
+        const toTargetZ = targetWorldVec.current.z;
 
         const targetYaw = Math.atan2(toTargetX, toTargetZ);
         const horizDist = Math.hypot(toTargetX, toTargetZ);
-        const targetPitch = -Math.atan2(toTargetY, Math.max(0.05, horizDist));
+        const targetPitch = -Math.atan2(toTargetY, Math.max(0.02, horizDist));
 
-        // Amplitude ampla e responsiva de mira angular acompanhando o mouse
-        const clampedYaw = THREE.MathUtils.clamp(targetYaw, -2.1, 2.1);
-        const clampedPitch = THREE.MathUtils.clamp(targetPitch, -1.2, 0.8);
+        // Amplitude ampla de mira para cobrir todas as direções da cena
+        const clampedYaw = THREE.MathUtils.clamp(targetYaw, -2.8, 2.8);
+        const clampedPitch = THREE.MathUtils.clamp(targetPitch, -1.2, 0.85);
 
         robotMotionBridge.cannonAimYaw = THREE.MathUtils.damp(
           robotMotionBridge.cannonAimYaw,
           clampedYaw,
-          14.0,
+          18.0,
           delta
         );
         robotMotionBridge.cannonAimPitch = THREE.MathUtils.damp(
           robotMotionBridge.cannonAimPitch,
           clampedPitch,
-          14.0,
+          18.0,
           delta
         );
 
@@ -253,13 +251,13 @@ export const RobotModel = forwardRef<THREE.Group, RobotModelProps>(function Robo
         robotMotionBridge.cannonAimYaw = THREE.MathUtils.damp(
           robotMotionBridge.cannonAimYaw,
           0,
-          6.0,
+          8.0,
           delta
         );
         robotMotionBridge.cannonAimPitch = THREE.MathUtils.damp(
           robotMotionBridge.cannonAimPitch,
           0,
-          6.0,
+          8.0,
           delta
         );
         cannonBarrelRef.current.rotation.y = robotMotionBridge.cannonAimYaw;

@@ -238,16 +238,31 @@ export const FoamCannonSystem = memo(function FoamCannonSystem() {
       const currentShotId = robotMotionBridge.foamCannonTrigger;
       lastTriggerRef.current = currentShotId;
 
-      // Calcula a posição mundial da ponta do bocal em corneta do canhão lateral
+      // Calcula a posição mundial da ponta do bocal em corneta do canhão lateral considerando a rotação e a mira angular
       const heading = robotMotionBridge.rotationY;
-      const muzzleLocalX = 0.42; // canhão estendido para a lateral direita
-      const muzzleLocalY = 0.025;
-      const muzzleLocalZ = 0.22; // bocal frontal projetado para a frente
-
       const cosH = Math.cos(heading);
       const sinH = Math.sin(heading);
+
+      // Posição local do pivô do canhão no chassi direito
+      const pivotLocalX = 0.46;
+      const pivotLocalY = 0.005;
+      const pivotLocalZ = 0.09;
+
+      // Direção tridimensional da mira angular ativa do canhão (yaw e pitch)
+      const aimYaw = robotMotionBridge.cannonAimYaw || 0;
+      const aimPitch = robotMotionBridge.cannonAimPitch || 0;
+      const barrelDirX = Math.sin(aimYaw) * Math.cos(aimPitch);
+      const barrelDirY = -Math.sin(aimPitch);
+      const barrelDirZ = Math.cos(aimYaw) * Math.cos(aimPitch);
+
+      // Ponta do bocal alargado em corneta (0.125m ao longo do cano)
+      const nozzleTipDist = 0.125;
+      const muzzleLocalX = pivotLocalX + barrelDirX * nozzleTipDist;
+      const muzzleLocalY = pivotLocalY + barrelDirY * nozzleTipDist;
+      const muzzleLocalZ = pivotLocalZ + barrelDirZ * nozzleTipDist;
+
       const worldNozzleX = robotMotionBridge.x + sinH * muzzleLocalZ + cosH * muzzleLocalX;
-      const worldNozzleY = (robotMotionBridge.y || 0) + muzzleLocalY + 0.035;
+      const worldNozzleY = (robotMotionBridge.y || 0) + muzzleLocalY + 0.04;
       const worldNozzleZ = robotMotionBridge.z + cosH * muzzleLocalZ - sinH * muzzleLocalX;
 
       let targetX = robotMotionBridge.foamTargetX;
