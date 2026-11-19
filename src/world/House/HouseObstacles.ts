@@ -416,14 +416,14 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
 
   // --- SALA DE ESTAR ---
   // Sofá em L com 26cm de vão livre abaixo (o robô entra e limpa toda a poeira debaixo do sofá)
-  // Pés frontais (Z = 0.68m):
+  // Pés frontais (Z = 0.68m, altura do chão até o chassi Y = 0.26m):
   {
     id: 'sofa-leg-f1',
     label: 'Pé do Sofá Frontal 1',
     category: 'furniture',
     bounds: { minX: 11.17, maxX: 11.27, minZ: 0.63, maxZ: 0.73 },
     collidable: true,
-    height: 0.8,
+    height: 0.26,
   },
   {
     id: 'sofa-leg-f2',
@@ -431,7 +431,7 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     category: 'furniture',
     bounds: { minX: 12.50, maxX: 12.60, minZ: 0.63, maxZ: 0.73 },
     collidable: true,
-    height: 0.8,
+    height: 0.26,
   },
   {
     id: 'sofa-leg-f3',
@@ -439,7 +439,7 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     category: 'furniture',
     bounds: { minX: 13.85, maxX: 13.95, minZ: 0.63, maxZ: 0.73 },
     collidable: true,
-    height: 0.8,
+    height: 0.26,
   },
   {
     id: 'sofa-leg-f4',
@@ -447,16 +447,16 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     category: 'furniture',
     bounds: { minX: 14.97, maxX: 15.07, minZ: 0.63, maxZ: 0.73 },
     collidable: true,
-    height: 0.8,
+    height: 0.26,
   },
-  // Pés traseiros (Z = 1.72m):
+  // Pés traseiros (Z = 1.72m, altura do chão até o chassi Y = 0.26m):
   {
     id: 'sofa-leg-b1',
     label: 'Pé do Sofá Traseiro 1',
     category: 'furniture',
     bounds: { minX: 11.17, maxX: 11.27, minZ: 1.67, maxZ: 1.77 },
     collidable: true,
-    height: 0.8,
+    height: 0.26,
   },
   {
     id: 'sofa-leg-b2',
@@ -464,7 +464,7 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     category: 'furniture',
     bounds: { minX: 12.50, maxX: 12.60, minZ: 1.67, maxZ: 1.77 },
     collidable: true,
-    height: 0.8,
+    height: 0.26,
   },
   {
     id: 'sofa-leg-b3',
@@ -472,7 +472,7 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     category: 'furniture',
     bounds: { minX: 13.85, maxX: 13.95, minZ: 1.67, maxZ: 1.77 },
     collidable: true,
-    height: 0.8,
+    height: 0.26,
   },
   {
     id: 'sofa-leg-b4',
@@ -480,17 +480,17 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     category: 'furniture',
     bounds: { minX: 14.97, maxX: 15.07, minZ: 1.67, maxZ: 1.77 },
     collidable: true,
-    height: 0.8,
+    height: 0.26,
   },
 
-  // Chaise do Sofá com 26cm de vão livre abaixo
+  // Chaise do Sofá com 26cm de vão livre abaixo (pés até Y = 0.26m)
   {
     id: 'chaise-leg-front-w',
     label: 'Pé da Chaise (Frontal Oeste)',
     category: 'furniture',
     bounds: { minX: 15.07, maxX: 15.17, minZ: -0.97, maxZ: -0.87 },
     collidable: true,
-    height: 0.8,
+    height: 0.26,
   },
   {
     id: 'chaise-leg-front-e',
@@ -498,7 +498,7 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     category: 'furniture',
     bounds: { minX: 16.03, maxX: 16.13, minZ: -0.97, maxZ: -0.87 },
     collidable: true,
-    height: 0.8,
+    height: 0.26,
   },
   {
     id: 'chaise-leg-mid-e',
@@ -506,7 +506,7 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     category: 'furniture',
     bounds: { minX: 16.03, maxX: 16.13, minZ: -0.10, maxZ: 0.00 },
     collidable: true,
-    height: 0.8,
+    height: 0.26,
   },
   {
     id: 'chaise-leg-back-e',
@@ -514,7 +514,7 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     category: 'furniture',
     bounds: { minX: 16.03, maxX: 16.13, minZ: 0.67, maxZ: 0.77 },
     collidable: true,
-    height: 0.8,
+    height: 0.26,
   },
   {
     id: 'chaise-leg-back-w',
@@ -522,11 +522,11 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     category: 'furniture',
     bounds: { minX: 15.07, maxX: 15.17, minZ: 0.67, maxZ: 0.77 },
     collidable: true,
-    height: 0.8,
+    height: 0.26,
   },
 
   // Corpo elevado do Sofá da Sala (minY: 0.26 permite que o robô de chão passe por baixo,
-  // enquanto o helicóptero colide fisicamente contra encosto, braço e almofadas em qualquer altitude de voo)
+  // enquanto o helicóptero colide fisicamente contra encosto, braço e almofadas com cotas reais 3D)
   {
     id: 'living-sofa-backrest',
     label: 'Encosto do Sofá da Sala',
@@ -534,7 +534,7 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     bounds: { minX: 10.90, maxX: 15.40, minZ: 1.26, maxZ: 1.88 },
     collidable: true,
     minY: 0.26,
-    height: 2.2,
+    height: 1.45,
   },
   {
     id: 'living-sofa-armrest-left',
@@ -543,34 +543,34 @@ export const NEW_ROOMS_FURNITURE_OBSTACLES: EnvironmentObstacle[] = [
     bounds: { minX: 10.90, maxX: 11.45, minZ: 0.55, maxZ: 1.88 },
     collidable: true,
     minY: 0.26,
-    height: 1.8,
+    height: 1.05,
   },
   {
     id: 'living-sofa-seat',
     label: 'Assento do Sofá da Sala',
     category: 'furniture',
-    bounds: { minX: 11.45, maxX: 15.35, minZ: 0.55, maxZ: 1.26 },
+    bounds: { minX: 11.45, maxX: 15.04, minZ: 0.55, maxZ: 1.26 },
     collidable: true,
     minY: 0.26,
-    height: 0.58,
+    height: 0.585,
   },
   {
     id: 'living-chaise-seat',
     label: 'Assento da Chaise da Sala',
     category: 'furniture',
-    bounds: { minX: 15.0, maxX: 16.2, minZ: -1.05, maxZ: 0.85 },
+    bounds: { minX: 15.02, maxX: 16.18, minZ: -1.01, maxZ: 0.81 },
     collidable: true,
     minY: 0.26,
-    height: 0.58,
+    height: 0.585,
   },
   {
     id: 'living-chaise-headrest',
     label: 'Rolinho da Chaise da Sala',
     category: 'furniture',
-    bounds: { minX: 15.0, maxX: 16.2, minZ: -1.05, maxZ: -0.55 },
+    bounds: { minX: 15.05, maxX: 16.15, minZ: -0.78, maxZ: -0.52 },
     collidable: true,
     minY: 0.58,
-    height: 0.82,
+    height: 0.80,
   },
 
   // Mesa de Centro da Sala com 20cm de vão livre abaixo (o robô passa por baixo)
@@ -800,7 +800,7 @@ export const HOUSE_ELEVATED_SURFACES: ElevatedFurnitureSurface[] = [
   {
     id: 'surface-living-sofa',
     label: 'Sofá da Sala',
-    bounds: { minX: 11.00, maxX: 15.35, minZ: 0.55, maxZ: 1.26 },
+    bounds: { minX: 11.45, maxX: 15.04, minZ: 0.55, maxZ: 1.26 },
     surfaceY: 0.585,
     clearanceBottomY: 0.26,
   },
@@ -808,7 +808,7 @@ export const HOUSE_ELEVATED_SURFACES: ElevatedFurnitureSurface[] = [
   {
     id: 'surface-living-chaise',
     label: 'Chaise do Sofá',
-    bounds: { minX: 15.00, maxX: 16.20, minZ: -1.05, maxZ: 0.85 },
+    bounds: { minX: 15.02, maxX: 16.18, minZ: -0.52, maxZ: 0.81 },
     surfaceY: 0.585,
     clearanceBottomY: 0.26,
   },

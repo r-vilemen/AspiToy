@@ -268,4 +268,55 @@ describe('Construção da Casa 3D e Coerência Espacial (Dia 2)', () => {
     expect(returningTakeoff).toBe(false);
     expect(robotMotionBridge.isFlying).toBe(false);
   });
+
+  it('valida colisão completa do sofá em L da sala (pés, vão livre inferior, superfícies de assento e sobrevoo)', () => {
+    const detector = new ObstacleDetector(ALL_HOUSE_OBSTACLES, 22.6, 17.5);
+
+    // 1. Pés do sofá bloqueiam o robô de chão (Y = 0)
+    const legHit = detector.resolveSafeMovement(
+      { x: 12.55, z: 0.20 },
+      { x: 12.55, z: 0.65 },
+      0.15,
+      0.0
+    );
+    expect(legHit.collided).toBe(true);
+    expect(legHit.obstacleId).toBe('sofa-leg-f2');
+
+    // 2. Vão livre debaixo do sofá permite passagem pelo chão (Y = 0) entre os pés
+    const underSofaMove = detector.resolveSafeMovement(
+      { x: 13.2, z: 0.20 },
+      { x: 13.2, z: 1.00 },
+      0.15,
+      0.0
+    );
+    expect(underSofaMove.collided).toBe(false);
+    expect(underSofaMove.position.z).toBeCloseTo(1.00, 2);
+
+    // 3. Em voo ou sobre a superfície (Y >= 0.585), os pés inferiores NÃO causam colisão
+    const flyingAboveLegs = detector.resolveSafeMovement(
+      { x: 12.55, z: 0.50 },
+      { x: 12.55, z: 1.00 },
+      0.15,
+      0.585
+    );
+    // Deve atravessar a cota dos pés livremente
+    expect(flyingAboveLegs.collided).toBe(false);
+
+    // 4. Cotas de pouso das superfícies do sofá e da chaise
+    const sofaSeatLandingY = getSurfaceLandingY({ x: 13.2, z: 0.90 }, 0.65);
+    expect(sofaSeatLandingY).toBeCloseTo(0.585, 2);
+
+    const chaiseLandingY = getSurfaceLandingY({ x: 15.6, z: 0.10 }, 0.65);
+    expect(chaiseLandingY).toBeCloseTo(0.585, 2);
+
+    // 5. Voo alto (Y = 1.60m) sobrevoa o encosto sem bater (espaço aéreo livre)
+    const highFlight = detector.resolveSafeMovement(
+      { x: 13.2, z: 0.88 },
+      { x: 13.2, z: 2.10 },
+      0.29,
+      1.60
+    );
+    expect(highFlight.collided).toBe(false);
+    expect(highFlight.position.z).toBeCloseTo(2.10, 2);
+  });
 });
