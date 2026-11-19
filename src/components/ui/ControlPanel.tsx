@@ -142,7 +142,7 @@ export function ControlPanel() {
           >
             <div className="flex items-center gap-2">
               <Cat className={`h-4 w-4 stroke-[2.4] ${state === 'CHASING_CATS' ? 'text-white' : 'text-[#D97706]'}`} />
-              <span>Arretar os Gatos</span>
+              <span>{state === 'CHASING_CATS' ? 'Parar de Arretar' : 'Arretar os Gatos'}</span>
             </div>
             <span
               className={`font-mono text-[10px] font-black rounded-lg border px-2 py-0.5 ${
@@ -151,7 +151,7 @@ export function ControlPanel() {
                   : 'border-[#2A211B]/20 bg-[#FEF3C7] text-[#92400E]'
               }`}
             >
-              {state === 'CHASING_CATS' ? 'PERSEGUINDO 💨' : '3 GATOS 😼'}
+              {state === 'CHASING_CATS' ? 'ATIVO (CLIQUE P/ PARAR) 🛑' : '3 GATOS 😼'}
             </span>
           </button>
         </div>

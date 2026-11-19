@@ -163,9 +163,9 @@ export const useCommandStore = create<CommandStoreState>((set, get) => ({
         manualControlBridge.turn = 0;
 
         if (robot.state === 'CHASING_CATS') {
-          // Se já está perseguindo, alterna para pausado
-          robot.setOperationalState('PAUSED', 'Pausa na perseguição aos gatos');
-          label = 'Pausar arretar gatos';
+          // Desativa o modo de perseguição aos gatos e para o robô
+          robot.setOperationalState('IDLE', 'Modo arretar gatos desativado');
+          label = 'Parar arretar gatos';
           break;
         }
 

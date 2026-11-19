@@ -41,6 +41,7 @@ export class AgentController {
   private replanCooldown: number = 0;
   private waypointStallTimer: number = 0;
   private lastWaypointIdx: number = -1;
+  private stateBeforeAvoidance: RobotOperationalState = 'CLEANING';
 
   constructor(
     obstacles: EnvironmentObstacle[],
@@ -162,6 +163,10 @@ export class AgentController {
       };
     }
 
+    if (currentState !== 'AVOIDING') {
+      this.stateBeforeAvoidance = currentState;
+    }
+
     if (this.replanCooldown > 0) {
       this.replanCooldown -= delta;
     }
@@ -185,9 +190,12 @@ export class AgentController {
       ...scan.rays.slice(centerIdx + 1).map((r) => r.distance)
     );
 
-    const isCatInFront = frontRays.some(
-      (r) => r.hit && r.distance < 0.55 && r.obstacleLabel?.includes('Gato')
-    );
+    // No modo de perseguição aos gatos (CHASING_CATS), o gato não é obstáculo de fuga
+    const isCatInFront =
+      currentState !== 'CHASING_CATS' &&
+      frontRays.some(
+        (r) => r.hit && r.distance < 0.55 && r.obstacleLabel?.includes('Gato')
+      );
 
     // Se estiver em aproximação ou passagem de vão de porta, os batentes laterais são esperados
     const isNearDoorway =
@@ -215,7 +223,7 @@ export class AgentController {
       const resumedState: RobotOperationalState =
         this.avoidanceTimer <= 0
           ? currentState === 'AVOIDING'
-            ? 'CLEANING'
+            ? this.stateBeforeAvoidance
             : currentState
           : 'AVOIDING';
       return {

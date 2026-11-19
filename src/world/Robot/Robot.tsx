@@ -814,6 +814,8 @@ export function Robot() {
               const resumeState =
                 robotState.previousActiveState === 'PAUSED' || isManualPointToPoint
                   ? 'PAUSED'
+                  : robotState.previousActiveState === 'CHASING_CATS'
+                  ? 'CHASING_CATS'
                   : decision.nextState;
               robotState.setOperationalState(
                 resumeState,
@@ -868,6 +870,8 @@ export function Robot() {
                   'IDLE',
                   'Chegou ao ponto selecionado no chão'
                 );
+              } else if (robotState.state === 'CHASING_CATS') {
+                // Modo perseguição aos gatos: permanece ativo continuamente rastreando o alvo
               } else {
                 if (robotState.targetPosition) {
                   robotState.setTargetPosition(null);

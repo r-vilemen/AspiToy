@@ -30,6 +30,12 @@ export function useHouseFloorClick() {
       return;
     }
 
+    // Se estiver no modo de perseguição aos gatos, cliques no piso não cancelam o modo
+    if (useRobotStore.getState().state === 'CHASING_CATS') {
+      e.stopPropagation();
+      return;
+    }
+
     e.stopPropagation();
 
     const elevatedSurface = HOUSE_ELEVATED_SURFACES.find((s) =>
