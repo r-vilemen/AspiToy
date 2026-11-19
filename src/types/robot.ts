@@ -93,5 +93,8 @@ export interface RobotMotionBridge {
   foamTargetX: number; // coordenada X do ponto de mira 3D
   foamTargetY: number; // coordenada Y do ponto de mira 3D
   foamTargetZ: number; // coordenada Z do ponto de mira 3D
+  foamTargetNormalX: number; // vetor normal X da superfície de impacto
+  foamTargetNormalY: number; // vetor normal Y da superfície de impacto
+  foamTargetNormalZ: number; // vetor normal Z da superfície de impacto
 }
 

@@ -30,22 +30,43 @@ import { robotMotionBridge, useRobotStore } from '@/store/robotStore';
 export const House = memo(function House() {
   const roomDimensions = useEnvironmentStore((s) => s.roomDimensions);
 
-  const handleHousePointerDown = useCallback((e: ThreeEvent<PointerEvent>) => {
+  const handleHousePointerMove = useCallback((e: ThreeEvent<PointerEvent>) => {
+    if (robotMotionBridge.isCannonAiming || useRobotStore.getState().isCannonAiming) {
+      robotMotionBridge.foamTargetX = e.point.x;
+      robotMotionBridge.foamTargetY = e.point.y;
+      robotMotionBridge.foamTargetZ = e.point.z;
+      if (e.face?.normal) {
+        robotMotionBridge.foamTargetNormalX = e.face.normal.x;
+        robotMotionBridge.foamTargetNormalY = e.face.normal.y;
+        robotMotionBridge.foamTargetNormalZ = e.face.normal.z;
+      }
+    }
+  }, []);
+
+  const handleHouseClick = useCallback((e: ThreeEvent<MouseEvent>) => {
     // Ignora arraste de câmera via OrbitControls
     if (e.delta > 6) return;
 
     if (robotMotionBridge.isCannonAiming || useRobotStore.getState().isCannonAiming) {
       e.stopPropagation();
+      const norm = e.face?.normal;
       useRobotStore.getState().fireFoamCannon({
         x: e.point.x,
         y: e.point.y,
         z: e.point.z,
+        nx: norm?.x ?? 0,
+        ny: norm?.y ?? 1,
+        nz: norm?.z ?? 0,
       });
     }
   }, []);
 
   return (
-    <group name="house-complete-residence" onPointerDown={handleHousePointerDown}>
+    <group
+      name="house-complete-residence"
+      onPointerMove={handleHousePointerMove}
+      onClick={handleHouseClick}
+    >
       {/* ======================================================== */}
       {/* 1. ESTRUTURA ARQUITETÔNICA GLOBAL & PORTAS               */}
       {/* ======================================================== */}

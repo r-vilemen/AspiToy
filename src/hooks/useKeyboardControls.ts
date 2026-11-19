@@ -116,6 +116,25 @@ export function useKeyboardControls() {
         return;
       }
 
+      // Atalho rápido de teclado para o Canhão de Espuma Lateral: 'C' para armar/recolher, 'Espaço' para disparar
+      const keyLower = e.key ? e.key.toLowerCase() : '';
+      if (e.code === 'KeyC' || keyLower === 'c') {
+        soundManager.ensureAudioRunning();
+        e.preventDefault();
+        useRobotStore.getState().toggleFoamCannonAim();
+        return;
+      }
+
+      if (e.code === 'Space') {
+        const store = useRobotStore.getState();
+        if (store.isCannonAiming) {
+          soundManager.ensureAudioRunning();
+          e.preventDefault();
+          store.fireFoamCannon();
+          return;
+        }
+      }
+
       const dir = normalizeDirectionKey(e);
       if (!dir) return;
 

@@ -31,6 +31,9 @@ export function useHouseFloorClick() {
         x: rawX,
         y: e.point.y,
         z: rawZ,
+        nx: 0,
+        ny: 1,
+        nz: 0,
       });
       return;
     }

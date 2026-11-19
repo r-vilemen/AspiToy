@@ -97,6 +97,9 @@ export const robotMotionBridge: RobotMotionBridge = {
   foamTargetX: 0,
   foamTargetY: 0,
   foamTargetZ: 0,
+  foamTargetNormalX: 0,
+  foamTargetNormalY: 1,
+  foamTargetNormalZ: 0,
 };
 
 /**
@@ -154,7 +157,14 @@ export interface RobotStoreState extends RobotTelemetry {
   toggleHelicopterMode: () => boolean;
   isCannonAiming: boolean;
   toggleFoamCannonAim: (active?: boolean) => boolean;
-  fireFoamCannon: (target?: { x: number; y: number; z: number }) => void;
+  fireFoamCannon: (target?: {
+    x: number;
+    y: number;
+    z: number;
+    nx?: number;
+    ny?: number;
+    nz?: number;
+  }) => void;
   fireBubbleCannon: () => void;
   resetRobot: () => void;
 }
@@ -337,20 +347,26 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
   fireFoamCannon: (targetPoint) => {
     // Garante que o canhão esteja estendido para disparar
     robotMotionBridge.isCannonAiming = true;
-    if (robotMotionBridge.cannonExtension < 0.3) {
-      robotMotionBridge.cannonExtension = 0.5;
+    if (robotMotionBridge.cannonExtension < 0.4) {
+      robotMotionBridge.cannonExtension = 0.6;
     }
 
     if (targetPoint) {
       robotMotionBridge.foamTargetX = targetPoint.x;
       robotMotionBridge.foamTargetY = targetPoint.y;
       robotMotionBridge.foamTargetZ = targetPoint.z;
+      robotMotionBridge.foamTargetNormalX = targetPoint.nx ?? 0;
+      robotMotionBridge.foamTargetNormalY = targetPoint.ny ?? 1;
+      robotMotionBridge.foamTargetNormalZ = targetPoint.nz ?? 0;
     } else {
       // Disparo frontal padrão na direção do robô
       const heading = robotMotionBridge.rotationY;
       robotMotionBridge.foamTargetX = robotMotionBridge.x + Math.sin(heading) * 2.5;
       robotMotionBridge.foamTargetY = robotMotionBridge.y + 0.15;
       robotMotionBridge.foamTargetZ = robotMotionBridge.z + Math.cos(heading) * 2.5;
+      robotMotionBridge.foamTargetNormalX = 0;
+      robotMotionBridge.foamTargetNormalY = 1;
+      robotMotionBridge.foamTargetNormalZ = 0;
     }
 
     // Gatilho de disparo e recuo mecânico
@@ -398,6 +414,9 @@ export const useRobotStore = create<RobotStoreState>((set, get) => ({
     robotMotionBridge.foamTargetX = 0;
     robotMotionBridge.foamTargetY = 0;
     robotMotionBridge.foamTargetZ = 0;
+    robotMotionBridge.foamTargetNormalX = 0;
+    robotMotionBridge.foamTargetNormalY = 1;
+    robotMotionBridge.foamTargetNormalZ = 0;
 
     set({
       ...INITIAL_TELEMETRY,

@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { RobotModel } from './RobotModel';
 import { RobotEffects } from './RobotEffects';
 import { FoamCannonSystem } from './FoamCannonSystem';
+import { FoamCannonAimingReticle } from './FoamCannonAimingReticle';
 import {
   updateRobotLocomotion,
   type RobotLocomotionState,
@@ -1191,6 +1192,8 @@ export function Robot() {
 
       {/* Sistema de Espuma Tridimensional em Coordenadas Mundiais (Paredes, Móveis e Chão) */}
       <FoamCannonSystem />
+      {/* Retículo Holográfico 3D de Mira do Canhão sobre Superfícies */}
+      <FoamCannonAimingReticle />
     </>
   );
 }
